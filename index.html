@@ -279,6 +279,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div class="section-hd">포인트 내역</div>
     <div class="card"><div class="card-body" id="s-mile-list"></div></div>
   </div></div>
+  <div id="s-students" class="t-tab hidden"><div class="content">
+  <div class="section-hd">학생 관리</div>
+  <button class="btn-primary" style="margin-bottom:12px" onclick="openAddStudent()">+ 학생 등록</button>
+  <div class="card"><div class="card-body" id="student-list"></div></div>
+</div></div>
   <div class="bottom-nav nav-5">
     <button class="nav-item active" onclick="tTab('t-home',this)"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></button>
     <button class="nav-item" onclick="tTab('t-mile',this);loadMile()"><span class="nav-icon">⭐</span><span class="nav-label">마일리지</span></button>
