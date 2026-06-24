@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>이화영어</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+body{background:#1B4D3E;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;font-family:sans-serif}
+.wrap{text-align:center;color:white}
+.spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+p{font-size:14px;opacity:0.8}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="spinner"></div>
+  <p id="msg">로그인 처리 중...</p>
+</div>
+<script>
+var SUPA_URL = 'https://hjsubxsbswombxjehrml.supabase.co';
+var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhqc3VieHNic3dvbWJ4amVocm1sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMjUzOTAsImV4cCI6MjA5NzgwMTM5MH0.OkqQTRbNTNPOkNL-OIhtNyvgh3JJcCBQllT3ChkMGZ4';
+
+var sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// Get hash params from URL
+var hash = window.location.hash.substring(1);
+var params = {};
+hash.split('&').forEach(function(part) {
+  var item = part.split('=');
+  params[decodeURIComponent(item[0])] = decodeURIComponent(item[1] || '');
+});
+
+if (params.access_token) {
+  document.getElementById('msg').textContent = '로그인 성공! 저장 중...';
+  
+  // Set session manually
+  sb.auth.setSession({
+    access_token: params.access_token,
+    refresh_token: params.refresh_token
+  }).then(function(res) {
+    if (res.data && res.data.session) {
+      document.getElementById('msg').textContent = '완료! 이동 중...';
+      setTimeout(function() {
+        window.location.replace('/');
+      }, 500);
+    } else {
+      document.getElementById('msg').textContent = '오류: ' + JSON.stringify(res.error);
+      setTimeout(function() {
+        window.location.replace('/');
+      }, 3000);
+    }
+  });
+} else {
+  // No token in hash - try getSession
+  sb.auth.getSession().then(function(res) {
+    if (res.data && res.data.session) {
+      window.location.replace('/');
+    } else {
+      document.getElementById('msg').textContent = '토큰 없음 - 다시 시도...';
+      setTimeout(function() {
+        window.location.replace('/');
+      }, 2000);
+    }
+  });
+}
+</script>
+</body>
+</html>
