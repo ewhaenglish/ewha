@@ -251,6 +251,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
           <div class="note-section-title">📚 오늘의 과제</div>
           <div class="note-section-text" id="note-today-hw">-</div>
         </div>
+        <div class="note-section" style="margin:0 16px 8px">
+          <div class="note-section-title">🎯 이번 주 각오</div>
+          <div class="note-section-text" id="note-weekly-goal">-</div>
+        </div>
         <div class="form-group">
           <label class="form-label">피드백</label>
           <textarea class="form-input" id="note-feedback" rows="4" placeholder="피드백을 입력하거나 AI 생성 버튼을 눌러주세요..."></textarea>
@@ -381,6 +385,20 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:4px">이번 달 마일리지</div>
       <div class="mile-pts"><span id="s-total-pts">0</span>점</div>
       <div class="mile-sub" id="s-won">= 0원 사용 가능</div>
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-header"><span class="card-title">⭐ 마일리지 적립 안내</span></div>
+      <div style="padding:12px 16px">
+        <div style="display:grid;grid-template-columns:1fr auto;gap:6px;font-size:13px">
+          <span>✅ 할일 완료 (선생님 확인)</span><span style="font-weight:700;color:#1B4D3E">+10점</span>
+          <span>📚 숙제 완료 (선생님 확인)</span><span style="font-weight:700;color:#1B4D3E">+10점</span>
+          <span>✍️ 오늘의 한 줄 작성</span><span style="font-weight:700;color:#1B4D3E">+5점</span>
+          <span>🎯 이번 주 각오 작성</span><span style="font-weight:700;color:#1B4D3E">+20점</span>
+        </div>
+        <div style="margin-top:10px;padding-top:10px;border-top:1px solid #F5F5F5;font-size:11px;color:#aaa">
+          💡 10점 = 100원 사용 가능
+        </div>
+      </div>
     </div>
     <div class="section-hd">포인트 내역</div>
     <div class="card"><div class="card-body" id="s-mile-list"></div></div>
@@ -812,6 +830,12 @@ async function loadNotePreview(){
   var tasks=res.data||[];
   $('note-today-tasks').textContent=tasks.filter(function(t){return t.type==='todo';}).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')||'할일 없음';
   $('note-today-hw').textContent=tasks.filter(function(t){return t.type==='hw';}).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')||'숙제 없음';
+  // 이번 주 각오
+  var d2=new Date();var monday2=new Date(d2);monday2.setDate(d2.getDate()-d2.getDay()+1);
+  var ms2=monday2.getFullYear()+'-'+String(monday2.getMonth()+1).padStart(2,'0')+'-'+String(monday2.getDate()).padStart(2,'0');
+  var gr2=await getSB().from('weekly_goals').select('content').eq('student_id',sid).eq('week_start',ms2).maybeSingle();
+  var goalEl=$('note-weekly-goal');
+  if(goalEl)goalEl.textContent=gr2.data?gr2.data.content:'(이번 주 각오 없음)';
 }
 async function saveNote(){
   var sid=$('note-student-sel').value;
@@ -821,8 +845,14 @@ async function saveNote(){
   var today=todayStr();
   var res=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',today);
   var tasks=res.data||[];
+  // 이번 주 각오 가져오기
+  var d2=new Date();var monday2=new Date(d2);monday2.setDate(d2.getDate()-d2.getDay()+1);
+  var ms2=monday2.getFullYear()+'-'+String(monday2.getMonth()+1).padStart(2,'0')+'-'+String(monday2.getDate()).padStart(2,'0');
+  var gr2=await getSB().from('weekly_goals').select('content').eq('student_id',sid).eq('week_start',ms2).maybeSingle();
+  var goalContent=gr2.data?gr2.data.content:'';
   var content='[오늘의 수업]\n'+tasks.filter(function(t){return t.type==='todo';}).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')
     +'\n\n[오늘의 과제]\n'+tasks.filter(function(t){return t.type==='hw';}).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')
+    +(goalContent?'\n\n[이번 주 각오]\n'+goalContent:'')
     +'\n\n[피드백]\n'+feedback;
   var r=await getSB().from('growth_notes').insert({student_id:sid,content:content,date:today,ai_generated:false});
   if(r.error){toast('오류: '+r.error.message);return;}
