@@ -717,14 +717,20 @@ async function loadStudentsData(){
   allStudents=res.data||[];
 }
 
-function renderTeacherHome(){
+async function renderTeacherHome(){
   var list=$('t-student-list');
   if(!allStudents.length){list.innerHTML='<div style="padding:16px;color:#aaa;text-align:center">등록된 학생이 없어요</div>';return;}
   $('t-attend-count').textContent=allStudents.length+'명';
+  // 오늘 확인 대기 할일 가져오기
+  var today=todayStr();
+  var res=await getSB().from('tasks').select('*').eq('date',today).eq('student_done',true).eq('teacher_confirmed',false);
+  var pending=res.data||[];
   list.innerHTML=allStudents.map(function(s){
-    return '<div class="student-row" onclick="openStudentDetail(\''+s.id+'\')">'
+    var pendingCount=pending.filter(function(t){return t.student_id===s.id;}).length;
+    var badge=pendingCount?'<span style="background:#FFC107;color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px">확인 대기 '+pendingCount+'</span>':'';
+    return '<div class="student-row" onclick="goToConfirm(\''+s.id+'\')">'
       +'<div class="avatar">'+s.name.charAt(0)+'</div>'
-      +'<div><div class="student-name">'+s.name+'</div>'
+      +'<div style="flex:1"><div class="student-name">'+s.name+badge+'</div>'
       +'<div class="student-meta">'+(s.school||'')+(s.grade?' '+s.grade:'')+'</div></div>'
       +'</div>';
   }).join('');
@@ -850,7 +856,17 @@ async function loadTaskForStudent(){
   renderQuickPhrases();
 }
 
-function renderQuickPhrases(){
+function goToConfirm(sid){
+  // 할일/숙제 탭으로 이동하고 해당 학생 선택
+  tTab('t-task', document.querySelectorAll('#screen-teacher .nav-item')[1]);
+  currentStudentId=sid;
+  $('task-student-sel').value=sid;
+  $('task-area').classList.remove('hidden');
+  renderTasks();
+  renderQuickPhrases();
+}
+
+
   $('todo-quick').innerHTML=QUICK_TODO.map(function(p){
     return '<button class="quick-phrase" onclick="insertQuick(\'todo\',\''+p+'\')">'+p+'</button>';
   }).join('');
@@ -870,20 +886,38 @@ async function renderTasks(){
   var todos=tasks.filter(function(t){return t.type==='todo';});
   var hws=tasks.filter(function(t){return t.type==='hw';});
 
-  $('todo-count').textContent=todos.filter(function(t){return t.is_done;}).length+'/'+todos.length;
-  $('hw-count').textContent=hws.filter(function(t){return t.is_done;}).length+'/'+hws.length;
+  $('todo-count').textContent=todos.filter(function(t){return t.teacher_confirmed;}).length+'/'+todos.length;
+  $('hw-count').textContent=hws.filter(function(t){return t.teacher_confirmed;}).length+'/'+hws.length;
 
-  $('todo-list').innerHTML=todos.map(function(t){
-    return '<div class="task-item'+(t.is_done?' done':'')+'" onclick="toggleTask(\''+t.id+'\','+t.is_done+')">'
-      +'<div class="task-check">'+(t.is_done?'✓':'')+'</div>'
-      +'<span class="task-text">'+t.title+'</span></div>';
-  }).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
+  function taskHtml(t){
+    var status = t.teacher_confirmed ? 'done' : (t.student_done ? 'pending' : '');
+    var icon = t.teacher_confirmed ? '✓' : (t.student_done ? '⏳' : '');
+    var badge = t.student_done && !t.teacher_confirmed
+      ? '<span style="font-size:11px;background:#FFF3CD;color:#856404;border-radius:10px;padding:2px 8px;margin-left:6px">확인 대기</span>'
+      : '';
+    var confirmBtn = t.student_done && !t.teacher_confirmed
+      ? '<button class="btn-sm" style="margin-left:auto;flex-shrink:0" onclick="confirmTask(\''+t.id+'\');event.stopPropagation()">Confirm ✅</button>'
+      : '';
+    return '<div class="task-item '+(t.teacher_confirmed?'done':'')+'" style="'+(t.student_done&&!t.teacher_confirmed?'background:#FFFBF0':'')+'">'
+      +'<div class="task-check" style="'+(t.student_done&&!t.teacher_confirmed?'border-color:#FFC107;color:#FFC107':'')+'">'+(t.student_done&&!t.teacher_confirmed?'!':icon)+'</div>'
+      +'<span class="task-text">'+t.title+badge+'</span>'
+      +confirmBtn+'</div>';
+  }
 
-  $('hw-list').innerHTML=hws.map(function(t){
-    return '<div class="task-item'+(t.is_done?' done':'')+'" onclick="toggleTask(\''+t.id+'\','+t.is_done+')">'
-      +'<div class="task-check">'+(t.is_done?'✓':'')+'</div>'
-      +'<span class="task-text">'+t.title+(t.due_date?' (기한: '+t.due_date+')':'')+'</span></div>';
-  }).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
+  $('todo-list').innerHTML=todos.map(taskHtml).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
+  $('hw-list').innerHTML=hws.map(taskHtml).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
+}
+
+async function confirmTask(id){
+  var res=await getSB().from('tasks').update({teacher_confirmed:true,confirmed_at:new Date().toISOString()}).eq('id',id);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  // 마일리지 적립
+  var task=(await getSB().from('tasks').select('*').eq('id',id).single()).data;
+  if(task){
+    await getSB().from('mileage').insert({student_id:task.student_id,amount:10,reason:'할일 완료: '+task.title});
+    toast('✅ 확인 완료! 마일리지 10점 적립!');
+  }
+  await renderTasks();
 }
 
 async function addTask(type){
@@ -899,8 +933,8 @@ async function addTask(type){
 }
 
 async function toggleTask(id,isDone){
-  await getSB().from('tasks').update({is_done:!isDone}).eq('id',id);
-  await renderTasks();
+  await getSB().from('tasks').update({student_done:!isDone,is_done:!isDone}).eq('id',id);
+  await loadStudent();
 }
 
 // 성장노트
@@ -1057,17 +1091,25 @@ async function loadStudent(){
   var tasks=tRes.data||[];
   var todos=tasks.filter(function(t){return t.type==='todo';});
   var hws=tasks.filter(function(t){return t.type==='hw';});
-  var doneCount=todos.filter(function(t){return t.is_done;}).length;
+  var doneCount=todos.filter(function(t){return t.student_done;}).length;
   var pct=todos.length?Math.round(doneCount/todos.length*100):0;
   $('s-todo-cnt').textContent=doneCount+'/'+todos.length;
   $('s-todo-bar').style.width=pct+'%';
   $('s-todo-pct').textContent=pct+'%';
   $('s-todo-list').innerHTML=todos.map(function(t){
-    return '<div class="task-item'+(t.is_done?' done':'')+'"><div class="task-check">'+(t.is_done?'✓':'')+'</div><span class="task-text">'+t.title+'</span></div>';
+    var confirmed=t.teacher_confirmed;
+    var done=t.student_done;
+    return '<div class="task-item'+(confirmed?' done':'')+'" onclick="toggleTask(\''+t.id+'\','+done+')">'
+      +'<div class="task-check">'+(confirmed?'✓':(done?'⏳':''))+'</div>'
+      +'<span class="task-text">'+t.title+(confirmed?' <span style="font-size:11px;color:#1B4D3E">✅확인됨</span>':(done?' <span style="font-size:11px;color:#FFC107">확인 대기</span>':''))+'</span></div>';
   }).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
-  $('s-hw-cnt').textContent=hws.filter(function(t){return t.is_done;}).length+'/'+hws.length;
+  $('s-hw-cnt').textContent=hws.filter(function(t){return t.student_done;}).length+'/'+hws.length;
   $('s-hw-list').innerHTML=hws.map(function(t){
-    return '<div class="task-item'+(t.is_done?' done':'')+'"><div class="task-check">'+(t.is_done?'✓':'')+'</div><span class="task-text">'+t.title+'</span></div>';
+    var confirmed=t.teacher_confirmed;
+    var done=t.student_done;
+    return '<div class="task-item'+(confirmed?' done':'')+'" onclick="toggleTask(\''+t.id+'\','+done+')">'
+      +'<div class="task-check">'+(confirmed?'✓':(done?'⏳':''))+'</div>'
+      +'<span class="task-text">'+t.title+(confirmed?' <span style="font-size:11px;color:#1B4D3E">✅확인됨</span>':(done?' <span style="font-size:11px;color:#FFC107">확인 대기</span>':''))+'</span></div>';
   }).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
 }
 
