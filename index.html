@@ -7,6 +7,8 @@
 <title>이화영어 학습관리</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;background:#F5F5F5;color:#333;min-height:100vh}
@@ -151,7 +153,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
 <!-- 로그인 -->
 <div id="screen-login" class="screen active">
   <div class="login-logo"><img id="logo-img" src="" alt="이화영어"></div>
-  <div class="login-title">이화영어 학습관리</div>
+  <div style="color:rgba(255,255,255,0.7);font-size:11px;text-align:center;margin-bottom:4px">매일의 성장을 기록하는</div>
+  <div class="login-title">[이화영어 학습관리]</div>
   <div class="login-sub">EWHA ENGLISH</div>
   <div class="login-card">
     <h2>로그인</h2>
@@ -160,10 +163,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       카카오로 시작하기
     </button>
     <div class="login-divider">
-      <div class="login-phone">T. 010-9321-2642</div>
+      <div class="login-phone">T. 010-9321-2842</div>
       <div class="login-credit">Created by 서영지 선생님</div>
     </div>
   </div>
+  <div style="text-align:center;margin-top:24px;color:rgba(255,255,255,0.9);font-size:16px">환영합니다 🌿</div>
 </div>
 
 <!-- 선생님 화면 -->
@@ -251,9 +255,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
           <label class="form-label">피드백</label>
           <textarea class="form-input" id="note-feedback" rows="4" placeholder="피드백을 입력하거나 AI 생성 버튼을 눌러주세요..."></textarea>
         </div>
-        <div style="padding:0 16px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <button class="btn-secondary" onclick="genAIFeedback()" style="margin-top:0">✨ AI 피드백</button>
-          <button class="btn-primary" onclick="saveNote()">저장</button>
+        <div style="padding:0 16px 14px">
+          <button class="btn-primary" onclick="saveNote()">성장노트 저장</button>
         </div>
       </div>
     </div>
@@ -302,8 +305,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
           <textarea class="form-input" id="rep-comment" rows="3" placeholder="선생님 총평..."></textarea>
         </div>
         <div style="padding:0 16px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <button class="btn-secondary" onclick="genAIReport()" style="margin-top:0">✨ AI 코멘트</button>
           <button class="btn-primary" onclick="saveReport()">저장</button>
+          <button class="btn-secondary" onclick="exportPDF()" style="margin-top:8px">📄 PDF 저장</button>
         </div>
       </div>
     </div>
@@ -351,6 +354,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div class="card">
       <div class="card-header"><span class="card-title">📚 숙제 현황</span><span class="card-count" id="s-hw-cnt">-</span></div>
       <div class="card-body" id="s-hw-list"></div>
+    </div>
+    <div class="section-hd" id="weekly-goal-section" style="display:none">🎯 이번 주 각오</div>
+    <div class="card" id="weekly-goal-card" style="display:none">
+      <div class="card-body" id="weekly-goal-body"></div>
+      <div class="add-row" id="weekly-goal-input-row" style="display:none">
+        <input type="text" class="add-input" id="weekly-goal-input" placeholder="이번 주 각오를 입력해주세요...">
+        <button class="add-btn" onclick="submitWeeklyGoal()">제출</button>
+      </div>
+    </div>
+    <div class="section-hd">✍️ 오늘의 한 줄</div>
+    <div class="card">
+      <div class="card-body" id="daily-msg-body"></div>
+      <div class="add-row" id="daily-msg-input-row">
+        <input type="text" class="add-input" id="daily-msg-input" placeholder="선생님께 한 줄 남기기...">
+        <button class="add-btn" onclick="submitDailyMsg()">제출</button>
+      </div>
     </div>
   </div>
   <div id="s-note" class="s-tab content">
@@ -562,6 +581,7 @@ async function loadTeacher(){
   await loadStudentsData();
   await renderTeacherHome();
   populateStudentSelects();
+  loadTeacherMsgs();
 }
 async function loadStudentsData(){
   var res=await getSB().from('students').select('*').order('name');
@@ -793,22 +813,6 @@ async function loadNotePreview(){
   $('note-today-tasks').textContent=tasks.filter(function(t){return t.type==='todo';}).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')||'할일 없음';
   $('note-today-hw').textContent=tasks.filter(function(t){return t.type==='hw';}).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')||'숙제 없음';
 }
-async function genAIFeedback(){
-  var sid=$('note-student-sel').value;
-  var s=allStudents.find(function(x){return x.id===sid;});
-  if(!s){toast('학생을 선택해주세요');return;}
-  toast('AI 피드백 생성 중...');
-  try{
-    var resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','x-api-key':''},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:500,messages:[{role:'user',content:'영어 학원 선생님이 학생 '+s.name+'의 오늘 수업 피드백을 작성해주세요.\n오늘 수업: '+$('note-today-tasks').textContent+'\n오늘 숙제: '+$('note-today-hw').textContent+'\n따뜻하고 격려적인 3-4문장으로 작성해주세요.'}]})
-    });
-    var d=await resp.json();
-    if(d.content&&d.content[0])$('note-feedback').value=d.content[0].text;
-    toast('✅ AI 피드백 생성 완료!');
-  }catch(e){toast('AI 생성 중 오류가 발생했어요');}
-}
 async function saveNote(){
   var sid=$('note-student-sel').value;
   if(!sid){toast('학생을 선택해주세요');return;}
@@ -934,22 +938,6 @@ async function loadReport(){
   var ctx2=document.getElementById('rep-hw-chart').getContext('2d');
   repHwChartInstance=new Chart(ctx2,{type:'bar',data:{labels:labels,datasets:[{label:'숙제 완료율(%)',data:hwData,backgroundColor:'rgba(78,203,165,0.7)',borderColor:'#4ECBA5',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100,ticks:{callback:function(v){return v+'%';}}}}}});
 }
-async function genAIReport(){
-  var sid=$('report-student-sel').value;
-  var s=allStudents.find(function(x){return x.id===sid;});
-  if(!s)return;
-  toast('AI 코멘트 생성 중...');
-  try{
-    var resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','x-api-key':''},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:400,messages:[{role:'user',content:'영어 학원 월간 리포트 코멘트를 작성해주세요.\n학생: '+s.name+'\n할일 완료율: '+$('rep-todo').textContent+'\n숙제 완료율: '+$('rep-hw').textContent+'\n출석일수: '+$('rep-attend').textContent+'\n격려하는 3문장으로 한국어로 작성해주세요.'}]})
-    });
-    var d=await resp.json();
-    if(d.content&&d.content[0])$('rep-comment').value=d.content[0].text;
-    toast('✅ AI 코멘트 완료!');
-  }catch(e){toast('AI 생성 중 오류가 발생했어요');}
-}
 async function saveReport(){
   var sid=$('report-student-sel').value;
   if(!sid){toast('학생을 선택해주세요');return;}
@@ -1002,6 +990,9 @@ async function loadStudent(){
     }).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
     // profile_id 저장 (checkIn/Out용)
     window._currentStudentRowId=studentId;
+    // 오늘의 한 줄 & 이번 주 각오 로드
+    loadDailyMsg();
+    loadWeeklyGoal();
   } else {
     $('s-todo-list').innerHTML='<div style="padding:12px 16px;color:#aaa;font-size:13px">선생님께 초대 코드를 받아 연동해주세요</div>';
     $('s-hw-list').innerHTML='';
@@ -1042,6 +1033,136 @@ async function loadMile(){
   $('s-mile-list').innerHTML=items.map(function(i){
     return '<div style="display:flex;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #F5F5F5"><span style="font-size:13px">'+(i.reason||'마일리지')+'</span><span style="font-weight:700;color:#1B4D3E">+'+i.amount+'점</span></div>';
   }).join('')||'<div style="padding:16px;color:#aaa;text-align:center">내역이 없어요</div>';
+}
+
+// ===== 오늘의 한 줄 & 이번 주 각오 =====
+async function loadDailyMsg(){
+  if(!window._currentStudentRowId)return;
+  var sid=window._currentStudentRowId;
+  var today=todayStr();
+  var res=await getSB().from('daily_messages').select('*').eq('student_id',sid).eq('date',today).maybeSingle();
+  var msg=res.data;
+  var inputRow=$('daily-msg-input-row');
+  var body=$('daily-msg-body');
+  if(msg){
+    body.innerHTML='<div style="padding:12px 16px;font-size:13px;color:#333">'
+      +(msg.content)
+      +(msg.teacher_confirmed?'<span style="float:right;font-size:11px;color:#1B4D3E">✅ 확인됨 +5점</span>':'<span style="float:right;font-size:11px;color:#FFC107">⏳ 확인 대기</span>')
+      +'</div>';
+    if(inputRow)inputRow.style.display='none';
+  } else {
+    body.innerHTML='<div style="padding:12px 16px;color:#aaa;font-size:13px">오늘 한 줄을 남겨보세요!</div>';
+    if(inputRow)inputRow.style.display='flex';
+  }
+}
+
+async function submitDailyMsg(){
+  var input=$('daily-msg-input');
+  var text=input.value.trim();
+  if(!text||!window._currentStudentRowId){toast('내용을 입력해주세요');return;}
+  var today=todayStr();
+  var dup=await getSB().from('daily_messages').select('id').eq('student_id',window._currentStudentRowId).eq('date',today).maybeSingle();
+  if(dup.data){toast('오늘은 이미 한 줄을 남겼어요!');return;}
+  var res=await getSB().from('daily_messages').insert({student_id:window._currentStudentRowId,content:text,date:today,teacher_confirmed:false});
+  if(res.error){toast('오류: '+res.error.message);return;}
+  input.value='';
+  toast('✅ 전송 완료!');
+  loadDailyMsg();
+}
+
+async function loadWeeklyGoal(){
+  if(!window._currentStudentRowId)return;
+  var sid=window._currentStudentRowId;
+  var d=new Date();
+  var monday=new Date(d);
+  monday.setDate(d.getDate()-d.getDay()+1);
+  var mondayStr=monday.getFullYear()+'-'+String(monday.getMonth()+1).padStart(2,'0')+'-'+String(monday.getDate()).padStart(2,'0');
+  var section=$('weekly-goal-section');
+  var card=$('weekly-goal-card');
+  var body=$('weekly-goal-body');
+  var inputRow=$('weekly-goal-input-row');
+  // 월요일에만 표시
+  if(d.getDay()===1||true){ // 테스트용 항상 표시
+    if(section)section.style.display='block';
+    if(card)card.style.display='block';
+    var res=await getSB().from('weekly_goals').select('*').eq('student_id',sid).eq('week_start',mondayStr).maybeSingle();
+    var goal=res.data;
+    if(goal){
+      if(body)body.innerHTML='<div style="padding:12px 16px;font-size:13px;color:#333">'+goal.content+(goal.teacher_confirmed?'<span style="float:right;font-size:11px;color:#1B4D3E">✅ 확인됨 +20점</span>':'<span style="float:right;font-size:11px;color:#FFC107">⏳ 확인 대기</span>')+'</div>';
+      if(inputRow)inputRow.style.display='none';
+    } else {
+      if(body)body.innerHTML='<div style="padding:12px 16px;color:#aaa;font-size:13px">이번 주 각오를 작성해보세요! (+20점)</div>';
+      if(inputRow)inputRow.style.display='flex';
+    }
+  }
+}
+
+async function submitWeeklyGoal(){
+  var input=$('weekly-goal-input');
+  var text=input.value.trim();
+  if(!text||!window._currentStudentRowId){toast('각오를 입력해주세요');return;}
+  var d=new Date();
+  var monday=new Date(d);
+  monday.setDate(d.getDate()-d.getDay()+1);
+  var mondayStr=monday.getFullYear()+'-'+String(monday.getMonth()+1).padStart(2,'0')+'-'+String(monday.getDate()).padStart(2,'0');
+  var dup=await getSB().from('weekly_goals').select('id').eq('student_id',window._currentStudentRowId).eq('week_start',mondayStr).maybeSingle();
+  if(dup.data){toast('이번 주 각오는 이미 작성했어요!');return;}
+  var res=await getSB().from('weekly_goals').insert({student_id:window._currentStudentRowId,content:text,week_start:mondayStr,teacher_confirmed:false});
+  if(res.error){toast('오류: '+res.error.message);return;}
+  input.value='';
+  toast('✅ 이번 주 각오 제출 완료!');
+  loadWeeklyGoal();
+}
+
+// 선생님 홈 - 오늘의 한 줄 & 각오 목록
+async function loadTeacherMsgs(){
+  var today=todayStr();
+  var res=await getSB().from('daily_messages').select('*, students(name)').eq('date',today).eq('teacher_confirmed',false);
+  var msgs=res.data||[];
+  var el=$('t-daily-msgs');
+  if(el){
+    el.innerHTML=msgs.length?msgs.map(function(m){
+      return '<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid #F5F5F5">'
+        +'<div class="avatar" style="width:30px;height:30px;font-size:12px">'+(m.students?m.students.name.charAt(0):'?')+'</div>'
+        +'<div style="flex:1"><div style="font-size:12px;font-weight:700;color:#1B4D3E">'+(m.students?m.students.name:'')+'</div>'
+        +'<div style="font-size:13px;margin-top:2px">'+m.content+'</div></div>'
+        +'<button class="btn-sm" onclick="confirmMsg(this.dataset.id,this.dataset.type)" data-id="'+m.id+'" data-type="daily">확인 ✅</button>'
+        +'</div>';
+    }).join(''):'<div style="padding:12px 16px;color:#aaa;font-size:13px">확인 대기 없어요</div>';
+  }
+  // 이번 주 각오
+  var d=new Date();
+  var monday=new Date(d);
+  monday.setDate(d.getDate()-d.getDay()+1);
+  var mondayStr=monday.getFullYear()+'-'+String(monday.getMonth()+1).padStart(2,'0')+'-'+String(monday.getDate()).padStart(2,'0');
+  var gr=await getSB().from('weekly_goals').select('*, students(name)').eq('week_start',mondayStr).eq('teacher_confirmed',false);
+  var goals=gr.data||[];
+  var ge=$('t-weekly-goals');
+  if(ge){
+    ge.innerHTML=goals.length?goals.map(function(g){
+      return '<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid #F5F5F5">'
+        +'<div class="avatar" style="width:30px;height:30px;font-size:12px">'+(g.students?g.students.name.charAt(0):'?')+'</div>'
+        +'<div style="flex:1"><div style="font-size:12px;font-weight:700;color:#1B4D3E">'+(g.students?g.students.name:'')+'</div>'
+        +'<div style="font-size:13px;margin-top:2px">'+g.content+'</div></div>'
+        +'<button class="btn-sm" onclick="confirmMsg(this.dataset.id,this.dataset.type)" data-id="'+g.id+'" data-type="weekly">확인 ✅</button>'
+        +'</div>';
+    }).join(''):'<div style="padding:12px 16px;color:#aaa;font-size:13px">확인 대기 없어요</div>';
+  }
+}
+
+async function confirmMsg(id,type){
+  var table=type==='daily'?'daily_messages':'weekly_goals';
+  var pts=type==='daily'?5:20;
+  var res=await getSB().from(table).update({teacher_confirmed:true}).eq('id',id);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  // 마일리지 적립
+  var row=(await getSB().from(table).select('*').eq('id',id).single()).data;
+  if(row){
+    await getSB().from('mileage').insert({student_id:row.student_id,amount:pts,reason:type==='daily'?'오늘의 한 줄 작성':'이번 주 각오 작성'});
+    toast('✅ 확인! 마일리지 '+pts+'점 적립!');
+  }
+  loadTeacherMsgs();
+  renderTeacherHome();
 }
 
 // ===== 학부모 기능 =====
@@ -1103,8 +1224,105 @@ async function loadParentNotes(){
   }).join(''):'<div style="padding:16px;color:#aaa;text-align:center">성장노트가 없어요</div>';
 }
 
+// ===== PDF 저장 =====
+async function exportPDF(){
+  var sid=$('report-student-sel').value;
+  if(!sid){toast('학생을 선택해주세요');return;}
+  var s=allStudents.find(function(x){return x.id===sid;});
+  if(!s){return;}
+  toast('PDF 생성 중...');
+  var d=new Date();
+  var monthStr=d.getFullYear()+'. '+(d.getMonth()+1);
+
+  var {jsPDF}=window.jspdf;
+  var doc=new jsPDF('p','mm','a4');
+  var W=210,margin=15;
+
+  // 헤더
+  doc.setFillColor(27,77,62);
+  doc.rect(0,0,W,35,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(20);
+  doc.setFont('helvetica','bold');
+  doc.text('EWHA ENGLISH',W/2,15,{align:'center'});
+  doc.setFontSize(13);
+  doc.setFont('helvetica','normal');
+  doc.text('Monthly Report - '+monthStr,W/2,25,{align:'center'});
+  doc.setFontSize(11);
+  doc.text('Student: '+s.name,W/2,32,{align:'center'});
+
+  // 통계 박스
+  doc.setTextColor(33,33,33);
+  var stats=[
+    {label:'Attendance',value:$('rep-attend').textContent},
+    {label:'Todo Rate',value:$('rep-todo').textContent+'%'},
+    {label:'HW Rate',value:$('rep-hw').textContent+'%'},
+    {label:'Growth Notes',value:$('rep-notes').textContent}
+  ];
+  var boxW=(W-margin*2-15)/4;
+  stats.forEach(function(stat,i){
+    var x=margin+i*(boxW+5);
+    var y=42;
+    doc.setFillColor(232,242,239);
+    doc.roundedRect(x,y,boxW,22,2,2,'F');
+    doc.setFontSize(8);
+    doc.setTextColor(100,100,100);
+    doc.text(stat.label,x+boxW/2,y+8,{align:'center'});
+    doc.setFontSize(14);
+    doc.setTextColor(27,77,62);
+    doc.setFont('helvetica','bold');
+    doc.text(stat.value,x+boxW/2,y+18,{align:'center'});
+    doc.setFont('helvetica','normal');
+  });
+
+  // 차트 캡처
+  try{
+    var canvas1=document.getElementById('rep-chart');
+    var canvas2=document.getElementById('rep-hw-chart');
+    if(canvas1){
+      var img1=canvas1.toDataURL('image/png');
+      doc.addImage(img1,'PNG',margin,70,(W-margin*2)/2-5,50);
+    }
+    if(canvas2){
+      var img2=canvas2.toDataURL('image/png');
+      doc.addImage(img2,'PNG',W/2+2,70,(W-margin*2)/2-5,50);
+    }
+  }catch(e){}
+
+  // 차트 제목
+  doc.setFontSize(9);doc.setTextColor(100,100,100);
+  doc.text('Todo Completion Rate',margin+(W-margin*2)/4-5,68,{align:'center'});
+  doc.text('HW Completion Rate',W/2+(W-margin*2)/4,68,{align:'center'});
+
+  // 요약 & 총평
+  var y2=128;
+  doc.setFillColor(27,77,62);
+  doc.rect(margin,y2,W-margin*2,7,'F');
+  doc.setFontSize(10);doc.setTextColor(255,255,255);
+  doc.text('Monthly Summary & Teacher Comment',margin+3,y2+5);
+
+  doc.setTextColor(33,33,33);doc.setFontSize(9);
+  var summary=$('rep-summary').value||'-';
+  var comment=$('rep-comment').value||'-';
+  var summaryLines=doc.splitTextToSize('Summary: '+summary,W-margin*2-4);
+  var commentLines=doc.splitTextToSize('Comment: '+comment,W-margin*2-4);
+  doc.text(summaryLines,margin+2,y2+12);
+  doc.text(commentLines,margin+2,y2+12+summaryLines.length*5+3);
+
+  // 풋터
+  doc.setFillColor(27,77,62);
+  doc.rect(0,285,W,12,'F');
+  doc.setFontSize(8);doc.setTextColor(255,255,255);
+  doc.text('이화영어 학습관리 | ewha-phi.vercel.app | T. 010-9321-2842',W/2,292,{align:'center'});
+
+  doc.save(s.name+'_'+monthStr+'_Report.pdf');
+  toast('✅ PDF 저장 완료!');
+}
+
 // ===== 앱 시작 =====
 window.addEventListener('load',function(){
+  // 로그인 화면 로고 설정
+  if(LOGO_B64 && $('logo-img'))$('logo-img').src=LOGO_B64;
   if(typeof supabase==='undefined'){toast('네트워크 오류');return;}
   var sb=getSB();
   sb.auth.onAuthStateChange(function(event,session){if(session&&!currentUser)handleSession(session);});
