@@ -570,9 +570,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div id="p-note-list"></div>
   </div>
 
-  <div class="bottom-nav" style="grid-template-columns:repeat(2,1fr)">
+  <div class="bottom-nav" style="grid-template-columns:repeat(3,1fr)">
     <button class="nav-item active" onclick="pTab('p-home',this)"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></button>
     <button class="nav-item" onclick="pTab('p-note',this);loadParentNotes()"><span class="nav-icon">✨</span><span class="nav-label">성장노트</span></button>
+    <button class="nav-item" onclick="showAddChildModal()"><span class="nav-icon">➕</span><span class="nav-label">자녀추가</span></button>
   </div>
 </div>
 
@@ -651,15 +652,93 @@ async function handleSession(session){
   enterWithProfile(currentProfile);
 }
 function showRoleModal(user){
-  openMod('처음 오셨군요!','<div style="padding:20px"><p style="color:#666;margin-bottom:16px">역할을 선택해주세요</p><button class="btn-primary" onclick="registerAs(\'student\')">학생으로 시작</button><button class="btn-secondary" onclick="registerAs(\'parent\')">학부모로 시작</button><p style="font-size:11px;color:#aaa;text-align:center;margin-top:12px">선생님 계정은 별도 등록이 필요해요</p></div>');
+  openMod('처음 오셨군요!',
+    '<div style="padding:20px">'+
+    '<p style="color:#666;margin-bottom:16px;font-size:13px">선생님께 받은 코드를 입력하거나<br>역할을 선택해주세요</p>'+
+    '<div style="margin-bottom:16px">'+
+    '<input type="text" class="form-input" id="invite-code-input" placeholder="초대 코드 입력 (예: STU-A3F2)" style="margin-bottom:8px">'+
+    '<button class="btn-primary" onclick="registerWithCode()">코드로 시작하기</button>'+
+    '</div>'+
+    '<div style="text-align:center;color:#aaa;font-size:12px;margin:12px 0">또는</div>'+
+    '<button class="btn-secondary" onclick="showCodeInput(\'parent\')" style="margin-top:0">학부모로 시작</button>'+
+    '<p style="font-size:11px;color:#aaa;text-align:center;margin-top:12px">선생님 계정은 별도 등록이 필요해요</p>'+
+    '</div>'
+  );
 }
-async function registerAs(r){
-  closeMod();
-  var name=(currentUser.user_metadata&&(currentUser.user_metadata.full_name||currentUser.user_metadata.name))||(r==='student'?'학생':'학부모');
-  var res=await getSB().from('profiles').insert({id:currentUser.id,name:name,role:r});
-  if(res.error){toast('오류: '+res.error.message);return;}
-  currentProfile={id:currentUser.id,name:name,role:r};
-  enterWithProfile(currentProfile);
+
+async function registerWithCode(){
+  var code=$('invite-code-input').value.trim().toUpperCase();
+  if(!code){toast('코드를 입력해주세요');return;}
+
+  if(code.startsWith('STU-')){
+    // 학생 코드 확인
+    var res=await getSB().from('students').select('*').eq('student_code',code).single();
+    if(res.error||!res.data){toast('코드를 찾을 수 없어요');return;}
+    var student=res.data;
+    var name=(currentUser.user_metadata&&(currentUser.user_metadata.full_name||currentUser.user_metadata.name))||student.name;
+    // profiles 생성
+    var pr=await getSB().from('profiles').insert({id:currentUser.id,name:student.name,role:'student'});
+    if(pr.error){toast('오류: '+pr.error.message);return;}
+    // students에 profile_id 연결
+    await getSB().from('students').update({profile_id:currentUser.id}).eq('id',student.id);
+    currentProfile={id:currentUser.id,name:student.name,role:'student'};
+    closeMod();
+    toast('✅ '+student.name+'님으로 연동됐어요!');
+    enterWithProfile(currentProfile);
+
+  } else if(code.startsWith('PAR-')){
+    // 학부모 코드 확인
+    var res=await getSB().from('students').select('*').eq('parent_code',code).single();
+    if(res.error||!res.data){toast('코드를 찾을 수 없어요');return;}
+    var student=res.data;
+    // profiles 생성 (이미 있으면 가져오기)
+    var existingProfile=await getSB().from('profiles').select('*').eq('id',currentUser.id).single();
+    if(!existingProfile.data){
+      var name=(currentUser.user_metadata&&(currentUser.user_metadata.full_name||currentUser.user_metadata.name))||'학부모';
+      var pr=await getSB().from('profiles').insert({id:currentUser.id,name:name,role:'parent'});
+      if(pr.error){toast('오류: '+pr.error.message);return;}
+      currentProfile={id:currentUser.id,name:name,role:'parent'};
+    } else {
+      currentProfile=existingProfile.data;
+    }
+    // student_parent 연결 (중복 방지)
+    var existing=await getSB().from('student_parent').select('*').eq('student_id',student.id).eq('parent_id',currentUser.id).single();
+    if(!existing.data){
+      await getSB().from('student_parent').insert({student_id:student.id,parent_id:currentUser.id});
+    }
+    closeMod();
+    toast('✅ '+student.name+' 자녀 연동 완료!');
+    // 자녀 추가 연동 여부 묻기
+    setTimeout(function(){showAddChildModal();},1000);
+    enterWithProfile(currentProfile);
+
+  } else {
+    toast('올바른 코드를 입력해주세요 (STU- 또는 PAR- 로 시작)');
+  }
+}
+
+function showAddChildModal(){
+  openMod('자녀 추가 연동',
+    '<div style="padding:20px">'+
+    '<p style="color:#666;margin-bottom:16px;font-size:13px">다른 자녀의 코드가 있으면 추가로 입력해주세요</p>'+
+    '<input type="text" class="form-input" id="add-child-code" placeholder="PAR-XXXX" style="margin-bottom:8px">'+
+    '<button class="btn-primary" onclick="addChildLink()">자녀 추가</button>'+
+    '<button class="btn-secondary" onclick="closeMod()" style="margin-top:8px">나중에 하기</button>'+
+    '</div>'
+  );
+}
+
+async function addChildLink(){
+  var code=$('add-child-code').value.trim().toUpperCase();
+  if(!code){toast('코드를 입력해주세요');return;}
+  var res=await getSB().from('students').select('*').eq('parent_code',code).single();
+  if(res.error||!res.data){toast('코드를 찾을 수 없어요');return;}
+  var student=res.data;
+  var existing=await getSB().from('student_parent').select('*').eq('student_id',student.id).eq('parent_id',currentProfile.id).single();
+  if(existing.data){toast('이미 연동된 자녀예요');return;}
+  await getSB().from('student_parent').insert({student_id:student.id,parent_id:currentProfile.id});
+  toast('✅ '+student.name+' 추가 연동 완료!');
+  $('add-child-code').value='';
 }
 function enterWithProfile(profile){
   document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
@@ -717,14 +796,20 @@ async function loadStudentsData(){
   allStudents=res.data||[];
 }
 
-function renderTeacherHome(){
+async function renderTeacherHome(){
   var list=$('t-student-list');
   if(!allStudents.length){list.innerHTML='<div style="padding:16px;color:#aaa;text-align:center">등록된 학생이 없어요</div>';return;}
   $('t-attend-count').textContent=allStudents.length+'명';
+  // 오늘 확인 대기 할일 가져오기
+  var today=todayStr();
+  var res=await getSB().from('tasks').select('*').eq('date',today).eq('student_done',true).eq('teacher_confirmed',false);
+  var pending=res.data||[];
   list.innerHTML=allStudents.map(function(s){
-    return '<div class="student-row" onclick="openStudentDetail(\''+s.id+'\')">'
+    var pendingCount=pending.filter(function(t){return t.student_id===s.id;}).length;
+    var badge=pendingCount?'<span style="background:#FFC107;color:#000;font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:6px">확인 대기 '+pendingCount+'</span>':'';
+    return '<div class="student-row" onclick="goToConfirm(\''+s.id+'\')">'
       +'<div class="avatar">'+s.name.charAt(0)+'</div>'
-      +'<div><div class="student-name">'+s.name+'</div>'
+      +'<div style="flex:1"><div class="student-name">'+s.name+badge+'</div>'
       +'<div class="student-meta">'+(s.school||'')+(s.grade?' '+s.grade:'')+'</div></div>'
       +'</div>';
   }).join('');
@@ -751,7 +836,11 @@ async function loadStudents(){
     return '<div class="student-row">'
       +'<div class="avatar">'+s.name.charAt(0)+'</div>'
       +'<div style="flex:1"><div class="student-name">'+s.name+'</div>'
-      +'<div class="student-meta">'+(s.school||'')+(s.grade?' · '+s.grade:'')+(s.student_phone?' · '+s.student_phone:'')+'</div></div>'
+      +'<div class="student-meta">'+(s.school||'')+(s.grade?' · '+s.grade:'')+'</div>'
+      +'<div style="font-size:11px;margin-top:3px">'
+      +'<span style="background:#E8F2EF;color:#1B4D3E;padding:2px 8px;border-radius:10px;margin-right:4px">학생: '+(s.student_code||'-')+'</span>'
+      +'<span style="background:#FFF3CD;color:#856404;padding:2px 8px;border-radius:10px">학부모: '+(s.parent_code||'-')+'</span>'
+      +'</div></div>'
       +'<button class="btn-sm" onclick="openStudentDetail(\''+s.id+'\')">상세</button>'
       +'</div>';
   }).join('');
@@ -850,6 +939,15 @@ async function loadTaskForStudent(){
   renderQuickPhrases();
 }
 
+function goToConfirm(sid){
+  tTab('t-task', document.querySelectorAll('#screen-teacher .nav-item')[1]);
+  currentStudentId=sid;
+  $('task-student-sel').value=sid;
+  $('task-area').classList.remove('hidden');
+  renderTasks();
+  renderQuickPhrases();
+}
+
 function renderQuickPhrases(){
   $('todo-quick').innerHTML=QUICK_TODO.map(function(p){
     return '<button class="quick-phrase" onclick="insertQuick(\'todo\',\''+p+'\')">'+p+'</button>';
@@ -870,20 +968,38 @@ async function renderTasks(){
   var todos=tasks.filter(function(t){return t.type==='todo';});
   var hws=tasks.filter(function(t){return t.type==='hw';});
 
-  $('todo-count').textContent=todos.filter(function(t){return t.is_done;}).length+'/'+todos.length;
-  $('hw-count').textContent=hws.filter(function(t){return t.is_done;}).length+'/'+hws.length;
+  $('todo-count').textContent=todos.filter(function(t){return t.teacher_confirmed;}).length+'/'+todos.length;
+  $('hw-count').textContent=hws.filter(function(t){return t.teacher_confirmed;}).length+'/'+hws.length;
 
-  $('todo-list').innerHTML=todos.map(function(t){
-    return '<div class="task-item'+(t.is_done?' done':'')+'" onclick="toggleTask(\''+t.id+'\','+t.is_done+')">'
-      +'<div class="task-check">'+(t.is_done?'✓':'')+'</div>'
-      +'<span class="task-text">'+t.title+'</span></div>';
-  }).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
+  function taskHtml(t){
+    var status = t.teacher_confirmed ? 'done' : (t.student_done ? 'pending' : '');
+    var icon = t.teacher_confirmed ? '✓' : (t.student_done ? '⏳' : '');
+    var badge = t.student_done && !t.teacher_confirmed
+      ? '<span style="font-size:11px;background:#FFF3CD;color:#856404;border-radius:10px;padding:2px 8px;margin-left:6px">확인 대기</span>'
+      : '';
+    var confirmBtn = t.student_done && !t.teacher_confirmed
+      ? '<button class="btn-sm" style="margin-left:auto;flex-shrink:0" onclick="confirmTask(\''+t.id+'\');event.stopPropagation()">Confirm ✅</button>'
+      : '';
+    return '<div class="task-item '+(t.teacher_confirmed?'done':'')+'" style="'+(t.student_done&&!t.teacher_confirmed?'background:#FFFBF0':'')+'">'
+      +'<div class="task-check" style="'+(t.student_done&&!t.teacher_confirmed?'border-color:#FFC107;color:#FFC107':'')+'">'+(t.student_done&&!t.teacher_confirmed?'!':icon)+'</div>'
+      +'<span class="task-text">'+t.title+badge+'</span>'
+      +confirmBtn+'</div>';
+  }
 
-  $('hw-list').innerHTML=hws.map(function(t){
-    return '<div class="task-item'+(t.is_done?' done':'')+'" onclick="toggleTask(\''+t.id+'\','+t.is_done+')">'
-      +'<div class="task-check">'+(t.is_done?'✓':'')+'</div>'
-      +'<span class="task-text">'+t.title+(t.due_date?' (기한: '+t.due_date+')':'')+'</span></div>';
-  }).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
+  $('todo-list').innerHTML=todos.map(taskHtml).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
+  $('hw-list').innerHTML=hws.map(taskHtml).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
+}
+
+async function confirmTask(id){
+  var res=await getSB().from('tasks').update({teacher_confirmed:true,confirmed_at:new Date().toISOString()}).eq('id',id);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  // 마일리지 적립
+  var task=(await getSB().from('tasks').select('*').eq('id',id).single()).data;
+  if(task){
+    await getSB().from('mileage').insert({student_id:task.student_id,amount:10,reason:'할일 완료: '+task.title});
+    toast('✅ 확인 완료! 마일리지 10점 적립!');
+  }
+  await renderTasks();
 }
 
 async function addTask(type){
@@ -899,8 +1015,8 @@ async function addTask(type){
 }
 
 async function toggleTask(id,isDone){
-  await getSB().from('tasks').update({is_done:!isDone}).eq('id',id);
-  await renderTasks();
+  await getSB().from('tasks').update({student_done:!isDone,is_done:!isDone}).eq('id',id);
+  await loadStudent();
 }
 
 // 성장노트
@@ -1057,17 +1173,25 @@ async function loadStudent(){
   var tasks=tRes.data||[];
   var todos=tasks.filter(function(t){return t.type==='todo';});
   var hws=tasks.filter(function(t){return t.type==='hw';});
-  var doneCount=todos.filter(function(t){return t.is_done;}).length;
+  var doneCount=todos.filter(function(t){return t.student_done;}).length;
   var pct=todos.length?Math.round(doneCount/todos.length*100):0;
   $('s-todo-cnt').textContent=doneCount+'/'+todos.length;
   $('s-todo-bar').style.width=pct+'%';
   $('s-todo-pct').textContent=pct+'%';
   $('s-todo-list').innerHTML=todos.map(function(t){
-    return '<div class="task-item'+(t.is_done?' done':'')+'"><div class="task-check">'+(t.is_done?'✓':'')+'</div><span class="task-text">'+t.title+'</span></div>';
+    var confirmed=t.teacher_confirmed;
+    var done=t.student_done;
+    return '<div class="task-item'+(confirmed?' done':'')+'" onclick="toggleTask(\''+t.id+'\','+done+')">'
+      +'<div class="task-check">'+(confirmed?'✓':(done?'⏳':''))+'</div>'
+      +'<span class="task-text">'+t.title+(confirmed?' <span style="font-size:11px;color:#1B4D3E">✅확인됨</span>':(done?' <span style="font-size:11px;color:#FFC107">확인 대기</span>':''))+'</span></div>';
   }).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
-  $('s-hw-cnt').textContent=hws.filter(function(t){return t.is_done;}).length+'/'+hws.length;
+  $('s-hw-cnt').textContent=hws.filter(function(t){return t.student_done;}).length+'/'+hws.length;
   $('s-hw-list').innerHTML=hws.map(function(t){
-    return '<div class="task-item'+(t.is_done?' done':'')+'"><div class="task-check">'+(t.is_done?'✓':'')+'</div><span class="task-text">'+t.title+'</span></div>';
+    var confirmed=t.teacher_confirmed;
+    var done=t.student_done;
+    return '<div class="task-item'+(confirmed?' done':'')+'" onclick="toggleTask(\''+t.id+'\','+done+')">'
+      +'<div class="task-check">'+(confirmed?'✓':(done?'⏳':''))+'</div>'
+      +'<span class="task-text">'+t.title+(confirmed?' <span style="font-size:11px;color:#1B4D3E">✅확인됨</span>':(done?' <span style="font-size:11px;color:#FFC107">확인 대기</span>':''))+'</span></div>';
   }).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
 }
 
@@ -1112,8 +1236,16 @@ async function loadParent(){
   var res=await getSB().from('student_parent').select('*, students(*)').eq('parent_id',currentProfile.id);
   var links=res.data||[];
   if(!links.length){
-    $('p-attend').innerHTML='<div style="padding:16px;color:#aaa;text-align:center">연동된 학생이 없어요<br>선생님께 문의해주세요</div>';
+    $('p-attend').innerHTML='<div style="padding:16px;color:#aaa;text-align:center">연동된 학생이 없어요<br>선생님께 코드를 받아 입력해주세요</div>';
+    $('p-notices').innerHTML='';
     return;
+  }
+  // 자녀 탭 (여러명일 경우)
+  if(links.length>1){
+    var tabs=links.map(function(l,i){
+      return '<button onclick="switchChild('+i+')" id="child-tab-'+i+'" style="padding:6px 14px;border:none;background:'+(i===0?'#1B4D3E':'#F5F5F5')+';color:'+(i===0?'#fff':'#666')+';border-radius:20px;font-size:12px;cursor:pointer;font-family:inherit">'+l.students.name+'</button>';
+    }).join('');
+    $('p-date').insertAdjacentHTML('afterend','<div style="display:flex;gap:8px;margin-top:8px" id="child-tabs">'+tabs+'</div>');
   }
   var student=links[0].students;
   if(student){
