@@ -136,10 +136,38 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
 .pill-pending{background:#FFF3CD;color:#856404}
 .pill-confirmed{background:#E8F2EF;color:#1B4D3E}
 .chart-container{position:relative;padding:16px;height:220px}
+
+.popup-notif{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#1B4D3E;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;z-index:400;opacity:0;transition:all 0.4s;pointer-events:none;text-align:center;min-width:200px;box-shadow:0 4px 20px rgba(0,0,0,0.2)}
+.popup-notif.show{opacity:1}
+.notif-btn{background:none;border:none;color:#fff;font-size:20px;cursor:pointer;position:relative;padding:0}
+.notif-dot{position:absolute;top:0;right:0;width:8px;height:8px;background:#FF4444;border-radius:50%;display:none}
+.notif-dot.on{display:block}
+.notice-banner{background:#FFF8EC;border:1px solid #FFE0A0;border-radius:10px;padding:12px 14px;margin-bottom:12px}
+.notice-banner-title{font-size:12px;font-weight:700;color:#B7770D;margin-bottom:4px}
+.notice-banner-text{font-size:13px;color:#333;line-height:1.5}
+.vocab-test-card{background:#fff;border-radius:12px;margin-bottom:12px;overflow:hidden;border:2px solid #1B4D3E}
+.vocab-test-header{background:#1B4D3E;padding:10px 16px;display:flex;align-items:center;justify-content:space-between}
+.vocab-test-title{color:#fff;font-size:13px;font-weight:700}
+.vocab-test-body{padding:12px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.score-input{width:55px;padding:8px;border:1.5px solid #E8E8E8;border-radius:8px;font-size:14px;text-align:center;font-family:inherit;outline:none}
+.score-input:focus{border-color:#1B4D3E}
+.result-btns{display:flex;gap:6px;margin-left:auto}
+.result-btn{padding:6px 12px;border:1.5px solid #E8E8E8;border-radius:20px;font-size:12px;cursor:pointer;background:#fff;font-family:inherit}
+.result-btn.pass{border-color:#1B4D3E;background:#E8F2EF;color:#1B4D3E;font-weight:700}
+.result-btn.retest{border-color:#E74C3C;background:#FEF0EF;color:#E74C3C;font-weight:700}
+.result-btn.none{border-color:#aaa;background:#F5F5F5;color:#aaa;font-weight:700}
+.notif-list{max-height:400px;overflow-y:auto}
+.notif-item{padding:12px 16px;border-bottom:1px solid #F5F5F5;display:flex;gap:10px}
+.notif-item.unread{background:#F8FDF9}
+.rule-item{padding:14px 16px;border-bottom:1px solid #F5F5F5}
+.rule-num{font-size:11px;font-weight:700;color:#1B4D3E;margin-bottom:4px}
+.rule-title{font-size:14px;font-weight:700;margin-bottom:4px}
+.rule-content{font-size:13px;color:#666;line-height:1.5}
 </style>
 </head>
 <body>
 <div class="toast" id="toast"></div>
+<div class="popup-notif" id="popup-notif"></div>
 <div class="modal-bg" id="modal-bg">
   <div class="modal" id="modal">
     <div class="modal-hd">
@@ -187,6 +215,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div><div class="date-main" id="t-date"></div><div class="date-sub" id="t-day"></div></div>
       <div class="date-dot"></div>
     </div>
+    <div class="section-hd">📢 공지사항</div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">공지사항</span><button class="btn-sm" onclick="openNoticeModal()">+ 작성</button></div>
+      <div class="card-body" id="t-notices"></div>
+    </div>
     <div class="section-hd">오늘 학생 현황</div>
     <div class="card">
       <div class="card-header"><span class="card-title">📋 출결 &amp; 할일 현황</span><span class="card-count" id="t-attend-count"></span></div>
@@ -196,7 +229,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
 
   <!-- 할일/숙제 -->
   <div id="t-task" class="t-tab content">
-    <div class="date-banner"><div><div class="date-main" id="t-date2"></div><div class="date-sub">할일 &amp; 숙제 관리</div></div></div>
+    <div class="date-banner">
+      <div><div class="date-main" id="t-date2"></div><div class="date-sub">할일 &amp; 숙제 관리</div></div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button onclick="changeTaskDate(-1)" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer">◀</button>
+        <span id="task-date-label" style="color:#fff;font-size:12px;white-space:nowrap">오늘</span>
+        <button onclick="changeTaskDate(1)" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer">▶</button>
+      </div>
+    </div>
     <div class="card">
       <div class="card-header"><span class="card-title">🎯 학생 선택</span></div>
       <div class="form-group" style="padding-top:12px">
@@ -206,6 +246,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
     </div>
     <div id="task-area" class="hidden">
+      <!-- 단어 TEST -->
+      <div class="vocab-test-card">
+        <div class="vocab-test-header">
+          <span class="vocab-test-title">📝 단어 TEST</span>
+          <span id="vocab-result-badge" style="font-size:11px;color:rgba(255,255,255,0.8)"></span>
+        </div>
+        <div class="vocab-test-body">
+          <input type="number" class="score-input" id="vocab-score" placeholder="점수" min="0">
+          <span style="font-size:16px;color:#aaa">/</span>
+          <input type="number" class="score-input" id="vocab-total" placeholder="만점" min="0">
+          <span style="font-size:13px;color:#666">점</span>
+          <div class="result-btns">
+            <button class="result-btn" id="rb-pass" onclick="setVocabResult('pass')">통과</button>
+            <button class="result-btn" id="rb-retest" onclick="setVocabResult('retest')">재시</button>
+            <button class="result-btn" id="rb-none" onclick="setVocabResult('none')">없음</button>
+          </div>
+          <button class="btn-sm" onclick="saveVocabTest()" style="margin-left:4px">저장</button>
+        </div>
+      </div>
       <div class="card">
         <div class="card-header"><span class="card-title">📌 오늘의 할일</span><span class="card-count" id="todo-count"></span></div>
         <div class="card-body" id="todo-list"></div>
@@ -275,6 +334,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div class="card"><div class="card-body" id="student-list"></div></div>
   </div>
 
+  <!-- 마일리지 관리 -->
+  <div id="t-mileage" class="t-tab content">
+    <div class="date-banner"><div><div class="date-main">마일리지 관리</div><div class="date-sub">학생 포인트 현황</div></div></div>
+    <div class="section-hd">🏆 전체 랭킹</div>
+    <div class="card"><div class="card-body" id="t-mile-rank"></div></div>
+    <div class="section-hd">수동 적립 / 차감</div>
+    <div class="card">
+      <div class="form-group" style="padding-top:12px">
+        <label class="form-label">학생 선택</label>
+        <select class="form-select" id="mile-student-sel"></select>
+      </div>
+      <div style="padding:0 16px;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+        <button class="btn-primary" onclick="openMileModal(1)">+ 적립</button>
+        <button style="padding:14px;background:#fff;color:#E74C3C;border:1.5px solid #E74C3C;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit" onclick="openMileModal(-1)">- 차감</button>
+      </div>
+    </div>
+    <div class="section-hd">학생별 내역</div>
+    <div class="card"><div class="card-body" id="t-mile-history"></div></div>
+  </div>
+
   <!-- Monthly Report -->
   <div id="t-report" class="t-tab content">
     <div class="date-banner"><div><div class="date-main" id="t-date4"></div><div class="date-sub">Monthly Report</div></div></div>
@@ -316,12 +395,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     </div>
   </div>
 
-  <div class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
+  <div class="bottom-nav" style="grid-template-columns:repeat(6,1fr)">
     <button class="nav-item active" onclick="tTab('t-home',this)"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></button>
     <button class="nav-item" onclick="tTab('t-task',this)"><span class="nav-icon">📋</span><span class="nav-label">할일/숙제</span></button>
     <button class="nav-item" onclick="tTab('t-note',this);loadRecentNotes()"><span class="nav-icon">✨</span><span class="nav-label">성장노트</span></button>
     <button class="nav-item" onclick="tTab('t-students',this);loadStudents()"><span class="nav-icon">👥</span><span class="nav-label">학생관리</span></button>
+    <button class="nav-item" onclick="tTab('t-mileage',this);loadMileageTab()"><span class="nav-icon">⭐</span><span class="nav-label">마일리지</span></button>
     <button class="nav-item" onclick="tTab('t-report',this)"><span class="nav-icon">📊</span><span class="nav-label">리포트</span></button>
+    <button class="nav-item" onclick="tTab('t-rules',this);loadRules('t-rule-list',true)"><span class="nav-icon">📋</span><span class="nav-label">규칙</span></button>
   </div>
 </div>
 
@@ -345,6 +426,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <button class="attend-btn out" id="btn-out" onclick="checkOut()" disabled>하원 🏠</button>
       </div>
     </div>
+    <div class="section-hd" id="weekly-goal-section">🎯 이번 주 각오</div>
+    <div class="card" id="weekly-goal-card">
+      <div class="card-body" id="weekly-goal-body2"></div>
+      <div class="add-row" id="weekly-goal-input-row2">
+        <input type="text" class="add-input" id="weekly-goal-input2" placeholder="이번 주 각오를 입력해주세요... (+20점)">
+        <button class="add-btn" onclick="submitWeeklyGoal2()">제출</button>
+      </div>
+    </div>
     <div class="section-hd">오늘의 할일</div>
     <div class="card">
       <div class="card-header"><span class="card-title">📌 할일 현황</span><span class="card-count" id="s-todo-cnt">-</span></div>
@@ -359,19 +448,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div class="card-header"><span class="card-title">📚 숙제 현황</span><span class="card-count" id="s-hw-cnt">-</span></div>
       <div class="card-body" id="s-hw-list"></div>
     </div>
-    <div class="section-hd" id="weekly-goal-section" style="display:none">🎯 이번 주 각오</div>
-    <div class="card" id="weekly-goal-card" style="display:none">
-      <div class="card-body" id="weekly-goal-body"></div>
-      <div class="add-row" id="weekly-goal-input-row" style="display:none">
-        <input type="text" class="add-input" id="weekly-goal-input" placeholder="이번 주 각오를 입력해주세요...">
-        <button class="add-btn" onclick="submitWeeklyGoal()">제출</button>
-      </div>
-    </div>
     <div class="section-hd">✍️ 오늘의 한 줄</div>
     <div class="card">
       <div class="card-body" id="daily-msg-body"></div>
       <div class="add-row" id="daily-msg-input-row">
-        <input type="text" class="add-input" id="daily-msg-input" placeholder="선생님께 한 줄 남기기...">
+        <input type="text" class="add-input" id="daily-msg-input" placeholder="선생님께 한 줄 남기기... (+5점)">
         <button class="add-btn" onclick="submitDailyMsg()">제출</button>
       </div>
     </div>
@@ -387,26 +468,44 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div class="mile-sub" id="s-won">= 0원 사용 가능</div>
     </div>
     <div class="card" style="margin-bottom:12px">
-      <div class="card-header"><span class="card-title">⭐ 마일리지 적립 안내</span></div>
+      <div class="card-header"><span class="card-title">⭐ 마일리지 안내</span></div>
       <div style="padding:12px 16px">
-        <div style="display:grid;grid-template-columns:1fr auto;gap:6px;font-size:13px">
-          <span>✅ 할일 완료 (선생님 확인)</span><span style="font-weight:700;color:#1B4D3E">+10점</span>
-          <span>📚 숙제 완료 (선생님 확인)</span><span style="font-weight:700;color:#1B4D3E">+10점</span>
-          <span>✍️ 오늘의 한 줄 작성</span><span style="font-weight:700;color:#1B4D3E">+5점</span>
-          <span>🎯 이번 주 각오 작성</span><span style="font-weight:700;color:#1B4D3E">+20점</span>
+        <div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:6px">적립</div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:5px;font-size:12px;margin-bottom:10px">
+          <span>✅ 할일 완료</span><span style="font-weight:700;color:#1B4D3E">+10점</span>
+          <span>📚 숙제 완료</span><span style="font-weight:700;color:#1B4D3E">+10점</span>
+          <span>🏫 출석 1회</span><span style="font-weight:700;color:#1B4D3E">+5점</span>
+          <span>✍️ 오늘의 한 줄</span><span style="font-weight:700;color:#1B4D3E">+5점</span>
+          <span>🎯 이번 주 각오</span><span style="font-weight:700;color:#1B4D3E">+20점</span>
+          <span>🏆 월 100% 출석 보너스</span><span style="font-weight:700;color:#1B4D3E">+500점</span>
+          <span>🌟 과제+할일 100% 완수 보너스</span><span style="font-weight:700;color:#1B4D3E">+480점</span>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:#E74C3C;margin-bottom:6px">차감</div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:5px;font-size:12px">
+          <span>📚 숙제 미완료</span><span style="font-weight:700;color:#E74C3C">-10점</span>
+          <span>🚫 당일 결석</span><span style="font-weight:700;color:#E74C3C">-5점</span>
+          <span>📝 단어 재시험</span><span style="font-weight:700;color:#E74C3C">-5점</span>
         </div>
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid #F5F5F5;font-size:11px;color:#aaa">
-          💡 10점 = 100원 사용 가능
+          💡 1점 = 1원 사용 가능 · 최대 월 2,000점
         </div>
       </div>
     </div>
-    <div class="section-hd">포인트 내역</div>
+    <div class="section-hd">🏆 이번 달 랭킹</div>
+    <div class="card"><div class="card-body" id="s-mile-rank"></div></div>
+    <div class="section-hd">내 포인트 내역</div>
     <div class="card"><div class="card-body" id="s-mile-list"></div></div>
   </div>
-  <div class="bottom-nav" style="grid-template-columns:repeat(3,1fr)">
+  <!-- 규칙 탭 -->
+  <div id="s-rules" class="s-tab content">
+    <div class="date-banner"><div><div class="date-main">이화영어 규칙</div></div></div>
+    <div class="card"><div class="card-body" id="s-rule-list"></div></div>
+  </div>
+  <div class="bottom-nav" style="grid-template-columns:repeat(4,1fr)">
     <button class="nav-item active" onclick="sTab('s-home',this)"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></button>
     <button class="nav-item" onclick="sTab('s-note',this);loadStudentNotes()"><span class="nav-icon">✨</span><span class="nav-label">성장노트</span></button>
     <button class="nav-item" onclick="sTab('s-mile',this);loadMile()"><span class="nav-icon">⭐</span><span class="nav-label">마일리지</span></button>
+    <button class="nav-item" onclick="sTab('s-rules',this);loadRules('s-rule-list',false)"><span class="nav-icon">📋</span><span class="nav-label">규칙</span></button>
   </div>
 </div>
 
@@ -423,6 +522,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
   <div id="p-home" class="p-tab active content">
     <div class="date-banner"><div><div class="date-main" id="p-date"></div><div class="date-sub" id="p-child">학습 현황</div></div></div>
     <div id="p-child-tabs" class="hidden" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"></div>
+    <div id="p-notice-area"></div>
     <div class="card">
       <div class="card-header"><span class="card-title">🏫 등·하원 현황</span></div>
       <div class="card-body" id="p-attend"></div>
@@ -446,10 +546,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div class="date-banner"><div><div class="date-main">이화성장노트</div></div></div>
     <div id="p-note-list"></div>
   </div>
-  <div class="bottom-nav" style="grid-template-columns:repeat(3,1fr)">
+  <!-- 규칙 탭 -->
+  <div id="p-rules" class="p-tab content">
+    <div class="date-banner"><div><div class="date-main">이화영어 규칙</div></div></div>
+    <div class="card"><div class="card-body" id="p-rule-list"></div></div>
+  </div>
+  <div class="bottom-nav" style="grid-template-columns:repeat(4,1fr)">
     <button class="nav-item active" onclick="pTab('p-home',this)"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></button>
     <button class="nav-item" onclick="pTab('p-note',this);loadParentNotes()"><span class="nav-icon">✨</span><span class="nav-label">성장노트</span></button>
     <button class="nav-item" onclick="showAddChildModal()"><span class="nav-icon">➕</span><span class="nav-label">자녀추가</span></button>
+    <button class="nav-item" onclick="pTab('p-rules',this);loadRules('p-rule-list',false)"><span class="nav-icon">📋</span><span class="nav-label">규칙</span></button>
   </div>
 </div>
 
@@ -465,6 +571,25 @@ var LOGO_B64='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6e
 var parentChildren=[];
 var currentChildIndex=0;
 var repChartInstance=null,repHwChartInstance=null;
+
+var taskDateOffset=0; // 오늘=0, 어제=-1, 내일=+1
+
+function getOffsetDate(offset){
+  var d=new Date();
+  d.setDate(d.getDate()+offset);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function changeTaskDate(dir){
+  taskDateOffset+=dir;
+  var label=$('task-date-label');
+  if(label){
+    if(taskDateOffset===0)label.textContent='오늘';
+    else if(taskDateOffset===-1)label.textContent='어제';
+    else if(taskDateOffset===1)label.textContent='내일';
+    else{var d=new Date();d.setDate(d.getDate()+taskDateOffset);label.textContent=(d.getMonth()+1)+'월'+d.getDate()+'일';}
+  }
+  if(currentStudentId)renderTasks();
+}
 
 var QUICK_TODO=['단어 TEST','지난시간 단어오답 복습','문제풀기','구두 TEST','문법','독해','듣기'];
 var QUICK_HW=['클래스카드 단어 Day','문법 S.B 풀어오기','문법 W.B 풀어오기','듣기 1회(오답은 딕테이션하기)'];
@@ -575,6 +700,8 @@ function enterWithProfile(profile){
   else if(profile.role==='student'){$('s-name').textContent=profile.name;loadStudent();}
   else if(profile.role==='parent'){$('p-name').textContent=profile.name;loadParent();}
   toast(profile.name+'님, 환영해요 👋');
+  setupRealtime(profile);
+  checkNotifications();
 }
 
 // ===== 탭 =====
@@ -600,6 +727,8 @@ async function loadTeacher(){
   await renderTeacherHome();
   populateStudentSelects();
   loadTeacherMsgs();
+  loadNotices();
+  checkNotifications();
 }
 async function loadStudentsData(){
   var res=await getSB().from('students').select('*').order('name');
@@ -678,6 +807,12 @@ function openAddStudent(){
     '<div><label class="form-label" style="text-align:center;display:block">듣기</label><input type="text" class="form-input" id="nelt-listen" placeholder="B1" style="text-align:center"></div>'+
     '<div><label class="form-label" style="text-align:center;display:block">독해</label><input type="text" class="form-input" id="nelt-read" placeholder="A2" style="text-align:center"></div>'+
     '</div>'+
+    '<div class="form-section-title">영역별 교재</div>'+
+    '<div class="form-group"><label class="form-label">어휘 교재</label><input type="text" class="form-input" id="book-vocab" placeholder="예: Word Master 중등"></div>'+
+    '<div class="form-group"><label class="form-label">문법 교재</label><input type="text" class="form-input" id="book-grammar" placeholder="예: Grammar Inside 2"></div>'+
+    '<div class="form-group"><label class="form-label">독해 교재</label><input type="text" class="form-input" id="book-reading" placeholder="예: Reading Starter 3"></div>'+
+    '<div class="form-group"><label class="form-label">듣기 교재</label><input type="text" class="form-input" id="book-listening" placeholder="예: 리스닝클럽 2"></div>'+
+    '<div class="form-group"><label class="form-label">쓰기 교재</label><input type="text" class="form-input" id="book-writing" placeholder="예: Writing Framework 1"></div>'+
     '<div class="p16"><button class="btn-primary" onclick="saveStudent()">학생 등록</button></div>'
   );
 }
@@ -692,7 +827,12 @@ async function saveStudent(){
     other_academy:$('s-academy').value.trim(),nelt_overall:$('nelt-overall').value.trim(),
     nelt_grammar:$('nelt-grammar').value.trim(),nelt_vocabulary:$('nelt-vocab').value.trim(),
     nelt_listening:$('nelt-listen').value.trim(),nelt_reading:$('nelt-read').value.trim(),
-    student_code:sc,parent_code:pc};
+    student_code:sc,parent_code:pc,
+    book_vocab:$('book-vocab').value.trim(),
+    book_grammar:$('book-grammar').value.trim(),
+    book_reading:$('book-reading').value.trim(),
+    book_listening:$('book-listening').value.trim(),
+    book_writing:$('book-writing').value.trim()};
   var res=await getSB().from('students').insert(data);
   if(res.error){toast('오류: '+res.error.message);return;}
   toast('✅ 학생 등록 완료!');closeMod();
@@ -701,6 +841,7 @@ async function saveStudent(){
 function openStudentDetail(sid){
   var s=allStudents.find(function(x){return x.id===sid;});if(!s)return;
   openMod(s.name+' 상세',
+    '<div class="form-section-title" style="border-top:none;padding-top:16px">기본 정보</div>'+
     '<div class="info-row"><span class="info-label">학교/학년</span><span class="info-value">'+(s.school||'-')+(s.grade?' '+s.grade:'')+'</span></div>'+
     '<div class="info-row"><span class="info-label">학생 연락처</span><span class="info-value">'+(s.student_phone||'-')+'</span></div>'+
     '<div class="info-row"><span class="info-label">학부모</span><span class="info-value">'+(s.parent_phone||'-')+'</span></div>'+
@@ -711,7 +852,13 @@ function openStudentDetail(sid){
     ['종합','문법','어휘','듣기','독해'].map(function(l,i){
       var v=[s.nelt_overall,s.nelt_grammar,s.nelt_vocabulary,s.nelt_listening,s.nelt_reading][i];
       return '<div class="nelt-item"><div class="nelt-label">'+l+'</div><div class="nelt-val">'+(v||'-')+'</div></div>';
-    }).join('')+'</div>'
+    }).join('')+'</div>'+
+    '<div class="form-section-title">영역별 교재</div>'+
+    '<div class="info-row"><span class="info-label">어휘</span><span class="info-value">'+(s.book_vocab||'-')+'</span></div>'+
+    '<div class="info-row"><span class="info-label">문법</span><span class="info-value">'+(s.book_grammar||'-')+'</span></div>'+
+    '<div class="info-row"><span class="info-label">독해</span><span class="info-value">'+(s.book_reading||'-')+'</span></div>'+
+    '<div class="info-row"><span class="info-label">듣기</span><span class="info-value">'+(s.book_listening||'-')+'</span></div>'+
+    '<div class="info-row"><span class="info-label">쓰기</span><span class="info-value">'+(s.book_writing||'-')+'</span></div>'
   );
 }
 async function deleteStudent(sid){
@@ -738,7 +885,7 @@ async function loadTaskForStudent(){
   var sid=$('task-student-sel').value;
   if(!sid){$('task-area').classList.add('hidden');return;}
   $('task-area').classList.remove('hidden');currentStudentId=sid;
-  await renderTasks();renderQuickPhrases();
+  await renderTasks();renderQuickPhrases();loadVocabTest();
 }
 function renderQuickPhrases(){
   $('todo-quick').innerHTML=QUICK_TODO.map(function(p){return '<button class="quick-phrase" onclick="insertQuick(\'todo\',\''+p+'\')">'+p+'</button>';}).join('');
@@ -748,7 +895,7 @@ function insertQuick(type,text){$(type==='todo'?'todo-input':'hw-input').value=t
 
 async function renderTasks(){
   if(!currentStudentId)return;
-  var today=todayStr();
+  var today=getOffsetDate(taskDateOffset);
   var res=await getSB().from('tasks').select('*').eq('student_id',currentStudentId).eq('date',today);
   var tasks=res.data||[];
   var todos=tasks.filter(function(t){return t.type==='todo';});
@@ -778,7 +925,7 @@ async function addTask(type){
   var input=$(type==='todo'?'todo-input':'hw-input');
   var title=input.value.trim();
   if(!title||!currentStudentId){toast('내용을 입력해주세요');return;}
-  var data={student_id:currentStudentId,title:title,type:type,date:todayStr(),is_done:false,student_done:false,teacher_confirmed:false};
+  var data={student_id:currentStudentId,title:title,type:type,date:getOffsetDate(taskDateOffset),is_done:false,student_done:false,teacher_confirmed:false};
   if(type==='hw'&&$('hw-due').value)data.due_date=$('hw-due').value;
   var res=await getSB().from('tasks').insert(data);
   if(res.error){toast('오류: '+res.error.message);return;}
@@ -1022,7 +1169,7 @@ async function loadStudent(){
     window._currentStudentRowId=studentId;
     // 오늘의 한 줄 & 이번 주 각오 로드
     loadDailyMsg();
-    loadWeeklyGoal();
+    loadWeeklyGoalTop();
   } else {
     $('s-todo-list').innerHTML='<div style="padding:12px 16px;color:#aaa;font-size:13px">선생님께 초대 코드를 받아 연동해주세요</div>';
     $('s-hw-list').innerHTML='';
@@ -1037,7 +1184,9 @@ async function checkIn(){
   if(!sid){toast('학생 연동이 필요해요');return;}
   var res=await getSB().from('attendance').insert({student_id:sid,date:todayStr(),check_in:new Date().toISOString()});
   if(res.error){toast('오류: '+res.error.message);return;}
-  toast('✅ 등원 완료!');loadStudent();
+  // 출석 마일리지 5점 적립
+  await getSB().from('mileage').insert({student_id:sid,amount:5,reason:'출석 완료'});
+  toast('✅ 등원 완료! +5점');loadStudent();
 }
 async function checkOut(){
   var sid=window._currentStudentRowId;
@@ -1053,6 +1202,8 @@ async function loadStudentNotes(){
   $('s-note-list').innerHTML=notes.length?notes.map(function(n){return renderNoteCard(n,true);}).join(''):'<div style="padding:16px;color:#aaa;text-align:center">성장노트가 없어요</div>';
 }
 async function loadMile(){
+  // 랭킹 로드
+  await loadMileRanking('s-mile-rank');
   var sRes=await getSB().from('students').select('id').eq('profile_id',currentProfile.id).single();
   if(!sRes.data)return;
   var sid=sRes.data.id;
@@ -1063,6 +1214,39 @@ async function loadMile(){
   $('s-mile-list').innerHTML=items.map(function(i){
     return '<div style="display:flex;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #F5F5F5"><span style="font-size:13px">'+(i.reason||'마일리지')+'</span><span style="font-weight:700;color:#1B4D3E">+'+i.amount+'점</span></div>';
   }).join('')||'<div style="padding:16px;color:#aaa;text-align:center">내역이 없어요</div>';
+}
+
+// ===== 이번 주 각오 (상단용) =====
+async function loadWeeklyGoalTop(){
+  if(!window._currentStudentRowId)return;
+  var sid=window._currentStudentRowId;
+  var d=new Date();
+  var monday=new Date(d);monday.setDate(d.getDate()-d.getDay()+1);
+  var ms=monday.getFullYear()+'-'+String(monday.getMonth()+1).padStart(2,'0')+'-'+String(monday.getDate()).padStart(2,'0');
+  var res=await getSB().from('weekly_goals').select('*').eq('student_id',sid).eq('week_start',ms).maybeSingle();
+  var body=$('weekly-goal-body2');
+  var inputRow=$('weekly-goal-input-row2');
+  if(res.data){
+    if(body)body.innerHTML='<div style="padding:12px 16px;font-size:13px;color:#333;line-height:1.6">'+res.data.content
+      +'<span style="float:right;font-size:11px;color:'+(res.data.teacher_confirmed?'#1B4D3E':'#FFC107')+'">'+( res.data.teacher_confirmed?'✅ 확인됨 +20점':'⏳ 확인 대기')+'</span></div>';
+    if(inputRow)inputRow.style.display='none';
+  } else {
+    if(body)body.innerHTML='<div style="padding:12px 16px;color:#aaa;font-size:13px">이번 주 각오를 작성해보세요! (+20점)</div>';
+    if(inputRow)inputRow.style.display='flex';
+  }
+}
+async function submitWeeklyGoal2(){
+  var input=$('weekly-goal-input2');
+  var text=input.value.trim();
+  if(!text||!window._currentStudentRowId){toast('각오를 입력해주세요');return;}
+  var d=new Date();var monday=new Date(d);monday.setDate(d.getDate()-d.getDay()+1);
+  var ms=monday.getFullYear()+'-'+String(monday.getMonth()+1).padStart(2,'0')+'-'+String(monday.getDate()).padStart(2,'0');
+  var dup=await getSB().from('weekly_goals').select('id').eq('student_id',window._currentStudentRowId).eq('week_start',ms).maybeSingle();
+  if(dup.data){toast('이번 주 각오는 이미 작성했어요!');return;}
+  var res=await getSB().from('weekly_goals').insert({student_id:window._currentStudentRowId,content:text,week_start:ms,teacher_confirmed:false});
+  if(res.error){toast('오류: '+res.error.message);return;}
+  input.value='';toast('✅ 이번 주 각오 제출! (+20점 대기)');
+  loadWeeklyGoalTop();
 }
 
 // ===== 오늘의 한 줄 & 이번 주 각오 =====
@@ -1077,7 +1261,7 @@ async function loadDailyMsg(){
   if(msg){
     body.innerHTML='<div style="padding:12px 16px;font-size:13px;color:#333">'
       +(msg.content)
-      +(msg.teacher_confirmed?'<span style="float:right;font-size:11px;color:#1B4D3E">✅ 확인됨 +5점</span>':'<span style="float:right;font-size:11px;color:#FFC107">⏳ 확인 대기</span>')
+      +(msg.teacher_confirmed?'<span style="float:right;font-size:11px;color:#1B4D3E">✅ 확인됨 +5점</span>':'')
       +'</div>';
     if(inputRow)inputRow.style.display='none';
   } else {
@@ -1147,7 +1331,8 @@ async function submitWeeklyGoal(){
 // 선생님 홈 - 오늘의 한 줄 & 각오 목록
 async function loadTeacherMsgs(){
   var today=todayStr();
-  var res=await getSB().from('daily_messages').select('*, students(name)').eq('date',today).eq('teacher_confirmed',false);
+  // 오늘의 한 줄 - 전체 표시 (확인여부 상관없이)
+  var res=await getSB().from('daily_messages').select('*, students(name)').eq('date',today).order('created_at',{ascending:false});
   var msgs=res.data||[];
   var el=$('t-daily-msgs');
   if(el){
@@ -1156,16 +1341,18 @@ async function loadTeacherMsgs(){
         +'<div class="avatar" style="width:30px;height:30px;font-size:12px">'+(m.students?m.students.name.charAt(0):'?')+'</div>'
         +'<div style="flex:1"><div style="font-size:12px;font-weight:700;color:#1B4D3E">'+(m.students?m.students.name:'')+'</div>'
         +'<div style="font-size:13px;margin-top:2px">'+m.content+'</div></div>'
-        +'<button class="btn-sm" onclick="confirmMsg(this.dataset.id,this.dataset.type)" data-id="'+m.id+'" data-type="daily">확인 ✅</button>'
+        +(m.teacher_confirmed
+          ?'<span style="font-size:11px;color:#1B4D3E">✅확인됨</span>'
+          :'<button class="btn-sm" onclick="confirmMsg(this.dataset.id,this.dataset.type)" data-id="'+m.id+'" data-type="daily">확인 ✅</button>')
         +'</div>';
-    }).join(''):'<div style="padding:12px 16px;color:#aaa;font-size:13px">확인 대기 없어요</div>';
+    }).join(''):'<div style="padding:12px 16px;color:#aaa;font-size:13px">오늘 작성된 한 줄이 없어요</div>';
   }
-  // 이번 주 각오
+  // 이번 주 각오 - 전체 표시
   var d=new Date();
   var monday=new Date(d);
   monday.setDate(d.getDate()-d.getDay()+1);
   var mondayStr=monday.getFullYear()+'-'+String(monday.getMonth()+1).padStart(2,'0')+'-'+String(monday.getDate()).padStart(2,'0');
-  var gr=await getSB().from('weekly_goals').select('*, students(name)').eq('week_start',mondayStr).eq('teacher_confirmed',false);
+  var gr=await getSB().from('weekly_goals').select('*, students(name)').eq('week_start',mondayStr).order('created_at',{ascending:false});
   var goals=gr.data||[];
   var ge=$('t-weekly-goals');
   if(ge){
@@ -1174,9 +1361,11 @@ async function loadTeacherMsgs(){
         +'<div class="avatar" style="width:30px;height:30px;font-size:12px">'+(g.students?g.students.name.charAt(0):'?')+'</div>'
         +'<div style="flex:1"><div style="font-size:12px;font-weight:700;color:#1B4D3E">'+(g.students?g.students.name:'')+'</div>'
         +'<div style="font-size:13px;margin-top:2px">'+g.content+'</div></div>'
-        +'<button class="btn-sm" onclick="confirmMsg(this.dataset.id,this.dataset.type)" data-id="'+g.id+'" data-type="weekly">확인 ✅</button>'
+        +(g.teacher_confirmed
+          ?'<span style="font-size:11px;color:#1B4D3E">✅확인됨</span>'
+          :'<button class="btn-sm" onclick="confirmMsg(this.dataset.id,this.dataset.type)" data-id="'+g.id+'" data-type="weekly">확인 ✅</button>')
         +'</div>';
-    }).join(''):'<div style="padding:12px 16px;color:#aaa;font-size:13px">확인 대기 없어요</div>';
+    }).join(''):'<div style="padding:12px 16px;color:#aaa;font-size:13px">이번 주 각오가 없어요</div>';
   }
 }
 
@@ -1347,6 +1536,289 @@ async function exportPDF(){
 
   doc.save(s.name+'_'+monthStr+'_Report.pdf');
   toast('✅ PDF 저장 완료!');
+}
+
+// ===== 마일리지 랭킹 & 관리 =====
+function maskName(name){
+  if(!name||name.length<2)return name;
+  if(name.length===2)return name[0]+'*';
+  return name[0]+'*'.repeat(name.length-2)+name[name.length-1];
+}
+
+async function loadMileRanking(elId){
+  // 전체 학생 마일리지 합계
+  var res=await getSB().from('mileage').select('student_id, amount');
+  var data=res.data||[];
+  var map={};
+  data.forEach(function(r){map[r.student_id]=(map[r.student_id]||0)+r.amount;});
+  // 학생 이름 매핑
+  var sRes=await getSB().from('students').select('id, name');
+  var students=sRes.data||[];
+  var ranks=students.map(function(s){return {name:s.name,total:map[s.id]||0};}).sort(function(a,b){return b.total-a.total;});
+  var medals=['🥇','🥈','🥉'];
+  var el=$(elId);
+  if(!el)return;
+  el.innerHTML=ranks.map(function(r,i){
+    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid #F5F5F5">'
+      +'<span style="font-size:18px;width:28px">'+(medals[i]||'#'+(i+1))+'</span>'
+      +'<span style="flex:1;font-size:14px;font-weight:700">'+maskName(r.name)+'</span>'
+      +'<span style="font-weight:700;color:#1B4D3E;font-size:15px">'+r.total+'점</span>'
+      +'</div>';
+  }).join('')||'<div style="padding:16px;color:#aaa;text-align:center">데이터 없음</div>';
+}
+
+async function loadMileageTab(){
+  await loadStudentsData();
+  // 랭킹
+  await loadMileRanking('t-mile-rank');
+  // 학생 선택 셀렉트
+  var sel=$('mile-student-sel');
+  if(sel){
+    sel.innerHTML='<option value="">학생 선택</option>'+allStudents.map(function(s){return '<option value="'+s.id+'">'+s.name+'</option>';}).join('');
+    sel.onchange=function(){loadMileHistory(sel.value);};
+  }
+}
+
+async function loadMileHistory(sid){
+  if(!sid){$('t-mile-history').innerHTML='';return;}
+  var res=await getSB().from('mileage').select('*').eq('student_id',sid).order('created_at',{ascending:false});
+  var items=res.data||[];
+  var total=items.reduce(function(s,i){return s+i.amount;},0);
+  $('t-mile-history').innerHTML='<div style="padding:12px 16px;font-weight:700;font-size:15px;color:#1B4D3E;border-bottom:1px solid #F5F5F5">현재 총 '+total+'점</div>'
+    +items.map(function(i){
+      var plus=i.amount>0;
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #F5F5F5">'
+        +'<div><div style="font-size:13px">'+(i.reason||i.memo||'마일리지')+'</div>'
+        +'<div style="font-size:11px;color:#aaa">'+i.created_at.slice(0,10)+'</div></div>'
+        +'<span style="font-weight:700;color:'+(plus?'#1B4D3E':'#E74C3C')+'">'+(plus?'+':'')+i.amount+'점</span>'
+        +'</div>';
+    }).join('')||'<div style="padding:16px;color:#aaa;text-align:center">내역 없음</div>';
+}
+
+function openMileModal(type){
+  var sid=$('mile-student-sel').value;
+  if(!sid){toast('학생을 먼저 선택해주세요');return;}
+  var isPlus=type>0;
+  openMod(isPlus?'마일리지 적립':'마일리지 차감',
+    '<div style="padding:20px">'
+    +'<div class="form-group" style="padding:0 0 14px">'
+    +'<label class="form-label">점수</label>'
+    +'<input type="number" class="form-input" id="mile-amount" placeholder="점수 입력" min="1">'
+    +'</div>'
+    +'<div class="form-group" style="padding:0 0 14px">'
+    +'<label class="form-label">사유</label>'
+    +'<input type="text" class="form-input" id="mile-reason" placeholder="'+(isPlus?'적립 사유':'차감 사유 (예: 숙제 미완료, 단어 재시험...)')+'">'
+    +'</div>'
+    +'<button class="btn-primary" style="background:'+(isPlus?'#1B4D3E':'#E74C3C')+'" onclick="saveMile('+type+')"> '+(isPlus?'적립하기':'차감하기')+'</button>'
+    +'</div>'
+  );
+}
+
+async function saveMile(type){
+  var sid=$('mile-student-sel').value;
+  var amount=parseInt($('mile-amount').value);
+  var reason=$('mile-reason').value.trim();
+  if(!amount||amount<1){toast('점수를 입력해주세요');return;}
+  if(!reason){toast('사유를 입력해주세요');return;}
+  var finalAmount=type>0?amount:-amount;
+  var res=await getSB().from('mileage').insert({student_id:sid,amount:finalAmount,reason:reason,memo:reason});
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast((type>0?'✅ 적립':'✅ 차감')+' 완료! '+Math.abs(finalAmount)+'점');
+  closeMod();
+  loadMileHistory(sid);
+  loadMileRanking('t-mile-rank');
+}
+
+
+// ===== 팝업 알림 =====
+function popupNotif(msg){
+  var p=document.getElementById('popup-notif');
+  if(!p)return;
+  p.textContent=msg;p.classList.add('show');
+  setTimeout(function(){p.classList.remove('show');},3000);
+}
+
+// ===== 알림 =====
+async function checkNotifications(){
+  if(!currentProfile)return;
+  var res=await getSB().from('notifications').select('id').eq('target_id',currentProfile.id).eq('is_read',false);
+  var cnt=(res.data||[]).length;
+  var dot=currentProfile.role==='teacher'?document.getElementById('t-notif-dot'):currentProfile.role==='student'?document.getElementById('s-notif-dot'):null;
+  if(dot)dot.className='notif-dot'+(cnt>0?' on':'');
+}
+async function openNotifPanel(){
+  if(!currentProfile)return;
+  var res=await getSB().from('notifications').select('*').eq('target_id',currentProfile.id).order('created_at',{ascending:false}).limit(20);
+  var items=res.data||[];
+  await getSB().from('notifications').update({is_read:true}).eq('target_id',currentProfile.id).eq('is_read',false);
+  checkNotifications();
+  openMod('🔔 알림',
+    '<div style="max-height:60vh;overflow-y:auto">'+(items.length?items.map(function(n){
+      return '<div style="padding:12px 16px;border-bottom:1px solid #F5F5F5;display:flex;gap:10px;'+(n.is_read?'':'background:#F8FDF9')+'">'
+        +'<span style="font-size:18px">'+(n.type==='attend'?'🏫':n.type==='task'?'✅':n.type==='note'?'📝':'🔔')+'</span>'
+        +'<div><div style="font-size:13px">'+n.message+'</div><div style="font-size:11px;color:#aaa">'+n.created_at.slice(0,16).replace('T',' ')+'</div></div>'
+        +'</div>';
+    }).join(''):'<div style="padding:24px;text-align:center;color:#aaa">알림이 없어요</div>')+'</div>'
+  );
+}
+async function sendNotification(targetId,message,type){
+  if(!targetId)return;
+  try{await getSB().from('notifications').insert({target_id:targetId,message:message,type:type||'general'});}catch(e){}
+}
+
+// ===== Realtime =====
+function setupRealtime(profile){
+  var sb=getSB();
+  if(profile.role==='teacher'){
+    sb.channel('teacher-rt-'+Date.now())
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'attendance'},function(payload){
+        renderTeacherHome();
+        var s=allStudents.find(function(x){return x.id===payload.new.student_id;});
+        if(s)popupNotif('🏫 '+s.name+' 등원했어요!');
+      })
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'tasks'},function(payload){
+        if(payload.new.student_done&&!payload.new.teacher_confirmed){
+          renderTeacherHome();
+          var s=allStudents.find(function(x){return x.id===payload.new.student_id;});
+          if(s)popupNotif('✅ '+s.name+' 할일 완료!');
+        }
+      })
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'daily_messages'},function(){loadTeacherMsgs();})
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'weekly_goals'},function(){loadTeacherMsgs();})
+      .subscribe();
+  } else if(profile.role==='student'){
+    sb.channel('student-rt-'+Date.now())
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'tasks'},function(payload){
+        if(window._currentStudentRowId&&payload.new.student_id===window._currentStudentRowId){
+          loadStudent();popupNotif('📌 새 할일이 추가됐어요!');
+        }
+      })
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'tasks'},function(payload){
+        if(payload.new.teacher_confirmed&&window._currentStudentRowId&&payload.new.student_id===window._currentStudentRowId){
+          loadStudent();popupNotif('🎉 확인됐어요! +10점!');
+        }
+      })
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'notices'},function(){loadNotices();})
+      .subscribe();
+  } else if(profile.role==='parent'){
+    sb.channel('parent-rt-'+Date.now())
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'attendance'},function(){loadParent();})
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'tasks'},function(){loadParent();})
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'notices'},function(){loadNotices();})
+      .subscribe();
+  }
+}
+
+// ===== 공지사항 =====
+async function loadNotices(){
+  var res=await getSB().from('notices').select('*').order('created_at',{ascending:false}).limit(3);
+  var items=res.data||[];
+  var html=items.map(function(n){
+    return '<div class="notice-banner"><div class="notice-banner-title">📢 '+n.title+'</div><div class="notice-banner-text">'+n.content+'</div></div>';
+  }).join('');
+  var sna=document.getElementById('s-notice-area');if(sna)sna.innerHTML=html;
+  var pna=document.getElementById('p-notice-area');if(pna)pna.innerHTML=html;
+  var tn=document.getElementById('t-notices');
+  if(tn){
+    tn.innerHTML=items.length?items.map(function(n){
+      return '<div style="padding:12px 16px;border-bottom:1px solid #F5F5F5;display:flex;justify-content:space-between;align-items:center">'
+        +'<div><div style="font-size:13px;font-weight:700">'+n.title+'</div><div style="font-size:12px;color:#666;margin-top:2px">'+n.content+'</div></div>'
+        +'<button class="btn-danger" onclick="deleteNotice(this.dataset.id)" data-id="'+n.id+'">삭제</button></div>';
+    }).join(''):'<div style="padding:12px 16px;color:#aaa;font-size:13px">공지사항이 없어요</div>';
+  }
+}
+function openNoticeModal(){
+  openMod('공지사항 작성',
+    '<div class="form-group" style="padding-top:16px"><label class="form-label">제목</label><input type="text" class="form-input" id="notice-title" placeholder="공지 제목"></div>'+
+    '<div class="form-group"><label class="form-label">내용</label><textarea class="form-input" id="notice-content" rows="4" placeholder="내용"></textarea></div>'+
+    '<div style="padding:16px"><button class="btn-primary" onclick="saveNotice()">등록</button></div>'
+  );
+}
+async function saveNotice(){
+  var title=document.getElementById('notice-title').value.trim();
+  var content_v=document.getElementById('notice-content').value.trim();
+  if(!title||!content_v){toast('입력해주세요');return;}
+  var res=await getSB().from('notices').insert({title:title,content:content_v});
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('✅ 공지 등록!');closeMod();loadNotices();
+}
+async function deleteNotice(id){
+  if(!confirm('삭제할까요?'))return;
+  await getSB().from('notices').delete().eq('id',id);loadNotices();
+}
+
+// ===== 이화영어 규칙 =====
+async function loadRules(elId,isTeacher){
+  var res=await getSB().from('rules').select('*').order('order_num');
+  var items=res.data||[];
+  var el=document.getElementById(elId);if(!el)return;
+  el.innerHTML=items.length?items.map(function(r,i){
+    return '<div class="rule-item"><div class="rule-num">규칙 '+(i+1)+'</div><div class="rule-title">'+r.title+'</div><div class="rule-content">'+r.content+'</div>'
+      +(isTeacher?'<div style="margin-top:8px"><button class="btn-danger" onclick="deleteRule(this.dataset.id)" data-id="'+r.id+'">삭제</button></div>':'')+'</div>';
+  }).join(''):'<div style="padding:16px;color:#aaa;text-align:center">등록된 규칙이 없어요</div>';
+}
+function openAddRule(){
+  openMod('규칙 추가',
+    '<div class="form-group" style="padding-top:16px"><label class="form-label">제목</label><input type="text" class="form-input" id="rule-title"></div>'+
+    '<div class="form-group"><label class="form-label">내용</label><textarea class="form-input" id="rule-content" rows="4"></textarea></div>'+
+    '<div style="padding:16px"><button class="btn-primary" onclick="saveRule()">등록</button></div>'
+  );
+}
+async function saveRule(){
+  var title=document.getElementById('rule-title').value.trim();
+  var rc=document.getElementById('rule-content').value.trim();
+  if(!title||!rc){toast('입력해주세요');return;}
+  var res=await getSB().from('rules').insert({title:title,content:rc});
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('✅ 규칙 등록!');closeMod();loadRules('t-rule-list',true);
+}
+async function deleteRule(id){
+  if(!confirm('삭제할까요?'))return;
+  await getSB().from('rules').delete().eq('id',id);loadRules('t-rule-list',true);
+}
+
+// ===== 단어 TEST =====
+var vocabResult=null;
+function setVocabResult(r){
+  vocabResult=r;
+  ['pass','retest','none'].forEach(function(x){
+    var btn=document.getElementById('rb-'+x);
+    if(btn)btn.className='result-btn'+(r===x?' '+r:'');
+  });
+}
+async function loadVocabTest(){
+  if(!currentStudentId)return;
+  var today=getOffsetDate(taskDateOffset);
+  var res=await getSB().from('vocab_tests').select('*').eq('student_id',currentStudentId).eq('date',today).maybeSingle();
+  var badge=document.getElementById('vocab-result-badge');
+  if(res.data){
+    var t=res.data;
+    var vs=document.getElementById('vocab-score');var vt=document.getElementById('vocab-total');
+    if(vs)vs.value=t.score||'';if(vt)vt.value=t.total||'';
+    vocabResult=t.result;setVocabResult(t.result);
+    if(badge)badge.textContent=t.result==='pass'?'✅ 통과':t.result==='retest'?'🔄 재시':'⚪ 없음';
+  } else {
+    var vs=document.getElementById('vocab-score');var vt=document.getElementById('vocab-total');
+    if(vs)vs.value='';if(vt)vt.value='';
+    vocabResult=null;['pass','retest','none'].forEach(function(x){var b=document.getElementById('rb-'+x);if(b)b.className='result-btn';});
+    if(badge)badge.textContent='';
+  }
+}
+async function saveVocabTest(){
+  if(!currentStudentId){toast('학생을 선택해주세요');return;}
+  if(!vocabResult){toast('결과를 선택해주세요');return;}
+  var vs=document.getElementById('vocab-score');var vt=document.getElementById('vocab-total');
+  var score=vs?vs.value:'';var total=vt?vt.value:'';
+  var today=getOffsetDate(taskDateOffset);
+  var data={student_id:currentStudentId,date:today,score:score?parseInt(score):null,total:total?parseInt(total):null,result:vocabResult};
+  var res=await getSB().from('vocab_tests').upsert(data,{onConflict:'student_id,date'});
+  if(res.error){toast('오류: '+res.error.message);return;}
+  if(vocabResult==='retest'){
+    await getSB().from('mileage').insert({student_id:currentStudentId,amount:-5,reason:'단어 재시험'});
+    toast('저장! (재시 -5점)');
+  } else {toast('✅ 단어 TEST 저장!');}
+  var badge=document.getElementById('vocab-result-badge');
+  if(badge)badge.textContent=vocabResult==='pass'?'✅ 통과':vocabResult==='retest'?'🔄 재시':'⚪ 없음';
 }
 
 // ===== 앱 시작 =====
