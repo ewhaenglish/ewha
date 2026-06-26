@@ -203,6 +203,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
   <div class="app-header">
     <div class="header-logo"><img id="t-logo" src="" alt=""><span class="header-logo-text">이화영어</span></div>
     <div class="header-user">
+      <button class="notif-btn" onclick="openNotifPanel()">🔔<span class="notif-dot" id="t-notif-dot"></span></button>
       <span class="header-badge">선생님</span>
       <span class="header-name" id="t-name"></span>
       <button class="logout-btn" onclick="doLogout()">로그아웃</button>
@@ -292,7 +293,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
 
   <!-- 성장노트 -->
   <div id="t-note" class="t-tab content">
-    <div class="date-banner"><div><div class="date-main" id="t-date3"></div><div class="date-sub">이화성장노트</div></div></div>
+    <div class="date-banner">
+      <div><div class="date-main" id="t-date3"></div><div class="date-sub">이화성장노트</div></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button onclick="changeNoteDate(-1)" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">◀</button>
+        <span id="note-date-label" style="color:#fff;font-size:11px;white-space:nowrap">오늘</span>
+        <button onclick="changeNoteDate(1)" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">▶</button>
+      </div>
+    </div>
     <div class="card">
       <div class="card-header"><span class="card-title">📝 성장노트 생성</span></div>
       <div class="form-group" style="padding-top:12px">
@@ -309,6 +317,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <div class="note-section" style="margin:0 16px 8px">
           <div class="note-section-title">📚 오늘의 과제</div>
           <div class="note-section-text" id="note-today-hw">-</div>
+        </div>
+        <div class="note-section" style="margin:0 16px 8px">
+          <div class="note-section-title">📝 단어 TEST</div>
+          <div class="note-section-text" id="note-vocab-test">-</div>
         </div>
         <div class="note-section" style="margin:0 16px 8px">
           <div class="note-section-title">🎯 이번 주 각오</div>
@@ -395,7 +407,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     </div>
   </div>
 
-  <div class="bottom-nav" style="grid-template-columns:repeat(6,1fr)">
+  <!-- 규칙 관리 -->
+  <div id="t-rules" class="t-tab content">
+    <div class="section-hd">이화영어 규칙</div>
+    <button class="btn-primary" style="margin-bottom:12px" onclick="openAddRule()">+ 규칙 추가</button>
+    <div class="card"><div class="card-body" id="t-rule-list"></div></div>
+  </div>
+
+  <div class="bottom-nav" style="grid-template-columns:repeat(7,1fr)">
     <button class="nav-item active" onclick="tTab('t-home',this)"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></button>
     <button class="nav-item" onclick="tTab('t-task',this)"><span class="nav-icon">📋</span><span class="nav-label">할일/숙제</span></button>
     <button class="nav-item" onclick="tTab('t-note',this);loadRecentNotes()"><span class="nav-icon">✨</span><span class="nav-label">성장노트</span></button>
@@ -458,7 +477,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     </div>
   </div>
   <div id="s-note" class="s-tab content">
-    <div class="date-banner"><div><div class="date-main">이화성장노트</div></div></div>
+    <div class="date-banner">
+      <div><div class="date-main">이화성장노트</div></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button onclick="changeNoteDate(-1)" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">◀</button>
+        <span id="s-note-date-label" style="color:#fff;font-size:11px;white-space:nowrap">최근순</span>
+        <button onclick="changeNoteDate(1)" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">▶</button>
+      </div>
+    </div>
     <div id="s-note-list"></div>
   </div>
   <div id="s-mile" class="s-tab content">
@@ -543,7 +569,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     </div>
   </div>
   <div id="p-note" class="p-tab content">
-    <div class="date-banner"><div><div class="date-main">이화성장노트</div></div></div>
+    <div class="date-banner">
+      <div><div class="date-main">이화성장노트</div></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button onclick="changeNoteDate(-1)" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">◀</button>
+        <span id="p-note-date-label" style="color:#fff;font-size:11px;white-space:nowrap">최근순</span>
+        <button onclick="changeNoteDate(1)" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">▶</button>
+      </div>
+    </div>
     <div id="p-note-list"></div>
   </div>
   <!-- 규칙 탭 -->
@@ -983,6 +1016,13 @@ async function loadNotePreview(){
   var gr2=await getSB().from('weekly_goals').select('content').eq('student_id',sid).eq('week_start',ms2).maybeSingle();
   var goalEl=$('note-weekly-goal');
   if(goalEl)goalEl.textContent=gr2.data?gr2.data.content:'(이번 주 각오 없음)';
+  // 단어 TEST
+  var vr2=await getSB().from('vocab_tests').select('*').eq('student_id',sid).eq('date',todayStr()).maybeSingle();
+  var nvt=$('note-vocab-test');
+  if(nvt){
+    if(vr2.data){var vt2=vr2.data;nvt.textContent=(vt2.score!=null?vt2.score+'/'+vt2.total+'점 ':'')+(vt2.result==='pass'?'✅통과':vt2.result==='retest'?'🔄재시험':'⚪없음');}
+    else nvt.textContent='기록 없음';
+  }
 }
 async function saveNote(){
   var sid=$('note-student-sel').value;
@@ -1008,7 +1048,11 @@ async function saveNote(){
   loadRecentNotes();
 }
 async function loadRecentNotes(){
-  var res=await getSB().from('growth_notes').select('*, students(name)').order('created_at',{ascending:false}).limit(10);
+  var dateFilter=getOffsetDate(noteDateOffset);
+  var query=getSB().from('growth_notes').select('*, students(name)');
+  if(noteDateOffset!==0)query=query.eq('date',dateFilter);
+  else query=query.order('created_at',{ascending:false}).limit(10);
+  var res=await query;
   var notes=res.data||[];
   $('note-list').innerHTML=notes.length?notes.map(function(n){
     return renderNoteCard(n,true);
@@ -1197,7 +1241,11 @@ async function checkOut(){
 async function loadStudentNotes(){
   var sRes=await getSB().from('students').select('id').eq('profile_id',currentProfile.id).single();
   if(!sRes.data)return;
-  var res=await getSB().from('growth_notes').select('*').eq('student_id',sRes.data.id).order('created_at',{ascending:false});
+  var dateFilter=getOffsetDate(noteDateOffset);
+  var query=getSB().from('growth_notes').select('*').eq('student_id',sRes.data.id);
+  if(noteDateOffset!==0)query=query.eq('date',dateFilter);
+  else query=query.order('created_at',{ascending:false}).limit(10);
+  var res=await query;
   var notes=res.data||[];
   $('s-note-list').innerHTML=notes.length?notes.map(function(n){return renderNoteCard(n,true);}).join(''):'<div style="padding:16px;color:#aaa;text-align:center">성장노트가 없어요</div>';
 }
