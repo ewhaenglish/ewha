@@ -407,8 +407,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     </div>
   </div>
 
-  <!-- 규칙 관리 -->
+  <!-- 소개/규칙 관리 -->
   <div id="t-rules" class="t-tab content">
+    <div class="section-hd">소개 내용 관리</div>
+    <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;border-bottom:1px solid #F5F5F5">
+        <button onclick="switchTeacherIntroEdit('philosophy')" style="flex:1;padding:12px;border:none;background:none;font-size:12px;cursor:pointer;font-family:inherit;font-weight:700;color:#1B4D3E">교육철학</button>
+        <button onclick="switchTeacherIntroEdit('classrule')" style="flex:1;padding:12px;border:none;background:none;font-size:12px;cursor:pointer;font-family:inherit;color:#666">수업규칙</button>
+        <button onclick="switchTeacherIntroEdit('absrule')" style="flex:1;padding:12px;border:none;background:none;font-size:12px;cursor:pointer;font-family:inherit;color:#666">보강규칙</button>
+      </div>
+      <div class="form-group" style="padding-top:12px">
+        <textarea class="form-input" id="intro-edit-content" rows="10" placeholder="내용을 입력해주세요..."></textarea>
+      </div>
+      <div style="padding:0 16px 14px">
+        <button class="btn-primary" onclick="saveIntroContent()">저장</button>
+      </div>
+    </div>
     <div class="section-hd">이화영어 규칙</div>
     <button class="btn-primary" style="margin-bottom:12px" onclick="openAddRule()">+ 규칙 추가</button>
     <div class="card"><div class="card-body" id="t-rule-list"></div></div>
@@ -417,11 +431,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
   <div class="bottom-nav" style="grid-template-columns:repeat(7,1fr)">
     <button class="nav-item active" onclick="tTab('t-home',this)"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></button>
     <button class="nav-item" onclick="tTab('t-task',this)"><span class="nav-icon">📋</span><span class="nav-label">할일/숙제</span></button>
-    <button class="nav-item" onclick="tTab('t-note',this);loadRecentNotes()"><span class="nav-icon">✨</span><span class="nav-label">성장노트</span></button>
+    <button class="nav-item" onclick="tTab('t-note',this);loadRecentNotes();populateStudentSelects()"><span class="nav-icon">✨</span><span class="nav-label">성장노트</span></button>
     <button class="nav-item" onclick="tTab('t-students',this);loadStudents()"><span class="nav-icon">👥</span><span class="nav-label">학생관리</span></button>
     <button class="nav-item" onclick="tTab('t-mileage',this);loadMileageTab()"><span class="nav-icon">⭐</span><span class="nav-label">마일리지</span></button>
     <button class="nav-item" onclick="tTab('t-report',this)"><span class="nav-icon">📊</span><span class="nav-label">리포트</span></button>
-    <button class="nav-item" onclick="tTab('t-rules',this);loadRules('t-rule-list',true)"><span class="nav-icon">📋</span><span class="nav-label">규칙</span></button>
+    <button class="nav-item" onclick="tTab('t-rules',this);loadRules('t-rule-list',true);loadIntroEditContent('philosophy')"><span class="nav-icon">📋</span><span class="nav-label">규칙</span></button>
   </div>
 </div>
 
@@ -435,6 +449,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <button class="logout-btn" onclick="doLogout()">로그아웃</button>
     </div>
   </div>
+  <!-- 소개 탭 -->
+  <div id="s-intro" class="s-tab" style="background:linear-gradient(180deg,#1B4D3E 0%,#2D6B57 40%,#F5F5F5 40%)">
+    <!-- 헤더 -->
+    <div style="padding:28px 20px 0;text-align:center">
+      <div style="width:64px;height:64px;border-radius:50%;overflow:hidden;margin:0 auto 12px;border:3px solid rgba(255,255,255,0.4)">
+        <img id="intro-logo" src="" style="width:100%;height:100%;object-fit:cover">
+      </div>
+      <div style="color:#fff;font-size:18px;font-weight:700;margin-bottom:2px">이화영어</div>
+      <div style="color:rgba(255,255,255,0.7);font-size:11px;letter-spacing:2px;margin-bottom:20px">EWHA ENGLISH</div>
+    </div>
+    <!-- 탭 버튼 -->
+    <div style="display:flex;gap:8px;padding:0 16px 16px">
+      <button onclick="switchIntroTab('philosophy',this)" id="intro-btn-philosophy" style="flex:1;padding:10px 4px;border:none;background:rgba(255,255,255,0.95);color:#1B4D3E;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,0.15)">교육철학</button>
+      <button onclick="switchIntroTab('classrule',this)" id="intro-btn-classrule" style="flex:1;padding:10px 4px;border:none;background:rgba(255,255,255,0.3);color:#fff;font-size:12px;cursor:pointer;font-family:inherit;border-radius:20px">수업규칙</button>
+      <button onclick="switchIntroTab('absrule',this)" id="intro-btn-absrule" style="flex:1;padding:10px 4px;border:none;background:rgba(255,255,255,0.3);color:#fff;font-size:12px;cursor:pointer;font-family:inherit;border-radius:20px">보강규칙</button>
+    </div>
+    <!-- 내용 -->
+    <div style="padding:0 16px 24px">
+      <div id="intro-content" style="background:#fff;border-radius:16px;padding:20px;font-size:13px;line-height:1.9;color:#333;min-height:300px;box-shadow:0 4px 20px rgba(0,0,0,0.08)">
+        로딩 중...
+      </div>
+    </div>
+  </div>
+
   <div id="s-home" class="s-tab active content">
     <div class="date-banner"><div><div class="date-main" id="s-date"></div><div class="date-sub">학습 현황</div></div></div>
     <div class="card">
@@ -527,7 +565,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div class="date-banner"><div><div class="date-main">이화영어 규칙</div></div></div>
     <div class="card"><div class="card-body" id="s-rule-list"></div></div>
   </div>
-  <div class="bottom-nav" style="grid-template-columns:repeat(4,1fr)">
+  <div class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
+    <button class="nav-item" onclick="sTab('s-intro',this);loadIntroTab()"><span class="nav-icon">🌿</span><span class="nav-label">소개</span></button>
     <button class="nav-item active" onclick="sTab('s-home',this)"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></button>
     <button class="nav-item" onclick="sTab('s-note',this);loadStudentNotes()"><span class="nav-icon">✨</span><span class="nav-label">성장노트</span></button>
     <button class="nav-item" onclick="sTab('s-mile',this);loadMile()"><span class="nav-icon">⭐</span><span class="nav-label">마일리지</span></button>
@@ -545,6 +584,27 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <button class="logout-btn" onclick="doLogout()">로그아웃</button>
     </div>
   </div>
+  <!-- 소개 탭 -->
+  <div id="p-intro" class="p-tab" style="background:linear-gradient(180deg,#1B4D3E 0%,#2D6B57 40%,#F5F5F5 40%)">
+    <div style="padding:28px 20px 0;text-align:center">
+      <div style="width:64px;height:64px;border-radius:50%;overflow:hidden;margin:0 auto 12px;border:3px solid rgba(255,255,255,0.4)">
+        <img id="p-intro-logo" src="" style="width:100%;height:100%;object-fit:cover">
+      </div>
+      <div style="color:#fff;font-size:18px;font-weight:700;margin-bottom:2px">이화영어</div>
+      <div style="color:rgba(255,255,255,0.7);font-size:11px;letter-spacing:2px;margin-bottom:20px">EWHA ENGLISH</div>
+    </div>
+    <div style="display:flex;gap:8px;padding:0 16px 16px">
+      <button onclick="switchIntroTab('philosophy',this)" style="flex:1;padding:10px 4px;border:none;background:rgba(255,255,255,0.95);color:#1B4D3E;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,0.15)">교육철학</button>
+      <button onclick="switchIntroTab('classrule',this)" style="flex:1;padding:10px 4px;border:none;background:rgba(255,255,255,0.3);color:#fff;font-size:12px;cursor:pointer;font-family:inherit;border-radius:20px">수업규칙</button>
+      <button onclick="switchIntroTab('absrule',this)" style="flex:1;padding:10px 4px;border:none;background:rgba(255,255,255,0.3);color:#fff;font-size:12px;cursor:pointer;font-family:inherit;border-radius:20px">보강규칙</button>
+    </div>
+    <div style="padding:0 16px 24px">
+      <div id="p-intro-content" style="background:#fff;border-radius:16px;padding:20px;font-size:13px;line-height:1.9;color:#333;min-height:300px;box-shadow:0 4px 20px rgba(0,0,0,0.08)">
+        로딩 중...
+      </div>
+    </div>
+  </div>
+
   <div id="p-home" class="p-tab active content">
     <div class="date-banner"><div><div class="date-main" id="p-date"></div><div class="date-sub" id="p-child">학습 현황</div></div></div>
     <div id="p-child-tabs" class="hidden" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"></div>
@@ -584,7 +644,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div class="date-banner"><div><div class="date-main">이화영어 규칙</div></div></div>
     <div class="card"><div class="card-body" id="p-rule-list"></div></div>
   </div>
-  <div class="bottom-nav" style="grid-template-columns:repeat(4,1fr)">
+  <div class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
+    <button class="nav-item" onclick="pTab('p-intro',this);loadIntroTab()"><span class="nav-icon">🌿</span><span class="nav-label">소개</span></button>
     <button class="nav-item active" onclick="pTab('p-home',this)"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></button>
     <button class="nav-item" onclick="pTab('p-note',this);loadParentNotes()"><span class="nav-icon">✨</span><span class="nav-label">성장노트</span></button>
     <button class="nav-item" onclick="showAddChildModal()"><span class="nav-icon">➕</span><span class="nav-label">자녀추가</span></button>
@@ -728,7 +789,7 @@ function enterWithProfile(profile){
   if(!screen){toast('화면을 찾을 수 없어요');return;}
   screen.classList.add('active');
   setDate();
-  if(LOGO_B64)['t-logo','s-logo','p-logo','logo-img'].forEach(function(id){if($(id))$(id).src=LOGO_B64;});
+  if(LOGO_B64)['t-logo','s-logo','p-logo','logo-img','intro-logo','p-intro-logo'].forEach(function(id){if($(id))$(id).src=LOGO_B64;});
   if(profile.role==='teacher'){$('t-name').textContent=profile.name;loadTeacher();}
   else if(profile.role==='student'){$('s-name').textContent=profile.name;loadStudent();}
   else if(profile.role==='parent'){$('p-name').textContent=profile.name;loadParent();}
@@ -1867,6 +1928,91 @@ async function saveVocabTest(){
   } else {toast('✅ 단어 TEST 저장!');}
   var badge=document.getElementById('vocab-result-badge');
   if(badge)badge.textContent=vocabResult==='pass'?'✅ 통과':vocabResult==='retest'?'🔄 재시':'⚪ 없음';
+}
+
+var noteDateOffset=0;
+function changeNoteDate(dir){
+  noteDateOffset+=dir;
+  var labels=['note-date-label','s-note-date-label','p-note-date-label'];
+  labels.forEach(function(id){
+    var el=document.getElementById(id);if(!el)return;
+    if(noteDateOffset===0)el.textContent='오늘';
+    else{var d=new Date();d.setDate(d.getDate()+noteDateOffset);el.textContent=(d.getMonth()+1)+'월'+d.getDate()+'일';}
+  });
+  if(currentProfile){
+    if(currentProfile.role==='teacher')loadRecentNotes();
+    else if(currentProfile.role==='student')loadStudentNotes();
+    else if(currentProfile.role==='parent')loadParentNotes();
+  }
+}
+
+// ===== 소개 탭 =====
+var currentIntroTab = 'philosophy';
+
+async function loadIntroTab(){
+  await loadIntroContent(currentIntroTab);
+}
+
+async function loadIntroContent(tab){
+  currentIntroTab = tab;
+  var icons = {philosophy:'🌱', classrule:'📖', absrule:'📅'};
+  var titles = {philosophy:'교육철학', classrule:'수업 규칙', absrule:'출석 및 보강 규칙'};
+  var key = 'intro_' + tab;
+  var res = await getSB().from('rules').select('content').eq('title', key).maybeSingle();
+  var text = res.data ? res.data.content : '아직 내용이 등록되지 않았어요.\n\n선생님 → 규칙 탭에서 내용을 입력해주세요.';
+  var html = '<div style="text-align:center;margin-bottom:20px">'
+    + '<div style="font-size:40px;margin-bottom:8px">' + icons[tab] + '</div>'
+    + '<div style="font-size:16px;font-weight:700;color:#1B4D3E">' + titles[tab] + '</div>'
+    + '<div style="width:40px;height:3px;background:#1B4D3E;border-radius:2px;margin:10px auto 0"></div>'
+    + '</div>'
+    + '<div style="white-space:pre-wrap;font-size:13px;line-height:2;color:#444">' + text + '</div>';
+  ['intro-content','p-intro-content'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.innerHTML = html;
+  });
+}
+
+function switchIntroTabStyle(btn){
+  if(!btn || !btn.parentElement) return;
+  Array.from(btn.parentElement.children).forEach(function(b){
+    b.style.background = 'rgba(255,255,255,0.25)';
+    b.style.color = '#fff';
+    b.style.fontWeight = '400';
+    b.style.boxShadow = 'none';
+  });
+  btn.style.background = 'rgba(255,255,255,0.95)';
+  btn.style.color = '#1B4D3E';
+  btn.style.fontWeight = '700';
+  btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+}
+
+function switchIntroTab(tab, btn){
+  switchIntroTabStyle(btn);
+  loadIntroContent(tab);
+}
+
+function switchTeacherIntroEdit(tab){
+  currentIntroTab = tab;
+  loadIntroEditContent(tab);
+}
+
+async function loadIntroEditContent(tab){
+  var key = 'intro_' + tab;
+  var res = await getSB().from('rules').select('content').eq('title', key).maybeSingle();
+  var el = document.getElementById('intro-edit-content');
+  if(el) el.value = res.data ? res.data.content : '';
+}
+
+async function saveIntroContent(){
+  var key = 'intro_' + currentIntroTab;
+  var el = document.getElementById('intro-edit-content');
+  if(!el){ toast('내용을 입력해주세요'); return; }
+  var existing = await getSB().from('rules').select('id').eq('title', key).maybeSingle();
+  var res = existing.data
+    ? await getSB().from('rules').update({content: el.value}).eq('title', key)
+    : await getSB().from('rules').insert({title: key, content: el.value, order_num: 0});
+  if(res.error){ toast('오류: ' + res.error.message); return; }
+  toast('✅ 저장 완료!');
 }
 
 // ===== 앱 시작 =====
