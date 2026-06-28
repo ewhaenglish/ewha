@@ -230,6 +230,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div class="card-header"><span class="card-title">📋 출결 &amp; 할일 현황</span><span class="card-count" id="t-attend-count"></span></div>
       <div class="card-body" id="t-student-list"></div>
     </div>
+    <div class="section-hd">📌 학생별 할일/숙제 현황</div>
+    <div id="t-task-overview"></div>
   </div>
 
 
@@ -825,6 +827,7 @@ async function loadTeacher(){
   await loadStudentsData();
   await renderTeacherHome();
   populateStudentSelects();
+  loadTaskOverview();
   loadTeacherMsgs();
   loadNotices();
   checkNotifications();
@@ -1137,7 +1140,7 @@ function renderNoteCard(n,showReaction){
     +'<div class="note-badge">이화성장노트</div>'
     +'<div class="note-student">'+(n.students?n.students.name:n.student_name||'')+'</div>'
     +'<div class="note-content">'+n.content.replace(/\n/g,'<br>')+'</div>'
-    +'<div class="note-time">'+n.date+'</div></div>';
+    +'</div>';
   if(showReaction){
     html+='<div class="reaction-area" style="border:1px solid #E8E8E8;border-top:none;border-radius:0 0 12px 12px;margin-bottom:12px">'
       +'<div class="emoji-row" id="emoji-row-'+n.id+'">'
@@ -1315,12 +1318,11 @@ async function loadStudentNotes(){
   var sRes=await getSB().from('students').select('id').eq('profile_id',currentProfile.id).single();
   if(!sRes.data)return;
   var dateFilter=getOffsetDate(noteDateOffset);
-  var query=getSB().from('growth_notes').select('*').eq('student_id',sRes.data.id);
-  if(noteDateOffset!==0)query=query.eq('date',dateFilter);
-  else query=query.order('created_at',{ascending:false}).limit(10);
+  var query=getSB().from('growth_notes').select('*').eq('student_id',sRes.data.id).eq('date',dateFilter).order('created_at',{ascending:false});
   var res=await query;
   var notes=res.data||[];
-  $('s-note-list').innerHTML=notes.length?notes.map(function(n){return renderNoteCard(n,true);}).join(''):'<div style="padding:16px;color:#aaa;text-align:center">성장노트가 없어요</div>';
+  var label=noteDateOffset===0?'오늘':(function(){var d=new Date();d.setDate(d.getDate()+noteDateOffset);return (d.getMonth()+1)+'월 '+d.getDate()+'일';})();
+  $('s-note-list').innerHTML=notes.length?'<div style="font-size:12px;color:#aaa;font-weight:700;padding:8px 0 6px">📅 '+label+'의 성장노트</div>'+notes.map(function(n){return renderNoteCard(n,true);}).join(''):'<div style="padding:16px;color:#aaa;text-align:center">'+label+'의 성장노트가 없어요</div>';
 }
 async function loadMile(){
   // 랭킹 로드
@@ -1450,6 +1452,52 @@ async function submitWeeklyGoal(){
 }
 
 // 선생님 홈 - 오늘의 한 줄 & 각오 목록
+async function loadTaskOverview(){
+  var today=getHomeDateStr(homeOffset);
+  if(!allStudents.length)return;
+  var res=await getSB().from('tasks').select('*').eq('date',today);
+  var allTasks=res.data||[];
+  var el=document.getElementById('t-task-overview');
+  if(!el)return;
+  if(!allStudents.length){el.innerHTML='';return;}
+  el.innerHTML=allStudents.map(function(s){
+    var tasks=allTasks.filter(function(t){return t.student_id===s.id;});
+    var todos=tasks.filter(function(t){return t.type==='todo';});
+    var hws=tasks.filter(function(t){return t.type==='hw';});
+    if(!tasks.length)return '';
+    var taskHtml=function(t){
+      var pending=t.student_done&&!t.teacher_confirmed;
+      var confirmed=t.teacher_confirmed;
+      return '<div style="display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid #F5F5F5;background:'+(pending?'#FFFBF0':'#fff')+'">'
+        +'<span style="font-size:11px;background:'+(t.type==='hw'?'#E8F0FE':'#E8F2EF')+';color:'+(t.type==='hw'?'#1a56db':'#1B4D3E')+';padding:2px 6px;border-radius:6px;flex-shrink:0">'+(t.type==='hw'?'숙제':'할일')+'</span>'
+        +'<span style="font-size:13px;flex:1;color:'+(confirmed?'#aaa':'#333')+';text-decoration:'+(confirmed?'line-through':'none')+'">'+t.title+'</span>'
+      +(pending?'<button class="btn-sm" onclick="quickConfirm(this.dataset.id)" data-id="'+t.id+'">Confirm ✅</button>':'')
+        +(confirmed?'<span style="font-size:11px;color:#1B4D3E">✅확인됨</span>':'')
+        +'</div>';
+    };
+    return '<div class="card" style="margin-bottom:10px">'
+      +'<div style="padding:10px 16px;background:#1B4D3E;display:flex;align-items:center;justify-content:space-between">'
+      +'<span style="color:#fff;font-size:13px;font-weight:700">'+s.name+'</span>'
+      +'<span style="color:rgba(255,255,255,0.7);font-size:11px">할일 '+todos.length+'개 · 숙제 '+hws.length+'개</span>'
+      +'</div>'
+      +tasks.map(taskHtml).join('')
+      +'</div>';
+  }).join('');
+}
+
+async function quickConfirm(id){
+  await getSB().from('tasks').update({teacher_confirmed:true,confirmed_at:new Date().toISOString()}).eq('id',id);
+  var task=(await getSB().from('tasks').select('*').eq('id',id).single()).data;
+  if(task){
+    await getSB().from('mileage').insert({student_id:task.student_id,amount:10,reason:'할일 완료: '+task.title});
+    var s=allStudents.find(function(x){return x.id===task.student_id;});
+    if(s&&s.profile_id)await sendNotification(s.profile_id,'🎉 확인됐어요! +10점: '+task.title,'task');
+    toast('✅ Confirm! +10점');
+  }
+  loadTaskOverview();
+  renderTeacherHome();
+}
+
 async function loadTeacherMsgs(){
   var today=todayStr();
   // 오늘의 한 줄 - 전체 표시 (확인여부 상관없이)
