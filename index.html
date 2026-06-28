@@ -214,7 +214,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
   <div id="t-home" class="t-tab active content">
     <div class="date-banner">
       <div><div class="date-main" id="t-date"></div><div class="date-sub" id="t-day"></div></div>
-      <div class="date-dot"></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button onclick="changeHomeDate(-1,'t')" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">◀</button>
+        <span id="t-date-label" style="color:#fff;font-size:11px;white-space:nowrap">오늘</span>
+        <button onclick="changeHomeDate(1,'t')" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">▶</button>
+      </div>
     </div>
     <div class="section-hd">📢 공지사항</div>
     <div class="card">
@@ -450,31 +454,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     </div>
   </div>
   <!-- 소개 탭 -->
-  <div id="s-intro" class="s-tab" style="background:linear-gradient(180deg,#1B4D3E 0%,#2D6B57 40%,#F5F5F5 40%)">
-    <!-- 헤더 -->
-    <div style="padding:28px 20px 0;text-align:center">
-      <div style="width:64px;height:64px;border-radius:50%;overflow:hidden;margin:0 auto 12px;border:3px solid rgba(255,255,255,0.4)">
+  <div id="s-intro" class="s-tab" style="min-height:100vh;background:#1B4D3E;display:flex;flex-direction:column">
+    <div style="padding:48px 24px 24px;text-align:center;flex-shrink:0">
+      <div style="width:76px;height:76px;border-radius:50%;overflow:hidden;margin:0 auto 14px;border:3px solid rgba(255,255,255,0.5);box-shadow:0 4px 20px rgba(0,0,0,0.2)">
         <img id="intro-logo" src="" style="width:100%;height:100%;object-fit:cover">
       </div>
-      <div style="color:#fff;font-size:18px;font-weight:700;margin-bottom:2px">이화영어</div>
-      <div style="color:rgba(255,255,255,0.7);font-size:11px;letter-spacing:2px;margin-bottom:20px">EWHA ENGLISH</div>
+      <div style="color:#fff;font-size:20px;font-weight:700;letter-spacing:1px;margin-bottom:4px">이화영어</div>
+      <div style="color:rgba(255,255,255,0.5);font-size:10px;letter-spacing:4px">EWHA ENGLISH</div>
     </div>
-    <!-- 탭 버튼 -->
-    <div style="display:flex;gap:8px;padding:0 16px 16px">
-      <button onclick="switchIntroTab('philosophy',this)" id="intro-btn-philosophy" style="flex:1;padding:10px 4px;border:none;background:rgba(255,255,255,0.95);color:#1B4D3E;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,0.15)">교육철학</button>
-      <button onclick="switchIntroTab('classrule',this)" id="intro-btn-classrule" style="flex:1;padding:10px 4px;border:none;background:rgba(255,255,255,0.3);color:#fff;font-size:12px;cursor:pointer;font-family:inherit;border-radius:20px">수업규칙</button>
-      <button onclick="switchIntroTab('absrule',this)" id="intro-btn-absrule" style="flex:1;padding:10px 4px;border:none;background:rgba(255,255,255,0.3);color:#fff;font-size:12px;cursor:pointer;font-family:inherit;border-radius:20px">보강규칙</button>
+    <div style="display:flex;gap:0;margin:0 20px 20px;background:rgba(255,255,255,0.1);border-radius:12px;padding:4px;flex-shrink:0">
+      <button onclick="switchIntroTab('philosophy',this)" id="intro-btn-philosophy" style="flex:1;padding:10px 4px;border:none;background:#fff;color:#1B4D3E;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1)">교육철학</button>
+      <button onclick="switchIntroTab('classrule',this)" id="intro-btn-classrule" style="flex:1;padding:10px 4px;border:none;background:transparent;color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;font-family:inherit;border-radius:8px">수업규칙</button>
+      <button onclick="switchIntroTab('absrule',this)" id="intro-btn-absrule" style="flex:1;padding:10px 4px;border:none;background:transparent;color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;font-family:inherit;border-radius:8px">보강규칙</button>
     </div>
-    <!-- 내용 -->
-    <div style="padding:0 16px 24px">
-      <div id="intro-content" style="background:#fff;border-radius:16px;padding:20px;font-size:13px;line-height:1.9;color:#333;min-height:300px;box-shadow:0 4px 20px rgba(0,0,0,0.08)">
-        로딩 중...
-      </div>
+    <div style="flex:1;margin:0 16px 24px;background:rgba(255,255,255,0.95);border-radius:20px;padding:24px 20px;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+      <div id="intro-content" style="font-size:13px;line-height:2;color:#333;min-height:300px">로딩 중...</div>
     </div>
   </div>
 
   <div id="s-home" class="s-tab active content">
-    <div class="date-banner"><div><div class="date-main" id="s-date"></div><div class="date-sub">학습 현황</div></div></div>
+    <div class="date-banner">
+      <div><div class="date-main" id="s-date"></div><div class="date-sub">학습 현황</div></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button onclick="changeHomeDate(-1,'s')" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">◀</button>
+        <span id="s-date-label" style="color:#fff;font-size:11px;white-space:nowrap">오늘</span>
+        <button onclick="changeHomeDate(1,'s')" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">▶</button>
+      </div>
+    </div>
     <div class="card">
       <div class="card-header"><span class="card-title">🏫 등·하원</span></div>
       <div class="card-body" id="s-attend"></div>
@@ -560,17 +566,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div class="section-hd">내 포인트 내역</div>
     <div class="card"><div class="card-body" id="s-mile-list"></div></div>
   </div>
-  <!-- 규칙 탭 -->
-  <div id="s-rules" class="s-tab content">
-    <div class="date-banner"><div><div class="date-main">이화영어 규칙</div></div></div>
-    <div class="card"><div class="card-body" id="s-rule-list"></div></div>
-  </div>
-  <div class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
-    <button class="nav-item" onclick="sTab('s-intro',this);loadIntroTab()"><span class="nav-icon">🌿</span><span class="nav-label">소개</span></button>
+
+  <div class="bottom-nav" style="grid-template-columns:repeat(4,1fr)">
+    <button class="nav-item" onclick="sTab('s-intro',this);loadIntroTab()"><span class="nav-icon">🌿</span><span class="nav-label">Intro</span></button>
     <button class="nav-item active" onclick="sTab('s-home',this)"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></button>
     <button class="nav-item" onclick="sTab('s-note',this);loadStudentNotes()"><span class="nav-icon">✨</span><span class="nav-label">성장노트</span></button>
     <button class="nav-item" onclick="sTab('s-mile',this);loadMile()"><span class="nav-icon">⭐</span><span class="nav-label">마일리지</span></button>
-    <button class="nav-item" onclick="sTab('s-rules',this);loadRules('s-rule-list',false)"><span class="nav-icon">📋</span><span class="nav-label">규칙</span></button>
   </div>
 </div>
 
@@ -585,28 +586,33 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     </div>
   </div>
   <!-- 소개 탭 -->
-  <div id="p-intro" class="p-tab" style="background:linear-gradient(180deg,#1B4D3E 0%,#2D6B57 40%,#F5F5F5 40%)">
-    <div style="padding:28px 20px 0;text-align:center">
-      <div style="width:64px;height:64px;border-radius:50%;overflow:hidden;margin:0 auto 12px;border:3px solid rgba(255,255,255,0.4)">
+  <div id="p-intro" class="p-tab" style="min-height:100vh;background:#1B4D3E;display:flex;flex-direction:column">
+    <div style="padding:48px 24px 24px;text-align:center;flex-shrink:0">
+      <div style="width:76px;height:76px;border-radius:50%;overflow:hidden;margin:0 auto 14px;border:3px solid rgba(255,255,255,0.5);box-shadow:0 4px 20px rgba(0,0,0,0.2)">
         <img id="p-intro-logo" src="" style="width:100%;height:100%;object-fit:cover">
       </div>
-      <div style="color:#fff;font-size:18px;font-weight:700;margin-bottom:2px">이화영어</div>
-      <div style="color:rgba(255,255,255,0.7);font-size:11px;letter-spacing:2px;margin-bottom:20px">EWHA ENGLISH</div>
+      <div style="color:#fff;font-size:20px;font-weight:700;letter-spacing:1px;margin-bottom:4px">이화영어</div>
+      <div style="color:rgba(255,255,255,0.5);font-size:10px;letter-spacing:4px">EWHA ENGLISH</div>
     </div>
-    <div style="display:flex;gap:8px;padding:0 16px 16px">
-      <button onclick="switchIntroTab('philosophy',this)" style="flex:1;padding:10px 4px;border:none;background:rgba(255,255,255,0.95);color:#1B4D3E;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border-radius:20px;box-shadow:0 2px 8px rgba(0,0,0,0.15)">교육철학</button>
-      <button onclick="switchIntroTab('classrule',this)" style="flex:1;padding:10px 4px;border:none;background:rgba(255,255,255,0.3);color:#fff;font-size:12px;cursor:pointer;font-family:inherit;border-radius:20px">수업규칙</button>
-      <button onclick="switchIntroTab('absrule',this)" style="flex:1;padding:10px 4px;border:none;background:rgba(255,255,255,0.3);color:#fff;font-size:12px;cursor:pointer;font-family:inherit;border-radius:20px">보강규칙</button>
+    <div style="display:flex;gap:0;margin:0 20px 20px;background:rgba(255,255,255,0.1);border-radius:12px;padding:4px;flex-shrink:0">
+      <button onclick="switchIntroTab('philosophy',this)" style="flex:1;padding:10px 4px;border:none;background:#fff;color:#1B4D3E;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.1)">교육철학</button>
+      <button onclick="switchIntroTab('classrule',this)" style="flex:1;padding:10px 4px;border:none;background:transparent;color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;font-family:inherit;border-radius:8px">수업규칙</button>
+      <button onclick="switchIntroTab('absrule',this)" style="flex:1;padding:10px 4px;border:none;background:transparent;color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;font-family:inherit;border-radius:8px">보강규칙</button>
     </div>
-    <div style="padding:0 16px 24px">
-      <div id="p-intro-content" style="background:#fff;border-radius:16px;padding:20px;font-size:13px;line-height:1.9;color:#333;min-height:300px;box-shadow:0 4px 20px rgba(0,0,0,0.08)">
-        로딩 중...
-      </div>
+    <div style="flex:1;margin:0 16px 24px;background:rgba(255,255,255,0.95);border-radius:20px;padding:24px 20px;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+      <div id="p-intro-content" style="font-size:13px;line-height:2;color:#333;min-height:300px">로딩 중...</div>
     </div>
   </div>
 
   <div id="p-home" class="p-tab active content">
-    <div class="date-banner"><div><div class="date-main" id="p-date"></div><div class="date-sub" id="p-child">학습 현황</div></div></div>
+    <div class="date-banner">
+      <div><div class="date-main" id="p-date"></div><div class="date-sub" id="p-child">학습 현황</div></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button onclick="changeHomeDate(-1,'p')" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">◀</button>
+        <span id="p-date-label" style="color:#fff;font-size:11px;white-space:nowrap">오늘</span>
+        <button onclick="changeHomeDate(1,'p')" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">▶</button>
+      </div>
+    </div>
     <div id="p-child-tabs" class="hidden" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"></div>
     <div id="p-notice-area"></div>
     <div class="card">
@@ -639,17 +645,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     </div>
     <div id="p-note-list"></div>
   </div>
-  <!-- 규칙 탭 -->
-  <div id="p-rules" class="p-tab content">
-    <div class="date-banner"><div><div class="date-main">이화영어 규칙</div></div></div>
-    <div class="card"><div class="card-body" id="p-rule-list"></div></div>
-  </div>
-  <div class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
-    <button class="nav-item" onclick="pTab('p-intro',this);loadIntroTab()"><span class="nav-icon">🌿</span><span class="nav-label">소개</span></button>
+
+  <div class="bottom-nav" style="grid-template-columns:repeat(4,1fr)">
+    <button class="nav-item" onclick="pTab('p-intro',this);loadIntroTab()"><span class="nav-icon">🌿</span><span class="nav-label">Intro</span></button>
     <button class="nav-item active" onclick="pTab('p-home',this)"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></button>
     <button class="nav-item" onclick="pTab('p-note',this);loadParentNotes()"><span class="nav-icon">✨</span><span class="nav-label">성장노트</span></button>
     <button class="nav-item" onclick="showAddChildModal()"><span class="nav-icon">➕</span><span class="nav-label">자녀추가</span></button>
-    <button class="nav-item" onclick="pTab('p-rules',this);loadRules('p-rule-list',false)"><span class="nav-icon">📋</span><span class="nav-label">규칙</span></button>
   </div>
 </div>
 
@@ -1098,7 +1099,10 @@ async function saveNote(){
   var ms2=monday2.getFullYear()+'-'+String(monday2.getMonth()+1).padStart(2,'0')+'-'+String(monday2.getDate()).padStart(2,'0');
   var gr2=await getSB().from('weekly_goals').select('content').eq('student_id',sid).eq('week_start',ms2).maybeSingle();
   var goalContent=gr2.data?gr2.data.content:'';
-  var content='[오늘의 수업]\n'+tasks.filter(function(t){return t.type==='todo';}).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')
+  var dateLabel=(function(){var d=new Date(today);return (d.getMonth()+1)+'월 '+d.getDate()+'일';})();
+  var vr3=await getSB().from('vocab_tests').select('*').eq('student_id',sid).eq('date',today).maybeSingle();
+  var vtText=vr3.data?((vr3.data.score!=null?vr3.data.score+'/'+vr3.data.total+'점 ':'')+(vr3.data.result==='pass'?'✅통과':vr3.data.result==='retest'?'🔄재시험':'⚪없음')):'기록없음';
+  var content='📅 Date: '+dateLabel+'\n\n[단어 TEST]\n'+vtText+'\n\n[오늘의 수업]\n'+tasks.filter(function(t){return t.type==='todo';}).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')
     +'\n\n[오늘의 과제]\n'+tasks.filter(function(t){return t.type==='hw';}).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')
     +(goalContent?'\n\n[이번 주 각오]\n'+goalContent:'')
     +'\n\n[피드백]\n'+feedback;
@@ -1111,7 +1115,7 @@ async function saveNote(){
 async function loadRecentNotes(){
   var dateFilter=getOffsetDate(noteDateOffset);
   var query=getSB().from('growth_notes').select('*, students(name)');
-  if(noteDateOffset!==0)query=query.eq('date',dateFilter);
+  if(noteDateOffset!==0)query=query.eq('date',dateFilter).order('created_at',{ascending:false});
   else query=query.order('created_at',{ascending:false}).limit(10);
   var res=await query;
   var notes=res.data||[];
@@ -1975,15 +1979,15 @@ async function loadIntroContent(tab){
 function switchIntroTabStyle(btn){
   if(!btn || !btn.parentElement) return;
   Array.from(btn.parentElement.children).forEach(function(b){
-    b.style.background = 'rgba(255,255,255,0.25)';
-    b.style.color = '#fff';
+    b.style.background = 'transparent';
+    b.style.color = 'rgba(255,255,255,0.7)';
     b.style.fontWeight = '400';
     b.style.boxShadow = 'none';
   });
-  btn.style.background = 'rgba(255,255,255,0.95)';
+  btn.style.background = '#fff';
   btn.style.color = '#1B4D3E';
   btn.style.fontWeight = '700';
-  btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)';
+  btn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
 }
 
 function switchIntroTab(tab, btn){
@@ -2015,6 +2019,90 @@ async function saveIntroContent(){
   toast('✅ 저장 완료!');
 }
 
+var homeOffset=0;
+function getHomeDateStr(offset){var d=new Date();d.setDate(d.getDate()+offset);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function getHomeDateLabel(offset){if(offset===0)return '오늘';if(offset===-1)return '어제';if(offset===1)return '내일';var d=new Date();d.setDate(d.getDate()+offset);return (d.getMonth()+1)+'월 '+d.getDate()+'일';}
+function updateHomeDateBanners(){
+  var d=new Date();d.setDate(d.getDate()+homeOffset);
+  var dateStr=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일';
+  ['s-date','p-date','t-date'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=dateStr;});
+  ['s-date-label','p-date-label','t-date-label'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=getHomeDateLabel(homeOffset);});
+}
+function changeHomeDate(dir,role){
+  homeOffset+=dir;
+  updateHomeDateBanners();
+  if(role==='s')loadStudentByDate(homeOffset);
+  else if(role==='p')loadParentByDate(homeOffset);
+  else if(role==='t')loadTeacherByDate(homeOffset);
+}
+async function loadStudentByDate(offset){
+  var sRes=await getSB().from('students').select('id').eq('profile_id',currentProfile.id).single();
+  if(!sRes.data)return;
+  var studentId=sRes.data.id;
+  var date=getHomeDateStr(offset);
+  var aRes=await getSB().from('attendance').select('*').eq('student_id',studentId).eq('date',date).maybeSingle();
+  var att=aRes.data;
+  var sa=document.getElementById('s-attend');
+  if(sa)sa.innerHTML=att?'<div style="padding:10px 16px;font-size:13px">'+(att.check_in?'✅ 등원: '+att.check_in.slice(11,16):'')+(att.check_out?'<br>🏠 하원: '+att.check_out.slice(11,16):'')+'</div>':'';
+  var bi=document.getElementById('btn-in');var bo=document.getElementById('btn-out');
+  if(bi)bi.style.display=offset===0?'':'none';if(bo)bo.style.display=offset===0?'':'none';
+  var tRes=await getSB().from('tasks').select('*').eq('student_id',studentId).eq('date',date);
+  var tasks=tRes.data||[];
+  var todos=tasks.filter(function(t){return t.type==='todo';});
+  var hws=tasks.filter(function(t){return t.type==='hw';});
+  var dc=todos.filter(function(t){return t.student_done;}).length;
+  var pct=todos.length?Math.round(dc/todos.length*100):0;
+  var sc=document.getElementById('s-todo-cnt');var sb2=document.getElementById('s-todo-bar');var sp=document.getElementById('s-todo-pct');
+  if(sc)sc.textContent=dc+'/'+todos.length;if(sb2)sb2.style.width=pct+'%';if(sp)sp.textContent=pct+'%';
+  function sh(t){var c=t.teacher_confirmed,d=t.student_done;return '<div class="task-item'+(c?' done':'')+'">'+'<div class="task-check" style="'+(d&&!c?'border-color:#FFC107;color:#FFC107':'')+'">'+( c?'✓':(d?'⏳':''))+'</div><span class="task-text">'+t.title+(c?' <span style="font-size:10px;color:#1B4D3E">✅확인됨</span>':(d?' <span style="font-size:10px;color:#FFC107">확인대기</span>':''))+'</span></div>';}
+  var stl=document.getElementById('s-todo-list');if(stl)stl.innerHTML=todos.map(sh).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
+  var shc=document.getElementById('s-hw-cnt');if(shc)shc.textContent=hws.filter(function(t){return t.student_done;}).length+'/'+hws.length;
+  var shl=document.getElementById('s-hw-list');if(shl)shl.innerHTML=hws.map(function(t){var c=t.teacher_confirmed,d=t.student_done;return '<div class="task-item'+(c?' done':'')+'">'+'<div class="task-check" style="'+(d&&!c?'border-color:#FFC107;color:#FFC107':'')+'">'+( c?'✓':(d?'⏳':''))+'</div><span class="task-text">'+t.title+(c?' <span style="font-size:10px;color:#1B4D3E">✅확인됨</span>':(d?' <span style="font-size:10px;color:#FFC107">확인대기</span>':''))+'</span></div>';}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
+  var vr=await getSB().from('vocab_tests').select('*').eq('student_id',studentId).eq('date',date).maybeSingle();
+  var svt=document.getElementById('s-vocab-test');
+  if(svt){if(vr.data){var vt=vr.data;svt.innerHTML='<div style="padding:12px 16px;font-size:13px">'+(vt.score!=null?vt.score+'/'+vt.total+'점 ':'')+(vt.result==='pass'?'✅ 통과':vt.result==='retest'?'🔄 재시험':'⚪ 없음')+'</div>';}else svt.innerHTML='<div style="padding:12px 16px;color:#aaa;font-size:13px">기록이 없어요</div>';}
+}
+async function loadParentByDate(offset){
+  if(!parentChildren.length)return;
+  var student=parentChildren[currentChildIndex];var date=getHomeDateStr(offset);
+  var aRes=await getSB().from('attendance').select('*').eq('student_id',student.id).eq('date',date).maybeSingle();
+  var att=aRes.data;
+  var pa=document.getElementById('p-attend');
+  if(pa)pa.innerHTML=att?'<div style="padding:12px 16px;font-size:13px">'+(att.check_in?'✅ 등원: '+att.check_in.slice(11,16):'아직 등원 전')+(att.check_out?'<br>🏠 하원: '+att.check_out.slice(11,16):'')+'</div>':'<div style="padding:12px 16px;color:#aaa;font-size:13px">등원 기록이 없어요</div>';
+  var tRes=await getSB().from('tasks').select('*').eq('student_id',student.id).eq('date',date);
+  var tasks=tRes.data||[];var todos=tasks.filter(function(t){return t.type==='todo';});var hws=tasks.filter(function(t){return t.type==='hw';});
+  var dc=todos.filter(function(t){return t.student_done;}).length;var pct=todos.length?Math.round(dc/todos.length*100):0;
+  var ptc=document.getElementById('p-todo-cnt');var pb=document.getElementById('p-todo-bar');var pp2=document.getElementById('p-todo-pct');
+  if(ptc)ptc.textContent=dc+'/'+todos.length;if(pb)pb.style.width=pct+'%';if(pp2)pp2.textContent=pct+'%';
+  var ptl=document.getElementById('p-todo-list');if(ptl)ptl.innerHTML=todos.map(function(t){return '<div class="task-item'+(t.teacher_confirmed?' done':'')+'"><div class="task-check">'+(t.teacher_confirmed?'✓':(t.student_done?'⏳':''))+'</div><span class="task-text">'+t.title+'</span></div>';}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
+  var phc=document.getElementById('p-hw-cnt');if(phc)phc.textContent=hws.filter(function(t){return t.student_done;}).length+'/'+hws.length;
+  var phl=document.getElementById('p-hw-list');if(phl)phl.innerHTML=hws.map(function(t){return '<div class="task-item'+(t.teacher_confirmed?' done':'')+'"><div class="task-check">'+(t.teacher_confirmed?'✓':(t.student_done?'⏳':''))+'</div><span class="task-text">'+t.title+'</span></div>';}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
+}
+async function loadTeacherByDate(offset){
+  var date=getHomeDateStr(offset);
+  var res=await getSB().from('tasks').select('*').eq('date',date).eq('student_done',true).eq('teacher_confirmed',false);
+  var pending=res.data||[];
+  var attRes=await getSB().from('attendance').select('*').eq('date',date);
+  var attData=attRes.data||[];
+  var list=document.getElementById('t-student-list');if(!list)return;
+  list.innerHTML=allStudents.map(function(s){
+    var cnt=pending.filter(function(t){return t.student_id===s.id;}).length;
+    var att=attData.find(function(a){return a.student_id===s.id;});
+    var attBadge=att?(att.check_out?'<span style="font-size:11px;background:#333;color:#fff;padding:2px 8px;border-radius:10px;margin-left:4px">하원</span>':'<span style="font-size:11px;background:#1B4D3E;color:#fff;padding:2px 8px;border-radius:10px;margin-left:4px">등원</span>'):'';
+    var pendBadge=cnt?'<span style="font-size:11px;background:#FFC107;color:#000;padding:2px 8px;border-radius:10px;margin-left:4px">확인대기 '+cnt+'</span>':'';
+    return '<div class="student-row" onclick="goToConfirmDate(this.dataset.sid,this.dataset.date)" data-sid="'+s.id+'" data-date="'+date+'">'+'<div class="avatar">'+s.name.charAt(0)+'</div>'+'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+s.name+attBadge+pendBadge+'</div>'+'<div style="font-size:11px;color:#aaa;margin-top:2px">'+(s.school||'')+(s.grade?' '+s.grade:'')+'</div></div></div>';
+  }).join('');
+}
+function goToConfirmDate(sid,date){
+  var today=new Date();today.setHours(0,0,0,0);
+  var target=new Date(date);target.setHours(0,0,0,0);
+  taskDateOffset=Math.round((target-today)/(1000*60*60*24));
+  var label=document.getElementById('task-date-label');if(label)label.textContent=getHomeDateLabel(taskDateOffset);
+  tTab('t-task',document.querySelectorAll('#screen-teacher .nav-item')[1]);
+  currentStudentId=sid;document.getElementById('task-student-sel').value=sid;
+  document.getElementById('task-area').classList.remove('hidden');
+  renderTasks();renderQuickPhrases();loadVocabTest();
+}
 // ===== 앱 시작 =====
 window.addEventListener('load',function(){
   // 로그인 화면 로고 설정
