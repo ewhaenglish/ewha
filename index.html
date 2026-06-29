@@ -419,6 +419,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <div class="stat-card"><div class="stat-label">출석일수</div><div class="stat-num" id="rep-attend">0<span class="stat-unit">일</span></div></div>
         <div class="stat-card"><div class="stat-label">할일 완료율</div><div class="stat-num" id="rep-todo">0<span class="stat-unit">%</span></div></div>
         <div class="stat-card"><div class="stat-label">숙제 완료율</div><div class="stat-num" id="rep-hw">0<span class="stat-unit">%</span></div></div>
+        <div class="stat-card"><div class="stat-label">단어TEST 평균</div><div class="stat-num" id="rep-vocab">-<span class="stat-unit">점</span></div></div>
         <div class="stat-card"><div class="stat-label">성장노트</div><div class="stat-num" id="rep-notes">0<span class="stat-unit">개</span></div></div>
       </div>
       <div class="card">
@@ -454,7 +455,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <button class="nav-item" onclick="tTab('t-note',this);loadRecentNotes();populateStudentSelects()"><span class="nav-icon">✨</span><span class="nav-label">성장노트</span></button>
     <button class="nav-item" onclick="tTab('t-students',this);loadStudents()"><span class="nav-icon">👥</span><span class="nav-label">학생관리</span></button>
     <button class="nav-item" onclick="tTab('t-mileage',this);loadMileageTab()"><span class="nav-icon">⭐</span><span class="nav-label">마일리지</span></button>
-    <button class="nav-item" onclick="tTab('t-report',this)"><span class="nav-icon">📊</span><span class="nav-label">리포트</span></button>
+    <button class="nav-item" onclick="tTab('t-report',this);populateStudentSelects()"><span class="nav-icon">📊</span><span class="nav-label">리포트</span></button>
     <button class="nav-item" onclick="tTab('t-intro',this);loadIntroTab();loadIntroToTeacher()"><span class="nav-icon">🌿</span><span class="nav-label">Intro</span></button>
   </div>
 </div>
@@ -2217,6 +2218,63 @@ async function deleteSelectedNotes(){
   if(res.error){toast('오류: '+res.error.message);return;}
   toast('✅ '+ids.length+'개 삭제 완료!');
   loadRecentNotes();
+}
+
+async function loadReport(){
+  var sid=document.getElementById('report-student-sel').value;
+  if(!sid){document.getElementById('report-area').classList.add('hidden');return;}
+  document.getElementById('report-area').classList.remove('hidden');
+  var d=new Date();
+  var ym=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  var res=await getSB().from('tasks').select('*').eq('student_id',sid).gte('date',ym+'-01').lte('date',ym+'-31');
+  var tasks=res.data||[];
+  var todos=tasks.filter(function(t){return t.type==='todo';});
+  var hws=tasks.filter(function(t){return t.type==='hw';});
+  var todoRate=todos.length?Math.round(todos.filter(function(t){return t.teacher_confirmed;}).length/todos.length*100):0;
+  var hwRate=hws.length?Math.round(hws.filter(function(t){return t.teacher_confirmed;}).length/hws.length*100):0;
+  var aRes=await getSB().from('attendance').select('date').eq('student_id',sid).gte('date',ym+'-01');
+  var attendDays=[...new Set((aRes.data||[]).map(function(a){return a.date;}))].length;
+  var vRes=await getSB().from('vocab_tests').select('score,total').eq('student_id',sid).gte('date',ym+'-01').not('score','is',null);
+  var vocabs=vRes.data||[];
+  var vocabAvg=vocabs.length?Math.round(vocabs.reduce(function(s,v){return s+(v.score/v.total*100);},0)/vocabs.length):null;
+  document.getElementById('rep-attend').innerHTML=attendDays+'<span class="stat-unit">일</span>';
+  document.getElementById('rep-todo').innerHTML=todoRate+'<span class="stat-unit">%</span>';
+  document.getElementById('rep-hw').innerHTML=hwRate+'<span class="stat-unit">%</span>';
+  document.getElementById('rep-vocab').innerHTML=(vocabAvg!==null?vocabAvg:'-')+'<span class="stat-unit">점</span>';
+  var dateMap={};
+  todos.forEach(function(t){if(!dateMap[t.date])dateMap[t.date]={td:0,tdc:0,hd:0,hdc:0};dateMap[t.date].td++;if(t.teacher_confirmed)dateMap[t.date].tdc++;});
+  hws.forEach(function(t){if(!dateMap[t.date])dateMap[t.date]={td:0,tdc:0,hd:0,hdc:0};dateMap[t.date].hd++;if(t.teacher_confirmed)dateMap[t.date].hdc++;});
+  var sortedDates=Object.keys(dateMap).sort().slice(-14);
+  var labels=sortedDates.map(function(d){return d.slice(5);});
+  var todoData=sortedDates.map(function(d){var v=dateMap[d];return v.td?Math.round(v.tdc/v.td*100):0;});
+  var hwData=sortedDates.map(function(d){var v=dateMap[d];return v.hd?Math.round(v.hdc/v.hd*100):0;});
+  if(window.repChartInstance)window.repChartInstance.destroy();
+  var ctx1=document.getElementById('rep-chart');
+  if(ctx1)window.repChartInstance=new Chart(ctx1.getContext('2d'),{type:'bar',data:{labels:labels,datasets:[{label:'할일완료율',data:todoData,backgroundColor:'rgba(27,77,62,0.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100}}}});
+  if(window.repHwChartInstance)window.repHwChartInstance.destroy();
+  var ctx2=document.getElementById('rep-hw-chart');
+  if(ctx2)window.repHwChartInstance=new Chart(ctx2.getContext('2d'),{type:'bar',data:{labels:labels,datasets:[{label:'숙제완료율',data:hwData,backgroundColor:'rgba(78,203,165,0.7)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,max:100}}}});
+  // 저장된 총평 불러오기
+  var mr=await getSB().from('monthly_reports').select('*').eq('student_id',sid).eq('year',d.getFullYear()).eq('month',d.getMonth()+1).maybeSingle();
+  if(mr.data){
+    var el1=document.getElementById('rep-summary');var el2=document.getElementById('rep-comment');
+    if(el1)el1.value=mr.data.monthly_summary||'';
+    if(el2)el2.value=mr.data.teacher_comment||'';
+  }
+}
+
+async function saveReport(){
+  var sid=document.getElementById('report-student-sel').value;
+  if(!sid){toast('학생을 선택해주세요');return;}
+  var d=new Date();
+  var s1=document.getElementById('rep-summary');var s2=document.getElementById('rep-comment');
+  var r=await getSB().from('monthly_reports').upsert({student_id:sid,year:d.getFullYear(),month:d.getMonth()+1,
+    monthly_summary:s1?s1.value:'',teacher_comment:s2?s2.value:'',
+    task_completion_rate:parseFloat((document.getElementById('rep-todo')||{}).textContent)||0,
+    homework_completion_rate:parseFloat((document.getElementById('rep-hw')||{}).textContent)||0},
+    {onConflict:'student_id,year,month'});
+  if(r.error){toast('오류: '+r.error.message);return;}
+  toast('✅ 리포트 저장 완료!');
 }
 
 // ===== 앱 시작 =====
