@@ -1290,6 +1290,8 @@ async function loadStudent(){
     // 오늘의 한 줄 & 이번 주 각오 로드
     loadDailyMsg();
     loadWeeklyGoalTop();
+    loadNotices();
+    checkNotifications();
   } else {
     $('s-todo-list').innerHTML='<div style="padding:12px 16px;color:#aaa;font-size:13px">선생님께 초대 코드를 받아 연동해주세요</div>';
     $('s-hw-list').innerHTML='';
@@ -1297,12 +1299,16 @@ async function loadStudent(){
 }
 async function studentToggle(id,isDone,studentId){
   await getSB().from('tasks').update({student_done:!isDone,is_done:!isDone}).eq('id',id);
-  await loadStudent();
+  if(homeOffset!==0)await loadStudentByDate(homeOffset);
+  else await loadStudent();
 }
 async function checkIn(){
   var sid=window._currentStudentRowId;
   if(!sid){toast('학생 연동이 필요해요');return;}
-  var res=await getSB().from('attendance').insert({student_id:sid,date:todayStr(),check_in:new Date().toISOString()});
+  var now=new Date();
+  var kst=new Date(now.getTime()+9*60*60*1000);
+  var kstStr=kst.toISOString().replace('Z','+09:00');
+  var res=await getSB().from('attendance').insert({student_id:sid,date:todayStr(),check_in:kstStr});
   if(res.error){toast('오류: '+res.error.message);return;}
   // 출석 마일리지 5점 적립
   await getSB().from('mileage').insert({student_id:sid,amount:5,reason:'출석 완료'});
@@ -1311,7 +1317,10 @@ async function checkIn(){
 async function checkOut(){
   var sid=window._currentStudentRowId;
   if(!sid)return;
-  await getSB().from('attendance').update({check_out:new Date().toISOString()}).eq('student_id',sid).eq('date',todayStr());
+  var now2=new Date();
+  var kst2=new Date(now2.getTime()+9*60*60*1000);
+  var kstStr2=kst2.toISOString().replace('Z','+09:00');
+  await getSB().from('attendance').update({check_out:kstStr2}).eq('student_id',sid).eq('date',todayStr());
   toast('🏠 하원 완료!');loadStudent();
 }
 async function loadStudentNotes(){
@@ -1842,18 +1851,34 @@ function setupRealtime(profile){
     sb.channel('teacher-rt-'+Date.now())
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'attendance'},function(payload){
         renderTeacherHome();
+        loadTaskOverview();
         var s=allStudents.find(function(x){return x.id===payload.new.student_id;});
-        if(s)popupNotif('🏫 '+s.name+' 등원했어요!');
+        if(s){
+          popupNotif('🏫 '+s.name+' 등원했어요!');
+          checkNotifications();
+        }
       })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'tasks'},function(payload){
         if(payload.new.student_done&&!payload.new.teacher_confirmed){
           renderTeacherHome();
+          loadTaskOverview();
           var s=allStudents.find(function(x){return x.id===payload.new.student_id;});
-          if(s)popupNotif('✅ '+s.name+' 할일 완료!');
+          if(s){
+            popupNotif('✅ '+s.name+' 할일 완료! 확인해줘요');
+            checkNotifications();
+          }
         }
       })
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'daily_messages'},function(){loadTeacherMsgs();})
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'weekly_goals'},function(){loadTeacherMsgs();})
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'daily_messages'},function(payload){
+        loadTeacherMsgs();
+        var s=allStudents.find(function(x){return x.id===payload.new.student_id;});
+        if(s)popupNotif('✍️ '+s.name+' 오늘의 한 줄을 남겼어요!');
+      })
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'weekly_goals'},function(payload){
+        loadTeacherMsgs();
+        var s=allStudents.find(function(x){return x.id===payload.new.student_id;});
+        if(s)popupNotif('🎯 '+s.name+' 이번 주 각오를 작성했어요!');
+      })
       .subscribe();
   } else if(profile.role==='student'){
     sb.channel('student-rt-'+Date.now())
@@ -2089,7 +2114,7 @@ function changeHomeDate(dir,role){
   updateHomeDateBanners();
   if(role==='s')loadStudentByDate(homeOffset);
   else if(role==='p')loadParentByDate(homeOffset);
-  else if(role==='t')loadTeacherByDate(homeOffset);
+  else if(role==='t'){loadTeacherByDate(homeOffset);loadTaskOverviewByDate(homeOffset);}
 }
 async function loadStudentByDate(offset){
   var sRes=await getSB().from('students').select('id').eq('profile_id',currentProfile.id).single();
@@ -2110,10 +2135,19 @@ async function loadStudentByDate(offset){
   var pct=todos.length?Math.round(dc/todos.length*100):0;
   var sc=document.getElementById('s-todo-cnt');var sb2=document.getElementById('s-todo-bar');var sp=document.getElementById('s-todo-pct');
   if(sc)sc.textContent=dc+'/'+todos.length;if(sb2)sb2.style.width=pct+'%';if(sp)sp.textContent=pct+'%';
-  function sh(t){var c=t.teacher_confirmed,d=t.student_done;return '<div class="task-item'+(c?' done':'')+'">'+'<div class="task-check" style="'+(d&&!c?'border-color:#FFC107;color:#FFC107':'')+'">'+( c?'✓':(d?'⏳':''))+'</div><span class="task-text">'+t.title+(c?' <span style="font-size:10px;color:#1B4D3E">✅확인됨</span>':(d?' <span style="font-size:10px;color:#FFC107">확인대기</span>':''))+'</span></div>';}
+  function sh(t){var c=t.teacher_confirmed,d=t.student_done;return '<div class="task-item'+(c?' done':'')+'" onclick="studentToggle(this.dataset.id,'+d+',\''+studentId+'\')\" data-id="'+t.id+'"><div class="task-check" style="'+(d&&!c?'border-color:#FFC107;color:#FFC107':'')+'">'+(c?'✓':(d?'⏳':''))+'</div><span class="task-text">'+t.title+(c?' <span style="font-size:10px;color:#1B4D3E">✅확인됨</span>':(d?' <span style="font-size:10px;color:#FFC107">확인대기</span>':''))+'</span></div>';}
+
   var stl=document.getElementById('s-todo-list');if(stl)stl.innerHTML=todos.map(sh).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
   var shc=document.getElementById('s-hw-cnt');if(shc)shc.textContent=hws.filter(function(t){return t.student_done;}).length+'/'+hws.length;
-  var shl=document.getElementById('s-hw-list');if(shl)shl.innerHTML=hws.map(function(t){var c=t.teacher_confirmed,d=t.student_done;return '<div class="task-item'+(c?' done':'')+'">'+'<div class="task-check" style="'+(d&&!c?'border-color:#FFC107;color:#FFC107':'')+'">'+( c?'✓':(d?'⏳':''))+'</div><span class="task-text">'+t.title+(c?' <span style="font-size:10px;color:#1B4D3E">✅확인됨</span>':(d?' <span style="font-size:10px;color:#FFC107">확인대기</span>':''))+'</span></div>';}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
+  var shl=document.getElementById('s-hw-list');
+  if(shl)shl.innerHTML=hws.map(function(t){
+    var c=t.teacher_confirmed,d=t.student_done;
+    return '<div class="task-item'+(c?' done':'')+'" onclick="studentToggle(\'' +t.id+ '\','+d+',\''+ studentId +'\')" style="cursor:pointer">'
+      +'<div class="task-check" style="'+(d&&!c?'border-color:#FFC107;color:#FFC107':'')+'">'+( c?'✓':(d?'⏳':''))+'</div>'
+      +'<span class="task-text">'+t.title+(t.due_date?' <span style="font-size:10px;color:#aaa">기한:'+t.due_date+'</span>':'')
+      +(c?' <span style="font-size:10px;color:#1B4D3E">✅확인됨</span>':(d?' <span style="font-size:10px;color:#FFC107">확인대기</span>':''))
+      +'</span></div>';
+  }).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
   var vr=await getSB().from('vocab_tests').select('*').eq('student_id',studentId).eq('date',date).maybeSingle();
   var svt=document.getElementById('s-vocab-test');
   if(svt){if(vr.data){var vt=vr.data;svt.innerHTML='<div style="padding:12px 16px;font-size:13px">'+(vt.score!=null?vt.score+'/'+vt.total+'점 ':'')+(vt.result==='pass'?'✅ 통과':vt.result==='retest'?'🔄 재시험':'⚪ 없음')+'</div>';}else svt.innerHTML='<div style="padding:12px 16px;color:#aaa;font-size:13px">기록이 없어요</div>';}
