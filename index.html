@@ -1510,12 +1510,10 @@ async function loadTaskOverview(){
       +dot+'</div>';
   }).join('');
 
-  // 첫 번째 학생 기본 선택
-  if(allStudents.length>0){
-    window._selectedOverviewStudent=allStudents[0].id;
-    window._overviewAllTasks=allTasks;
-    renderStudentOverview(allStudents[0].id, allTasks);
-  }
+  // 클릭 전까지 오른쪽 빈 상태
+  window._overviewAllTasks=allTasks;
+  var overview=document.getElementById('t-task-overview');
+  if(overview)overview.innerHTML='<div style="padding:40px 20px;text-align:center;color:#aaa;font-size:13px">← 학생 이름을 클릭해주세요</div>';
 }
 
 function selectStudentOverview(sid){
