@@ -44,9 +44,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
 .card-count{font-size:11px;color:#aaa}
 .card-body{padding:4px 0;font-size:15px}
 .section-hd{font-size:13px;font-weight:700;color:#aaa;padding:12px 0 6px;letter-spacing:0.05em}
-.date-banner{background:#1B4D3E;border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
-.date-main{color:#fff;font-size:20px;font-weight:700}
-.date-sub{color:rgba(255,255,255,0.7);font-size:12px;margin-top:2px}
+.date-banner{background:#1B4D3E;border-radius:12px;padding:16px;margin-bottom:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.date-main{color:#fff;font-size:20px;font-weight:700;text-align:center}
+.date-sub{color:rgba(255,255,255,0.7);font-size:12px;margin-top:4px;text-align:center}
 .date-dot{width:8px;height:8px;background:#4ECBA5;border-radius:50%}
 .btn-primary{display:block;width:100%;padding:15px;background:#1B4D3E;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
 .btn-secondary{display:block;width:100%;padding:13px;background:#fff;color:#1B4D3E;border:1.5px solid #1B4D3E;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:8px}
@@ -388,7 +388,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
 
   <!-- 마일리지 관리 -->
   <div id="t-mileage" class="t-tab content">
-    <div class="date-banner"><div><div class="date-main">마일리지 관리</div><div class="date-sub">학생 포인트 현황</div></div></div>
+    <div class="date-banner"><div class="date-main">마일리지 관리</div><div class="date-sub">학생 포인트 현황</div></div>
     <div class="section-hd">🏆 전체 랭킹</div>
     <div class="card"><div class="card-body" id="t-mile-rank"></div></div>
     <div class="section-hd">수동 적립 / 차감</div>
@@ -408,7 +408,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
 
   <!-- Monthly Report -->
   <div id="t-report" class="t-tab content">
-    <div class="date-banner"><div><div class="date-main" id="t-date4"></div><div class="date-sub">Monthly Report</div></div></div>
+    <div class="date-banner"><div class="date-main" id="t-date4"></div><div class="date-sub">Monthly Report</div></div>
     <div class="form-group" style="padding:0 0 14px">
       <select class="form-select" id="report-student-sel" onchange="loadReport()">
         <option value="">학생을 선택하세요</option>
