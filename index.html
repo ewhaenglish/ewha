@@ -165,6 +165,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
 .rule-num{font-size:11px;font-weight:700;color:#1B4D3E;margin-bottom:4px}
 .rule-title{font-size:14px;font-weight:700;margin-bottom:4px}
 .rule-content{font-size:13px;color:#666;line-height:1.5}#screen-teacher{font-size:17px}#screen-teacher .card-title{font-size:17px}#screen-teacher .section-hd{font-size:15px}#screen-teacher .task-text{font-size:17px}#screen-teacher .student-row div{font-size:16px}
+
+.calendar-wrap{background:#fff;border-radius:12px;margin-bottom:12px;overflow:hidden}
+.calendar-header{background:#1B4D3E;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+.calendar-title{color:#fff;font-size:16px;font-weight:700}
+.calendar-nav{background:rgba(255,255,255,0.2);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:14px;cursor:pointer}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:#E8E8E8}
+.calendar-day-label{background:#F8FDF9;text-align:center;padding:6px 0;font-size:11px;font-weight:700;color:#1B4D3E}
+.calendar-day-label.sun{color:#E74C3C}
+.calendar-day-label.sat{color:#1a56db}
+.cal-day{background:#fff;text-align:center;padding:8px 2px;cursor:pointer;min-height:44px;position:relative}
+.cal-day:hover{background:#F0F7F5}
+.cal-day.today{background:#E8F2EF}
+.cal-day.today .cal-num{background:#1B4D3E;color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;margin:0 auto}
+.cal-day.selected{background:#C5E0D8}
+.cal-day.other-month{opacity:0.35}
+.cal-num{font-size:13px;color:#333}
+.cal-num.sun{color:#E74C3C}
+.cal-num.sat{color:#1a56db}
+.cal-dot{width:5px;height:5px;border-radius:50%;margin:2px auto 0}
+.cal-dot.todo{background:#1B4D3E}
+.cal-dot.hw{background:#1a56db}
+.cal-dot.note{background:#E74C3C}
 </style>
 </head>
 <body>
@@ -224,6 +246,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <button onclick="changeHomeDate(1,'t')" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer">▶</button>
       </div>
       <div class="date-sub" id="t-day"></div>
+    </div>
+    <div class="section-hd">📅 달력</div>
+    <div class="calendar-wrap">
+      <div class="calendar-header">
+        <button class="calendar-nav" onclick="calMove(-1,'t')">◀</button>
+        <span class="calendar-title" id="t-cal-title"></span>
+        <button class="calendar-nav" onclick="calMove(1,'t')">▶</button>
+      </div>
+      <div class="calendar-grid" id="t-cal-grid"></div>
+    </div>
+    <div id="t-cal-detail" style="display:none" class="card" style="margin-bottom:12px">
+      <div class="card-header"><span class="card-title" id="t-cal-detail-title">날짜 상세</span></div>
+      <div class="card-body" id="t-cal-detail-body"></div>
     </div>
     <div class="section-hd">📢 공지사항</div>
     <div class="card">
@@ -285,6 +320,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
           <option value="">학생을 선택하세요</option>
         </select>
       </div>
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-header">
+        <span class="card-title">🔁 반복 할일/숙제 관리</span>
+        <button class="btn-sm" onclick="openRecurringModal()">+ 추가</button>
+      </div>
+      <div class="card-body" id="recurring-list"></div>
     </div>
     <div id="task-area" class="hidden">
       <!-- 단어 TEST -->
@@ -501,6 +543,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
       <div class="date-sub">학습 현황</div>
     </div>
+    <!-- 달력 -->
+    <div class="calendar-wrap">
+      <div class="calendar-header">
+        <button class="calendar-nav" onclick="calMove(-1,'s')">◀</button>
+        <span class="calendar-title" id="s-cal-title"></span>
+        <button class="calendar-nav" onclick="calMove(1,'s')">▶</button>
+      </div>
+      <div class="calendar-grid" id="s-cal-grid"></div>
+    </div>
+    <div id="s-cal-detail" style="display:none" class="card">
+      <div class="card-header"><span class="card-title" id="s-cal-detail-title">날짜 상세</span></div>
+      <div class="card-body" id="s-cal-detail-body"></div>
+    </div>
     <div id="s-notice-area" style="margin-bottom:0"></div>
     <div class="card">
       <div class="card-header"><span class="card-title">🏫 등·하원</span></div>
@@ -660,6 +715,19 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div class="date-sub" id="p-child">학습 현황</div>
     </div>
     <div id="p-child-tabs" class="hidden" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"></div>
+    <!-- 달력 -->
+    <div class="calendar-wrap">
+      <div class="calendar-header">
+        <button class="calendar-nav" onclick="calMove(-1,'p')">◀</button>
+        <span class="calendar-title" id="p-cal-title"></span>
+        <button class="calendar-nav" onclick="calMove(1,'p')">▶</button>
+      </div>
+      <div class="calendar-grid" id="p-cal-grid"></div>
+    </div>
+    <div id="p-cal-detail" style="display:none" class="card">
+      <div class="card-header"><span class="card-title" id="p-cal-detail-title">날짜 상세</span></div>
+      <div class="card-body" id="p-cal-detail-body"></div>
+    </div>
     <div id="p-notice-area"></div>
     <div class="card">
       <div class="card-header"><span class="card-title">🏫 등·하원 현황</span></div>
@@ -868,6 +936,7 @@ async function loadTeacher(){
   await renderTeacherHome();
   populateStudentSelects();
   loadTaskOverview();
+  renderCalendar('t');
   loadTeacherMsgs();
   loadNotices();
   checkNotifications();
@@ -1028,6 +1097,7 @@ async function loadTaskForStudent(){
   if(!sid){$('task-area').classList.add('hidden');return;}
   $('task-area').classList.remove('hidden');currentStudentId=sid;
   await renderTasks();renderQuickPhrases();loadVocabTest();
+  loadRecurringTasks();renderCalendar('t');
 }
 function renderQuickPhrases(){
   $('todo-quick').innerHTML=QUICK_TODO.map(function(p){return '<button class="quick-phrase" onclick="insertQuick(\'todo\',\''+p+'\')">'+p+'</button>';}).join('');
@@ -2275,6 +2345,81 @@ async function saveReport(){
     {onConflict:'student_id,year,month'});
   if(r.error){toast('오류: '+r.error.message);return;}
   toast('✅ 리포트 저장 완료!');
+}
+
+
+async function applyRecurringTasks(studentId){
+  if(!studentId)return;
+  var today=new Date();
+  var dow=today.getDay();
+  var dateStr=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  var res=await getSB().from('recurring_tasks').select('*').eq('student_id',studentId).eq('is_active',true);
+  var recurring=res.data||[];
+  var todayRec=recurring.filter(function(r){return r.repeat_days.indexOf(dow)>=0;});
+  if(!todayRec.length)return;
+  var existing=await getSB().from('tasks').select('title,type').eq('student_id',studentId).eq('date',dateStr);
+  var existingSet={};
+  (existing.data||[]).forEach(function(t){existingSet[t.type+'_'+t.title]=true;});
+  var toInsert=todayRec.filter(function(r){return !existingSet[r.type+'_'+r.title];});
+  if(toInsert.length){
+    await getSB().from('tasks').insert(toInsert.map(function(r){
+      return {student_id:studentId,title:r.title,type:r.type,date:dateStr,student_done:false,teacher_confirmed:false};
+    }));
+    toast('📋 오늘 반복 할일 '+toInsert.length+'개 자동 추가!');
+  }
+}
+
+async function loadRecurringTasks(){
+  if(!currentStudentId)return;
+  var res=await getSB().from('recurring_tasks').select('*').eq('student_id',currentStudentId).eq('is_active',true).order('created_at');
+  var items=res.data||[];
+  var el=document.getElementById('recurring-list');
+  if(!el)return;
+  var DAY_NAMES=['일','월','화','수','목','금','토'];
+  el.innerHTML=items.length?items.map(function(r){
+    var dayLabels=r.repeat_days.map(function(d){return DAY_NAMES[d];}).join(',');
+    return '<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid #F5F5F5">'
+      +'<span style="font-size:11px;background:'+(r.type==='hw'?'#E8F0FE':'#E8F2EF')+';color:'+(r.type==='hw'?'#1a56db':'#1B4D3E')+';padding:2px 8px;border-radius:6px">'+(r.type==='hw'?'숙제':'할일')+'</span>'
+      +'<span style="flex:1;font-size:14px">'+r.title+'</span>'
+      +'<span style="font-size:11px;color:#aaa;margin-right:8px">매주 '+dayLabels+'</span>'
+      +'<button class="btn-danger" onclick="deleteRecurring(this.dataset.id)" data-id="'+r.id+'">삭제</button>'
+      +'</div>';
+  }).join(''):'<div style="padding:12px 16px;color:#aaa;font-size:13px">반복 할일이 없어요</div>';
+}
+
+function openRecurringModal(){
+  if(!currentStudentId){toast('학생을 먼저 선택해주세요');return;}
+  var DAY_NAMES=['일','월','화','수','목','금','토'];
+  openMod('반복 할일/숙제 추가',
+    '<div class="form-group" style="padding-top:16px"><label class="form-label">내용</label><input type="text" class="form-input" id="rec-title" placeholder="예: 단어 TEST, 클래스카드..."></div>'+
+    '<div class="form-group"><label class="form-label">종류</label><select class="form-select" id="rec-type"><option value="todo">할일</option><option value="hw">숙제</option></select></div>'+
+    '<div class="form-group"><label class="form-label">반복 요일</label>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap">'+
+    DAY_NAMES.map(function(d,i){return '<label style="display:flex;align-items:center;gap:4px;padding:6px 12px;border:1.5px solid #E8E8E8;border-radius:20px;cursor:pointer;font-size:13px"><input type="checkbox" value="'+i+'" class="rec-day-cb"> '+d+'</label>';}).join('')+
+    '</div></div>'+
+    '<div class="form-group"><label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer"><input type="checkbox" id="rec-daily"> 매일 반복</label></div>'+
+    '<div style="padding:0 16px 14px"><button class="btn-primary" onclick="saveRecurring()">저장</button></div>'
+  );
+}
+
+async function saveRecurring(){
+  var title=document.getElementById('rec-title').value.trim();
+  var type=document.getElementById('rec-type').value;
+  var daily=document.getElementById('rec-daily').checked;
+  var days=[];
+  if(daily){days=[0,1,2,3,4,5,6];}
+  else{document.querySelectorAll('.rec-day-cb:checked').forEach(function(cb){days.push(parseInt(cb.value));});}
+  if(!title){toast('내용을 입력해주세요');return;}
+  if(!days.length){toast('요일을 선택해주세요');return;}
+  var res=await getSB().from('recurring_tasks').insert({student_id:currentStudentId,title:title,type:type,repeat_days:days});
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('✅ 반복 할일 저장!');closeMod();loadRecurringTasks();
+}
+
+async function deleteRecurring(id){
+  if(!confirm('삭제할까요?'))return;
+  await getSB().from('recurring_tasks').update({is_active:false}).eq('id',id);
+  loadRecurringTasks();toast('삭제됐어요');
 }
 
 // ===== 앱 시작 =====
