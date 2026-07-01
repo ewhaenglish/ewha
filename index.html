@@ -2422,6 +2422,118 @@ async function deleteRecurring(id){
   loadRecurringTasks();toast('삭제됐어요');
 }
 
+
+// ===== 달력 =====
+var calYear={t:new Date().getFullYear(),s:new Date().getFullYear(),p:new Date().getFullYear()};
+var calMonth={t:new Date().getMonth(),s:new Date().getMonth(),p:new Date().getMonth()};
+
+function calMove(dir,role){
+  calMonth[role]+=dir;
+  if(calMonth[role]<0){calMonth[role]=11;calYear[role]--;}
+  if(calMonth[role]>11){calMonth[role]=0;calYear[role]++;}
+  renderCalendar(role);
+}
+
+async function renderCalendar(role){
+  var y=calYear[role],m=calMonth[role];
+  var titleEl=document.getElementById(role+'-cal-title');
+  if(titleEl)titleEl.textContent=y+'년 '+(m+1)+'월';
+  var grid=document.getElementById(role+'-cal-grid');
+  if(!grid)return;
+  var days=['일','월','화','수','목','금','토'];
+  var classes=['sun','','','','','','sat'];
+  var html=days.map(function(d,i){return '<div class="calendar-day-label '+classes[i]+'">'+d+'</div>';}).join('');
+  var first=new Date(y,m,1);
+  var last=new Date(y,m+1,0);
+  var startDay=first.getDay();
+  var today=new Date();today.setHours(0,0,0,0);
+  var ym=y+'-'+String(m+1).padStart(2,'0');
+  var dotData={};
+  var sid=null;
+  if(role==='t')sid=currentStudentId;
+  else if(role==='s')sid=window._currentStudentRowId;
+  else if(role==='p'&&parentChildren&&parentChildren.length>0)sid=parentChildren[currentChildIndex||0].id;
+  if(sid){
+    var tr=await getSB().from('tasks').select('date,type').eq('student_id',sid).gte('date',ym+'-01').lte('date',ym+'-31');
+    (tr.data||[]).forEach(function(t){
+      if(!dotData[t.date])dotData[t.date]={todo:false,hw:false,note:false};
+      if(t.type==='todo')dotData[t.date].todo=true;
+      else dotData[t.date].hw=true;
+    });
+    var nr=await getSB().from('growth_notes').select('date').eq('student_id',sid).gte('date',ym+'-01').lte('date',ym+'-31');
+    (nr.data||[]).forEach(function(n){
+      if(!dotData[n.date])dotData[n.date]={todo:false,hw:false,note:false};
+      dotData[n.date].note=true;
+    });
+  }
+  for(var i=0;i<startDay;i++){
+    var pd=new Date(y,m,-(startDay-i-1));
+    html+='<div class="cal-day other-month"><div class="cal-num">'+pd.getDate()+'</div></div>';
+  }
+  for(var d=1;d<=last.getDate();d++){
+    var thisDate=new Date(y,m,d);thisDate.setHours(0,0,0,0);
+    var isToday=thisDate.getTime()===today.getTime();
+    var dow=thisDate.getDay();
+    var dateStr=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    var dots=dotData[dateStr]||{};
+    var dotsHtml='<div style="display:flex;justify-content:center;gap:2px;margin-top:2px">'
+      +(dots.todo?'<div class="cal-dot todo"></div>':'')
+      +(dots.hw?'<div class="cal-dot hw"></div>':'')
+      +(dots.note?'<div class="cal-dot note"></div>':'')
+      +'</div>';
+    var numClass='cal-num'+(dow===0?' sun':dow===6?' sat':'');
+    html+='<div class="cal-day'+(isToday?' today':'')+'" onclick="calSelectDate(this.dataset.date,this.dataset.role,this)" data-date="'+dateStr+'" data-role="'+role+'">'+'<div class="'+numClass+'">'+d+'</div>'+dotsHtml+'</div>';
+  }
+  var remain=(7-((startDay+last.getDate())%7))%7;
+  for(var i=1;i<=remain;i++){
+    html+='<div class="cal-day other-month"><div class="cal-num">'+i+'</div></div>';
+  }
+  grid.innerHTML=html;
+}
+
+async function calSelectDate(dateStr,role,el){
+  var grid=document.getElementById(role+'-cal-grid');
+  if(grid)grid.querySelectorAll('.cal-day.selected').forEach(function(e){e.classList.remove('selected');});
+  el.classList.add('selected');
+  var detail=document.getElementById(role+'-cal-detail');
+  var detailTitle=document.getElementById(role+'-cal-detail-title');
+  var detailBody=document.getElementById(role+'-cal-detail-body');
+  if(!detail)return;
+  detail.style.display='block';
+  var d=new Date(dateStr);
+  if(detailTitle)detailTitle.textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일 기록';
+  if(detailBody)detailBody.innerHTML='<div style="padding:12px;color:#aaa">로딩 중...</div>';
+  var sid=null;
+  if(role==='t')sid=currentStudentId;
+  else if(role==='s')sid=window._currentStudentRowId;
+  else if(role==='p'&&parentChildren&&parentChildren.length>0)sid=parentChildren[currentChildIndex||0].id;
+  if(!sid){
+    if(detailBody)detailBody.innerHTML='<div style="padding:12px 16px;color:#aaa;font-size:13px">'+(role==='t'?'할일/숙제 탭에서 학생을 선택하면 기록이 보여요':'기록이 없어요')+'</div>';
+    return;
+  }
+  var tr=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',dateStr);
+  var tasks=tr.data||[];
+  var todos=tasks.filter(function(t){return t.type==='todo';});
+  var hws=tasks.filter(function(t){return t.type==='hw';});
+  var nr=await getSB().from('growth_notes').select('*').eq('student_id',sid).eq('date',dateStr);
+  var notes=nr.data||[];
+  var html='';
+  if(todos.length){
+    html+='<div style="padding:8px 14px;background:#F8FDF9;font-size:12px;font-weight:700;color:#1B4D3E;border-bottom:1px solid #E8E8E8">📌 할일</div>';
+    html+=todos.map(function(t){return '<div style="padding:9px 14px;border-bottom:1px solid #F5F5F5;font-size:14px;display:flex;align-items:center;gap:8px"><span>'+(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜'))+'</span>'+t.title+'</div>';}).join('');
+  }
+  if(hws.length){
+    html+='<div style="padding:8px 14px;background:#F0F4FF;font-size:12px;font-weight:700;color:#1a56db;border-bottom:1px solid #E8E8E8">📚 숙제</div>';
+    html+=hws.map(function(t){return '<div style="padding:9px 14px;border-bottom:1px solid #F5F5F5;font-size:14px;display:flex;align-items:center;gap:8px"><span>'+(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜'))+'</span>'+t.title+'</div>';}).join('');
+  }
+  if(notes.length){
+    html+='<div style="padding:8px 14px;background:#FFF3F3;font-size:12px;font-weight:700;color:#E74C3C;border-bottom:1px solid #E8E8E8">📝 성장노트</div>';
+    html+=notes.map(function(n){return '<div style="padding:10px 14px;font-size:13px;color:#555;line-height:1.6">'+n.content.replace(/\n/g,'<br>').slice(0,300)+'</div>';}).join('');
+  }
+  if(!html)html='<div style="padding:20px;text-align:center;color:#aaa;font-size:13px">이날의 기록이 없어요</div>';
+  if(detailBody)detailBody.innerHTML=html;
+}
+
 // ===== 앱 시작 =====
 window.addEventListener('load',function(){
   // 로그인 화면 로고 설정
