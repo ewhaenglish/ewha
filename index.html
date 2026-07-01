@@ -247,6 +247,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
       <div class="date-sub" id="t-day"></div>
     </div>
+    <div class="section-hd">📢 공지사항</div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">공지사항</span><button class="btn-sm" onclick="openNoticeModal()">+ 작성</button></div>
+      <div class="card-body" id="t-notices"></div>
+    </div>
     <div class="section-hd">📅 달력</div>
     <div class="calendar-wrap">
       <div class="calendar-header">
@@ -259,11 +264,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div id="t-cal-detail" style="display:none" class="card" style="margin-bottom:12px">
       <div class="card-header"><span class="card-title" id="t-cal-detail-title">날짜 상세</span></div>
       <div class="card-body" id="t-cal-detail-body"></div>
-    </div>
-    <div class="section-hd">📢 공지사항</div>
-    <div class="card">
-      <div class="card-header"><span class="card-title">공지사항</span><button class="btn-sm" onclick="openNoticeModal()">+ 작성</button></div>
-      <div class="card-body" id="t-notices"></div>
     </div>
     <div class="section-hd">오늘 학생 현황</div>
     <div class="card">
@@ -543,6 +543,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
       <div class="date-sub">학습 현황</div>
     </div>
+div>
+    <div id="s-notice-area" style="margin-bottom:0"></div>
     <!-- 달력 -->
     <div class="calendar-wrap">
       <div class="calendar-header">
@@ -555,8 +557,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div id="s-cal-detail" style="display:none" class="card">
       <div class="card-header"><span class="card-title" id="s-cal-detail-title">날짜 상세</span></div>
       <div class="card-body" id="s-cal-detail-body"></div>
-    </div>
-    <div id="s-notice-area" style="margin-bottom:0"></div>
+    </
     <div class="card">
       <div class="card-header"><span class="card-title">🏫 등·하원</span></div>
       <div class="card-body" id="s-attend"></div>
@@ -715,6 +716,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div class="date-sub" id="p-child">학습 현황</div>
     </div>
     <div id="p-child-tabs" class="hidden" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"></div>
+    <div id="p-notice-area"></div>
     <!-- 달력 -->
     <div class="calendar-wrap">
       <div class="calendar-header">
@@ -728,7 +730,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div class="card-header"><span class="card-title" id="p-cal-detail-title">날짜 상세</span></div>
       <div class="card-body" id="p-cal-detail-body"></div>
     </div>
-    <div id="p-notice-area"></div>
     <div class="card">
       <div class="card-header"><span class="card-title">🏫 등·하원 현황</span></div>
       <div class="card-body" id="p-attend"></div>
