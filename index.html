@@ -260,6 +260,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <button class="calendar-nav" onclick="calMove(1,'t')">▶</button>
       </div>
       <div class="calendar-grid" id="t-cal-grid"></div>
+      <div style="padding:8px 12px;border-top:1px solid rgba(255,255,255,0.1);display:flex;gap:12px">
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#4ECBA5"></div><span style="font-size:11px;color:rgba(255,255,255,0.7)">할일</span></div>
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#6aa3f5"></div><span style="font-size:11px;color:rgba(255,255,255,0.7)">숙제</span></div>
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#ff8080"></div><span style="font-size:11px;color:rgba(255,255,255,0.7)">성장노트</span></div>
+      </div>
     </div>
     <div id="t-cal-detail" style="display:none" class="card" style="margin-bottom:12px">
       <div class="card-header"><span class="card-title" id="t-cal-detail-title">날짜 상세</span></div>
@@ -553,6 +558,11 @@ div>
         <button class="calendar-nav" onclick="calMove(1,'s')">▶</button>
       </div>
       <div class="calendar-grid" id="s-cal-grid"></div>
+      <div style="padding:8px 12px;border-top:1px solid rgba(255,255,255,0.1);display:flex;gap:12px">
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#4ECBA5"></div><span style="font-size:11px;color:rgba(255,255,255,0.7)">할일</span></div>
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#6aa3f5"></div><span style="font-size:11px;color:rgba(255,255,255,0.7)">숙제</span></div>
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#ff8080"></div><span style="font-size:11px;color:rgba(255,255,255,0.7)">성장노트</span></div>
+      </div>
     </div>
     <div id="s-cal-detail" style="display:none" class="card">
       <div class="card-header"><span class="card-title" id="s-cal-detail-title">날짜 상세</span></div>
@@ -725,6 +735,11 @@ div>
         <button class="calendar-nav" onclick="calMove(1,'p')">▶</button>
       </div>
       <div class="calendar-grid" id="p-cal-grid"></div>
+      <div style="padding:8px 12px;border-top:1px solid rgba(255,255,255,0.1);display:flex;gap:12px">
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#4ECBA5"></div><span style="font-size:11px;color:rgba(255,255,255,0.7)">할일</span></div>
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#6aa3f5"></div><span style="font-size:11px;color:rgba(255,255,255,0.7)">숙제</span></div>
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#ff8080"></div><span style="font-size:11px;color:rgba(255,255,255,0.7)">성장노트</span></div>
+      </div>
     </div>
     <div id="p-cal-detail" style="display:none" class="card">
       <div class="card-header"><span class="card-title" id="p-cal-detail-title">날짜 상세</span></div>
@@ -2533,6 +2548,52 @@ async function calSelectDate(dateStr,role,el){
   }
   if(!html)html='<div style="padding:20px;text-align:center;color:#aaa;font-size:13px">이날의 기록이 없어요</div>';
   if(detailBody)detailBody.innerHTML=html;
+}
+
+// ===== 학생 등하원 & 할일 =====
+async function checkIn(){
+  var sid=window._currentStudentRowId;
+  if(!sid){toast('학생 연동이 필요해요');return;}
+  var dup=await getSB().from('attendance').select('id').eq('student_id',sid).eq('date',todayStr()).maybeSingle();
+  if(dup.data){toast('이미 등원했어요');return;}
+  var now=new Date();
+  var kst=new Date(now.getTime()+9*60*60*1000);
+  var kstStr=kst.toISOString().replace('Z','+09:00');
+  var res=await getSB().from('attendance').insert({student_id:sid,date:todayStr(),check_in:kstStr});
+  if(res.error){toast('오류: '+res.error.message);return;}
+  await getSB().from('mileage').insert({student_id:sid,amount:5,reason:'출석'});
+  toast('✅ 등원 완료! +5점');
+  var cr=document.getElementById('btn-cancel-row');
+  if(cr)cr.style.display='block';
+  loadStudent();
+}
+
+async function checkOut(){
+  var sid=window._currentStudentRowId;if(!sid)return;
+  var now=new Date();
+  var kst=new Date(now.getTime()+9*60*60*1000);
+  var kstStr=kst.toISOString().replace('Z','+09:00');
+  var res=await getSB().from('attendance').update({check_out:kstStr}).eq('student_id',sid).eq('date',todayStr());
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('🏠 하원 완료!');loadStudent();
+}
+
+async function cancelAttend(){
+  var sid=window._currentStudentRowId;if(!sid)return;
+  if(!confirm('등원을 취소할까요?'))return;
+  var res=await getSB().from('attendance').delete().eq('student_id',sid).eq('date',todayStr());
+  if(res.error){toast('오류: '+res.error.message);return;}
+  var mRes=await getSB().from('mileage').select('id').eq('student_id',sid).eq('reason','출석').order('created_at',{ascending:false}).limit(1);
+  if(mRes.data&&mRes.data.length>0)await getSB().from('mileage').delete().eq('id',mRes.data[0].id);
+  var cr=document.getElementById('btn-cancel-row');
+  if(cr)cr.style.display='none';
+  toast('등원 취소됐어요');loadStudent();
+}
+
+async function studentToggle(id,isDone,studentId){
+  await getSB().from('tasks').update({student_done:!isDone,is_done:!isDone}).eq('id',id);
+  if(homeOffset!==0)await loadStudentByDate(homeOffset);
+  else await loadStudent();
 }
 
 // ===== 앱 시작 =====
