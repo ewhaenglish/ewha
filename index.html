@@ -569,9 +569,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div class="section-hd">🎯 이번 주 각오</div>
     <div class="card" id="weekly-goal-card">
       <div class="card-body" id="weekly-goal-body"></div>
-      <div class="add-row" id="weekly-goal-input-row" style="display:none">
-        <input type="text" class="add-input" id="s-weekly-goal" placeholder="이번 주 목표는? (+20점)">
-        <button class="add-btn" onclick="submitWeeklyGoal2()">제출</button>
+      <div id="weekly-goal-input-row" style="display:none;padding:10px 16px 14px">
+        <input type="text" class="add-input" id="s-weekly-goal" placeholder="이번 주 목표는? (+20점)" style="margin-bottom:8px;width:100%;box-sizing:border-box">
+        <div style="display:flex;gap:8px">
+          <button class="btn-primary" onclick="submitWeeklyGoal2(false)" style="flex:1">저장</button>
+        </div>
       </div>
     </div>
     <div class="section-hd">🏫 등·하원</div>
@@ -599,6 +601,17 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <button onclick="changeTasksDate(1)" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer">▶</button>
       </div>
       <div class="date-sub">할일 & 과제</div>
+    </div>
+    <div class="section-hd">🎯 이번 주 각오</div>
+    <div class="card">
+      <div class="card-body" id="st-weekly-body"></div>
+      <div id="st-weekly-input-row" style="display:none;padding:10px 16px 14px">
+        <input type="text" class="add-input" id="st-weekly-goal" placeholder="이번 주 목표는? (+20점)" style="margin-bottom:8px;width:100%;box-sizing:border-box">
+        <button class="btn-primary" onclick="submitWeeklyGoal2(false)">저장</button>
+      </div>
+      <div id="st-weekly-edit-row" style="display:none;padding:0 16px 14px">
+        <button onclick="editWeeklyGoal()" style="width:100%;padding:9px;background:#fff;color:#1B4D3E;border:1.5px solid #1B4D3E;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">✏️ 각오 수정</button>
+      </div>
     </div>
     <div class="section-hd">📌 오늘의 할일</div>
     <div class="card">
@@ -632,9 +645,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div class="section-hd">✍️ 오늘 수업을 마친 후 반성 한 줄</div>
     <div class="card">
       <div class="card-body" id="st-daily-body"></div>
-      <div class="add-row" id="st-daily-input-row">
-        <input type="text" class="add-input" id="st-daily-msg" placeholder="오늘 수업 어땠나요? (+5점)">
-        <button class="add-btn" onclick="submitDailyMsg()">제출</button>
+      <div id="st-daily-input-row" style="padding:10px 16px 14px">
+        <input type="text" class="add-input" id="st-daily-msg" placeholder="오늘 수업 어땠나요? (+5점)" style="margin-bottom:8px;width:100%;box-sizing:border-box">
+        <button class="btn-primary" onclick="submitDailyMsg()">저장</button>
+      </div>
+      <div id="st-daily-edit-row" style="display:none;padding:0 16px 14px">
+        <button onclick="editDailyMsg()" style="width:100%;padding:9px;background:#fff;color:#1B4D3E;border:1.5px solid #1B4D3E;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">✏️ 수정</button>
       </div>
     </div>
   </div>
@@ -683,7 +699,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div class="section-hd">🏆 이번 달 랭킹</div>
     <div class="card"><div class="card-body" id="s-mile-rank"></div></div>
     <div class="section-hd">내 포인트 내역</div>
-    <div class="card"><div class="card-body" id="s-mile-list"></div></div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #F5F5F5">
+        <button onclick="changeMileMonth(-1)" style="background:none;border:none;font-size:18px;cursor:pointer;color:#1B4D3E">◀</button>
+        <span id="s-mile-month-label" style="font-size:14px;font-weight:700;color:#1B4D3E"></span>
+        <button onclick="changeMileMonth(1)" style="background:none;border:none;font-size:18px;cursor:pointer;color:#1B4D3E">▶</button>
+      </div>
+      <div class="card-body" id="s-mile-list"></div>
+    </div>
   </div>
 
   <div class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
@@ -838,7 +861,7 @@ function setDate(){
   ['t-date','t-date2','t-date3','t-date4','s-date','p-date'].forEach(function(id){if($(id))$(id).textContent=str;});
   if($('t-day'))$('t-day').textContent=days[d.getDay()]+'요일';
 }
-function todayStr(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function todayStr(){var d=new Date(new Date().getTime()+9*60*60*1000);return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');}
 function openMod(title,html){$('mod-title').textContent=title;$('mod-body').innerHTML=html;$('modal-bg').classList.add('open');}
 function closeMod(){$('modal-bg').classList.remove('open');}
 
@@ -1253,11 +1276,11 @@ async function saveNote(){
   var dateLabel=(function(){var d=new Date(today);return (d.getMonth()+1)+'월 '+d.getDate()+'일';})();
   var vr3=await getSB().from('vocab_tests').select('*').eq('student_id',sid).eq('date',today).maybeSingle();
   var vtText=vr3.data?((vr3.data.score!=null?vr3.data.score+'/'+vr3.data.total+'점 ':'')+(vr3.data.result==='pass'?'✅통과':vr3.data.result==='retest'?'🔄재시험':'⚪없음')):'기록없음';
-  var content='📅 Date: '+dateLabel+'\n\n[단어 TEST]\n'+vtText+'\n\n[오늘의 수업]\n'+tasks.filter(function(t){return t.type==='todo';}).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')
+  var noteContent='📅 Date: '+dateLabel+'\n\n[단어 TEST]\n'+vtText+'\n\n[오늘의 수업]\n'+tasks.filter(function(t){return t.type==='todo';}).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')
     +'\n\n[오늘의 과제]\n'+tasks.filter(function(t){return t.type==='hw';}).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')
     +(goalContent?'\n\n[이번 주 각오]\n'+goalContent:'')
     +'\n\n[피드백]\n'+feedback;
-  var r=await getSB().from('growth_notes').insert({student_id:sid,content:content,date:today,ai_generated:false});
+  var r=await getSB().from('growth_notes').insert({student_id:sid,content:noteContent,date:today,ai_generated:false});
   if(r.error){toast('오류: '+r.error.message);return;}
   toast('✅ 성장노트 저장 완료!');
   $('note-feedback').value='';
@@ -1292,18 +1315,9 @@ async function loadStudentNotes(){
   $('s-note-list').innerHTML=notes.length?'<div style="font-size:12px;color:#aaa;font-weight:700;padding:8px 0 6px">📅 '+label+'의 성장노트</div>'+notes.map(function(n){return renderNoteCard(n,true);}).join(''):'<div style="padding:16px;color:#aaa;text-align:center">'+label+'의 성장노트가 없어요</div>';
 }
 async function loadMile(){
-  // 랭킹 로드
   await loadMileRanking('s-mile-rank');
-  var sRes=await getSB().from('students').select('id').eq('profile_id',currentProfile.id).single();
-  if(!sRes.data)return;
-  var sid=sRes.data.id;
-  var res=await getSB().from('mileage').select('*').eq('student_id',sid).order('created_at',{ascending:false});
-  var items=res.data||[];
-  var total=items.reduce(function(s,i){return s+i.amount;},0);
-  $('s-total-pts').textContent=total;$('s-won').textContent='= '+(total*10).toLocaleString()+'원 사용 가능';
-  $('s-mile-list').innerHTML=items.map(function(i){
-    return '<div style="display:flex;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #F5F5F5"><span style="font-size:13px">'+(i.reason||'마일리지')+'</span><span style="font-weight:700;color:#1B4D3E">+'+i.amount+'점</span></div>';
-  }).join('')||'<div style="padding:16px;color:#aaa;text-align:center">내역이 없어요</div>';
+  mileMonthOffset=0;
+  loadMileByMonth();
 }
 
 // ===== 이번 주 각오 (상단용) =====
@@ -1326,17 +1340,19 @@ async function loadWeeklyGoalTop(){
   }
 }
 async function submitWeeklyGoal2(){
-  var input=document.getElementById('s-weekly-goal')||$('weekly-goal-input2');
-  var text=input.value.trim();
-  if(!text||!window._currentStudentRowId){toast('각오를 입력해주세요');return;}
-  var d=new Date();var monday=new Date(d);monday.setDate(d.getDate()-d.getDay()+1);
-  var ms=monday.getFullYear()+'-'+String(monday.getMonth()+1).padStart(2,'0')+'-'+String(monday.getDate()).padStart(2,'0');
-  var dup=await getSB().from('weekly_goals').select('id').eq('student_id',window._currentStudentRowId).eq('week_start',ms).maybeSingle();
-  if(dup.data){toast('이번 주 각오는 이미 작성했어요!');return;}
-  var res=await getSB().from('weekly_goals').insert({student_id:window._currentStudentRowId,content:text,week_start:ms,teacher_confirmed:false});
+  var sid=window._currentStudentRowId;
+  if(!sid){toast('학생 연동이 필요해요');return;}
+  var inp=document.getElementById('st-weekly-goal')||document.getElementById('s-weekly-goal');
+  if(!inp||!inp.value.trim()){toast('각오를 입력해주세요');return;}
+  var text=inp.value.trim();
+  var d=new Date(new Date().getTime()+9*60*60*1000);
+  var monday=new Date(d);monday.setUTCDate(d.getUTCDate()-d.getUTCDay()+1);
+  var ms=monday.getUTCFullYear()+'-'+String(monday.getUTCMonth()+1).padStart(2,'0')+'-'+String(monday.getUTCDate()).padStart(2,'0');
+  var res=await getSB().from('weekly_goals').upsert({student_id:sid,content:text,week_start:ms,teacher_confirmed:false},{onConflict:'student_id,week_start'});
   if(res.error){toast('오류: '+res.error.message);return;}
-  input.value='';toast('✅ 이번 주 각오 제출! (+20점 대기)');
-  loadWeeklyGoalTop();
+  await getSB().from('mileage').insert({student_id:sid,amount:20,reason:'이번주 각오 작성'}).then(function(){}).catch(function(){});
+  inp.value='';toast('✅ 이번 주 각오 저장!');
+  loadWeeklyGoalTop();loadStudentTasks();
 }
 
 // ===== 오늘의 한 줄 & 이번 주 각오 =====
@@ -1363,12 +1379,16 @@ async function loadDailyMsg(){
 async function submitDailyMsg(){
   var sid=window._currentStudentRowId;
   if(!sid){toast('학생 연동이 필요해요');return;}
-  // 할일&과제 탭 입력란
-  var inp=document.getElementById('st-daily-msg');
-  // 없으면 홈 탭 입력란
-  if(!inp||!inp.value.trim())inp=document.getElementById('s-daily-msg-input');
+  var inp=document.getElementById('st-daily-msg')||document.getElementById('s-daily-msg-input');
   if(!inp||!inp.value.trim()){toast('내용을 입력해주세요');return;}
-  var res=await getSB().from('daily_messages').upsert({student_id:sid,date:todayStr(),content:inp.value.trim()},{onConflict:'student_id,date'});
+  // 기존 레코드 확인 후 insert or update
+  var existing=await getSB().from('daily_messages').select('id').eq('student_id',sid).eq('date',todayStr()).maybeSingle();
+  var res;
+  if(existing.data){
+    res=await getSB().from('daily_messages').update({content:inp.value.trim()}).eq('id',existing.data.id);
+  } else {
+    res=await getSB().from('daily_messages').insert({student_id:sid,date:todayStr(),content:inp.value.trim()});
+  }
   if(res.error){toast('오류: '+res.error.message);return;}
   await getSB().from('mileage').insert({student_id:sid,amount:5,reason:'오늘의 한줄 작성'});
   // 선생님에게 알림
@@ -2580,8 +2600,15 @@ async function calSelectDate(dateStr,role,el){
 async function checkIn(){
   var sid=window._currentStudentRowId;
   if(!sid){toast('학생 연동이 필요해요');return;}
-  var dup=await getSB().from('attendance').select('id').eq('student_id',sid).eq('date',todayStr()).maybeSingle();
-  if(dup.data){toast('이미 등원했어요');return;}
+  var dup=await getSB().from('attendance').select('*').eq('student_id',sid).eq('date',todayStr()).maybeSingle();
+  if(dup.data&&dup.data.check_in){
+    // 이미 등원 - 취소 확인
+    if(!confirm('등원을 취소할까요?'))return;
+    await getSB().from('attendance').delete().eq('student_id',sid).eq('date',todayStr());
+    var mRes=await getSB().from('mileage').select('id').eq('student_id',sid).eq('reason','출석').order('created_at',{ascending:false}).limit(1);
+    if(mRes.data&&mRes.data.length>0)await getSB().from('mileage').delete().eq('id',mRes.data[0].id);
+    toast('등원 취소됐어요');loadStudent();return;
+  }
   var now=new Date();
   var kst=new Date(now.getTime()+9*60*60*1000);
   var kstStr=kst.toISOString().replace('Z','+09:00');
@@ -2596,6 +2623,12 @@ async function checkIn(){
 
 async function checkOut(){
   var sid=window._currentStudentRowId;if(!sid)return;
+  var att=await getSB().from('attendance').select('*').eq('student_id',sid).eq('date',todayStr()).maybeSingle();
+  if(att.data&&att.data.check_out){
+    if(!confirm('하원을 취소할까요?'))return;
+    await getSB().from('attendance').update({check_out:null}).eq('student_id',sid).eq('date',todayStr());
+    toast('하원 취소됐어요');loadStudent();return;
+  }
   var now=new Date();
   var kst=new Date(now.getTime()+9*60*60*1000);
   var kstStr=kst.toISOString().replace('Z','+09:00');
@@ -2722,6 +2755,23 @@ async function loadStudentTasks(){
   if(hc)hc.textContent=hws.filter(function(t){return t.student_done;}).length+'/'+hws.length;
   var hl=document.getElementById('st-hw-list');
   if(hl)hl.innerHTML=hws.map(th).join('')||'<div style="padding:12px 16px;color:#aaa">숙제가 없어요</div>';
+  // 이번주 각오
+  var d3=new Date(new Date().getTime()+9*60*60*1000);
+  var mon=new Date(d3);mon.setUTCDate(d3.getUTCDate()-d3.getUTCDay()+1);
+  var monStr=mon.getUTCFullYear()+'-'+String(mon.getUTCMonth()+1).padStart(2,'0')+'-'+String(mon.getUTCDate()).padStart(2,'0');
+  var wgR=await getSB().from('weekly_goals').select('*').eq('student_id',sid).eq('week_start',monStr).maybeSingle();
+  var swb=document.getElementById('st-weekly-body');
+  var swi=document.getElementById('st-weekly-input-row');
+  var swe=document.getElementById('st-weekly-edit-row');
+  if(wgR.data){
+    if(swb)swb.innerHTML='<div style="padding:12px 16px;font-size:14px;color:#333">'+wgR.data.content+'</div>';
+    if(swi)swi.style.display='none';
+    if(swe)swe.style.display='block';
+  } else {
+    if(swb)swb.innerHTML='';
+    if(swi)swi.style.display='block';
+    if(swe)swe.style.display='none';
+  }
   // 단어 TEST
   var vr=await getSB().from('vocab_tests').select('*').eq('student_id',sid).eq('date',dateStr).maybeSingle();
   var vResult=document.getElementById('st-vocab-result');
@@ -2746,9 +2796,13 @@ async function loadStudentTasks(){
   if(dmRes.data){
     if(db)db.innerHTML='<div style="padding:12px 16px;font-size:14px;color:#333">'+dmRes.data.content+'</div>';
     if(di)di.style.display='none';
+    var de2=document.getElementById('st-daily-edit-row');
+    if(de2)de2.style.display=isToday?'block':'none';
   } else {
     if(db)db.innerHTML='';
-    if(di)di.style.display=isToday?'flex':'none';
+    if(di)di.style.display=isToday?'block':'none';
+    var de2=document.getElementById('st-daily-edit-row');
+    if(de2)de2.style.display='none';
   }
 }
 
@@ -2798,6 +2852,71 @@ async function submitDailyMsg(){
   toast('✅ 제출 완료! +5점');
   inp.value='';
   loadStudentTasks();
+}
+
+// ===== 각오/한줄 수정 & 마일리지 월별 =====
+var mileMonthOffset = 0;
+
+function changeMileMonth(dir){
+  mileMonthOffset += dir;
+  loadMileByMonth();
+}
+
+async function loadMileByMonth(){
+  var sRes=await getSB().from('students').select('id').eq('profile_id',currentProfile.id).single();
+  if(!sRes.data)return;
+  var sid=sRes.data.id;
+  var now=new Date();
+  var y=now.getFullYear(), m=now.getMonth()+mileMonthOffset;
+  while(m<0){m+=12;y--;} while(m>11){m-=12;y++;}
+  var ym=y+'-'+String(m+1).padStart(2,'0');
+  var label=y+'년 '+(m+1)+'월';
+  var el=document.getElementById('s-mile-month-label');
+  if(el)el.textContent=label;
+  var res=await getSB().from('mileage').select('*').eq('student_id',sid)
+    .gte('created_at',ym+'-01').lte('created_at',ym+'-31')
+    .order('created_at',{ascending:false});
+  var items=res.data||[];
+  var total=items.reduce(function(s,i){return s+i.amount;},0);
+  var sp=document.getElementById('s-total-pts');
+  if(sp)sp.textContent=total;
+  var sw=document.getElementById('s-won');
+  var displayTotal=total>0?total:0;
+  if(sw)sw.textContent='= '+displayTotal.toLocaleString()+'원 사용 가능';
+  var list=document.getElementById('s-mile-list');
+  if(list)list.innerHTML=items.map(function(i){
+    var d=new Date(i.created_at);
+    var dateLabel=(d.getMonth()+1)+'/'+d.getDate();
+    var plus=i.amount>0;
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #F5F5F5">'
+      +'<div><div style="font-size:14px">'+(i.reason||'마일리지')+'</div>'
+      +'<div style="font-size:11px;color:#aaa;margin-top:2px">'+dateLabel+'</div></div>'
+      +'<span style="font-weight:700;color:'+(plus?'#1B4D3E':'#E74C3C')+'">'+(plus?'+':'')+i.amount+'점</span>'
+      +'</div>';
+  }).join('')||'<div style="padding:16px;color:#aaa;text-align:center">이달 내역이 없어요</div>';
+}
+
+function editWeeklyGoal(){
+  var body=document.getElementById('st-weekly-body');
+  var inputRow=document.getElementById('st-weekly-input-row');
+  var editRow=document.getElementById('st-weekly-edit-row');
+  var inp=document.getElementById('st-weekly-goal');
+  // 현재 내용 가져오기
+  var current=body?body.querySelector('div'):null;
+  if(current&&inp)inp.value=current.textContent.trim();
+  if(inputRow)inputRow.style.display='block';
+  if(editRow)editRow.style.display='none';
+}
+
+function editDailyMsg(){
+  var body=document.getElementById('st-daily-body');
+  var inputRow=document.getElementById('st-daily-input-row');
+  var editRow=document.getElementById('st-daily-edit-row');
+  var inp=document.getElementById('st-daily-msg');
+  var current=body?body.querySelector('div'):null;
+  if(current&&inp)inp.value=current.textContent.trim();
+  if(inputRow)inputRow.style.display='block';
+  if(editRow)editRow.style.display='none';
 }
 
 // ===== 앱 시작 =====
