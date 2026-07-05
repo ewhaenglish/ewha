@@ -548,9 +548,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
       <div class="date-sub">학습 현황</div>
     </div>
-div>
     <div id="s-notice-area" style="margin-bottom:0"></div>
-    <!-- 달력 -->
     <div class="calendar-wrap">
       <div class="calendar-header">
         <button class="calendar-nav" onclick="calMove(-1,'s')">◀</button>
@@ -567,68 +565,28 @@ div>
     <div id="s-cal-detail" style="display:none" class="card">
       <div class="card-header"><span class="card-title" id="s-cal-detail-title">날짜 상세</span></div>
       <div class="card-body" id="s-cal-detail-body"></div>
-    </
+    </div>
+    <div class="section-hd">🎯 이번 주 각오</div>
+    <div class="card" id="weekly-goal-card">
+      <div class="card-body" id="weekly-goal-body"></div>
+      <div class="add-row" id="weekly-goal-input-row" style="display:none">
+        <input type="text" class="add-input" id="s-weekly-goal" placeholder="이번 주 목표는? (+20점)">
+        <button class="add-btn" onclick="submitWeeklyGoal2()">제출</button>
+      </div>
+    </div>
+    <div class="section-hd">🏫 등·하원</div>
     <div class="card">
-      <div class="card-header"><span class="card-title">🏫 등·하원</span></div>
       <div class="card-body" id="s-attend"></div>
       <div class="attend-btns">
         <button class="attend-btn in" id="btn-in" onclick="checkIn()">등원 ✅</button>
         <button class="attend-btn out" id="btn-out" onclick="checkOut()" disabled>하원 🏠</button>
       </div>
-      <div id="btn-cancel-row" style="display:none;padding:0 16px 14px;display:none">
+      <div id="btn-cancel-row" style="display:none;padding:0 16px 14px">
         <button onclick="cancelAttend()" style="width:100%;padding:10px;background:#fff;color:#E74C3C;border:1.5px solid #E74C3C;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">등원 취소</button>
       </div>
     </div>
-    <div class="section-hd" id="weekly-goal-section">🎯 이번 주 각오</div>
-    <div class="card" id="weekly-goal-card">
-      <div class="card-body" id="weekly-goal-body2"></div>
-      <div class="add-row" id="weekly-goal-input-row2">
-        <input type="text" class="add-input" id="weekly-goal-input2" placeholder="이번 주 각오를 입력해주세요... (+20점)">
-        <button class="add-btn" onclick="submitWeeklyGoal2()">제출</button>
-      </div>
-    </div>
-    <!-- 단어 TEST -->
-    <div class="section-hd">📝 단어 TEST</div>
-    <div class="card">
-      <div class="card-body" id="s-vocab-test"><div style="padding:12px 16px;color:#aaa;font-size:13px">선생님이 입력할 예정이에요</div></div>
-      <div id="s-vocab-input-row" style="display:none;padding:10px 16px 14px;border-top:1px solid #F5F5F5">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
-          <input type="number" class="score-input" id="s-vocab-score" placeholder="점수" min="0">
-          <span style="color:#aaa">/</span>
-          <input type="number" class="score-input" id="s-vocab-total" placeholder="만점" min="0">
-          <span style="font-size:13px;color:#666">점</span>
-        </div>
-        <div style="display:flex;gap:6px;margin-bottom:10px">
-          <button class="result-btn" id="s-rb-pass" onclick="setStudentVocabResult('pass')">통과</button>
-          <button class="result-btn" id="s-rb-retest" onclick="setStudentVocabResult('retest')">재시</button>
-          <button class="result-btn" id="s-rb-none" onclick="setStudentVocabResult('none')">없음</button>
-        </div>
-        <button class="btn-primary" onclick="submitStudentVocabTest()">제출하기</button>
-      </div>
-    </div>
-    <div class="section-hd">오늘의 할일</div>
-    <div class="card">
-      <div class="card-header"><span class="card-title">📌 할일 현황</span><span class="card-count" id="s-todo-cnt">-</span></div>
-      <div class="card-body" id="s-todo-list"></div>
-      <div class="progress-wrap">
-        <div class="progress-bg"><div class="progress-fill" id="s-todo-bar" style="width:0%"></div></div>
-        <div class="progress-label"><span>진행률</span><span id="s-todo-pct">0%</span></div>
-      </div>
-    </div>
-    <div class="section-hd">오늘 숙제</div>
-    <div class="card">
-      <div class="card-header"><span class="card-title">📚 숙제 현황</span><span class="card-count" id="s-hw-cnt">-</span></div>
-      <div class="card-body" id="s-hw-list"></div>
-    </div>
-    <div class="section-hd">✍️ 오늘의 한 줄</div>
-    <div class="card">
-      <div class="card-body" id="daily-msg-body"></div>
-      <div class="add-row" id="daily-msg-input-row">
-        <input type="text" class="add-input" id="daily-msg-input" placeholder="선생님께 한 줄 남기기... (+5점)">
-        <button class="add-btn" onclick="submitDailyMsg()">제출</button>
-      </div>
-    </div>
   </div>
+
   <!-- 할일&과제 탭 -->
   <div id="s-tasks" class="s-tab content">
     <div class="date-banner" style="flex-direction:column;align-items:center;padding:16px">
@@ -642,10 +600,16 @@ div>
       </div>
       <div class="date-sub">할일 & 과제</div>
     </div>
+    <div class="section-hd">📌 오늘의 할일</div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">진행률</span><span class="card-count" id="st-todo-cnt">0/0</span></div>
+      <div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" id="st-todo-bar" style="width:0%"></div></div><div class="progress-label"><span></span><span id="st-todo-pct">0%</span></div></div>
+      <div class="card-body" id="st-todo-list"><div style="padding:12px 16px;color:#aaa;font-size:14px">할일이 없어요</div></div>
+    </div>
     <div class="section-hd">📝 단어 TEST</div>
     <div class="card">
-      <div class="card-body" id="st-vocab-result"></div>
-      <div id="st-vocab-input" style="display:none;padding:12px 16px 14px;border-top:1px solid #F5F5F5">
+      <div class="card-body" id="st-vocab-result"><div style="padding:12px 16px;color:#aaa;font-size:14px">오늘 단어 TEST 결과를 입력해주세요</div></div>
+      <div id="st-vocab-input" style="padding:12px 16px 14px;border-top:1px solid #F5F5F5">
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
           <input type="number" class="score-input" id="st-score" placeholder="점수" min="0" style="width:70px">
           <span style="color:#aaa">/</span>
@@ -660,16 +624,18 @@ div>
         <button class="btn-primary" onclick="submitTasksVocabTest()">제출하기</button>
       </div>
     </div>
-    <div class="section-hd">📌 오늘의 할일</div>
-    <div class="card">
-      <div class="card-header"><span class="card-title">진행률</span><span class="card-count" id="st-todo-cnt">0/0</span></div>
-      <div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" id="st-todo-bar" style="width:0%"></div></div><div class="progress-label"><span></span><span id="st-todo-pct">0%</span></div></div>
-      <div class="card-body" id="st-todo-list"></div>
-    </div>
-    <div class="section-hd">📚 숙제</div>
+    <div class="section-hd">📚 오늘의 숙제</div>
     <div class="card">
       <div class="card-header"><span class="card-title">완료 현황</span><span class="card-count" id="st-hw-cnt">0/0</span></div>
-      <div class="card-body" id="st-hw-list"></div>
+      <div class="card-body" id="st-hw-list"><div style="padding:12px 16px;color:#aaa;font-size:14px">숙제가 없어요</div></div>
+    </div>
+    <div class="section-hd">✍️ 오늘 수업을 마친 후 반성 한 줄</div>
+    <div class="card">
+      <div class="card-body" id="st-daily-body"></div>
+      <div class="add-row" id="st-daily-input-row">
+        <input type="text" class="add-input" id="st-daily-msg" placeholder="오늘 수업 어땠나요? (+5점)">
+        <button class="add-btn" onclick="submitDailyMsg()">제출</button>
+      </div>
     </div>
   </div>
 
@@ -1360,7 +1326,7 @@ async function loadWeeklyGoalTop(){
   }
 }
 async function submitWeeklyGoal2(){
-  var input=$('weekly-goal-input2');
+  var input=document.getElementById('s-weekly-goal')||$('weekly-goal-input2');
   var text=input.value.trim();
   if(!text||!window._currentStudentRowId){toast('각오를 입력해주세요');return;}
   var d=new Date();var monday=new Date(d);monday.setDate(d.getDate()-d.getDay()+1);
@@ -1395,17 +1361,27 @@ async function loadDailyMsg(){
 }
 
 async function submitDailyMsg(){
-  var input=$('daily-msg-input');
-  var text=input.value.trim();
-  if(!text||!window._currentStudentRowId){toast('내용을 입력해주세요');return;}
-  var today=todayStr();
-  var dup=await getSB().from('daily_messages').select('id').eq('student_id',window._currentStudentRowId).eq('date',today).maybeSingle();
-  if(dup.data){toast('오늘은 이미 한 줄을 남겼어요!');return;}
-  var res=await getSB().from('daily_messages').insert({student_id:window._currentStudentRowId,content:text,date:today,teacher_confirmed:false});
+  var sid=window._currentStudentRowId;
+  if(!sid){toast('학생 연동이 필요해요');return;}
+  // 할일&과제 탭 입력란
+  var inp=document.getElementById('st-daily-msg');
+  // 없으면 홈 탭 입력란
+  if(!inp||!inp.value.trim())inp=document.getElementById('s-daily-msg-input');
+  if(!inp||!inp.value.trim()){toast('내용을 입력해주세요');return;}
+  var res=await getSB().from('daily_messages').upsert({student_id:sid,date:todayStr(),content:inp.value.trim()},{onConflict:'student_id,date'});
   if(res.error){toast('오류: '+res.error.message);return;}
-  input.value='';
-  toast('✅ 전송 완료!');
-  loadDailyMsg();
+  await getSB().from('mileage').insert({student_id:sid,amount:5,reason:'오늘의 한줄 작성'});
+  // 선생님에게 알림
+  var s=await getSB().from('students').select('profile_id,name').eq('id',sid).single();
+  if(s.data){
+    var teacherRes=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
+    if(teacherRes.data&&teacherRes.data.length>0){
+      await sendNotification(teacherRes.data[0].id,'✍️ '+s.data.name+' 학생이 오늘의 반성 한 줄을 작성했어요!','daily');
+    }
+  }
+  toast('✅ 제출 완료! +5점');
+  inp.value='';
+  loadStudentTasks();
 }
 
 async function loadWeeklyGoal(){
@@ -2654,73 +2630,174 @@ async function studentToggle(id,isDone,studentId){
 }
 
 async function loadStudent(){
-  var sid=currentProfile.id;
-  var sRes=await getSB().from('students').select('id').eq('profile_id',sid).single();
-  var studentRow=sRes.data;
-  var studentId=studentRow?studentRow.id:null;
+  var sRes=await getSB().from('students').select('id').eq('profile_id',currentProfile.id).single();
+  var studentId=sRes.data?sRes.data.id:null;
   var today=todayStr();
   if(studentId){
     window._currentStudentRowId=studentId;
+    // 날짜 배너
+    var sd=document.getElementById('s-date');
+    var dl=document.getElementById('s-date-label');
+    var now=new Date();
+    if(sd)sd.textContent=now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
+    if(dl)dl.textContent='오늘';
     // 출결
     var aRes=await getSB().from('attendance').select('*').eq('student_id',studentId).eq('date',today).maybeSingle();
     var att=aRes.data;
-    var checkedIn=!!(att&&att.check_in);
-    var checkedOut=!!(att&&att.check_out);
-    var bi=$('btn-in');var bo=$('btn-out');
-    if(bi)bi.disabled=checkedIn;
-    if(bo)bo.disabled=!checkedIn||checkedOut;
+    var ci=!!(att&&att.check_in), co=!!(att&&att.check_out);
+    var bi=document.getElementById('btn-in'), bo=document.getElementById('btn-out');
+    if(bi)bi.disabled=ci; if(bo)bo.disabled=!ci||co;
     var cr=document.getElementById('btn-cancel-row');
-    if(cr)cr.style.display=checkedIn&&!checkedOut?'block':'none';
-    var sa=$('s-attend');
+    if(cr)cr.style.display=ci&&!co?'block':'none';
+    var sa=document.getElementById('s-attend');
     if(sa)sa.innerHTML=att?'<div style="padding:10px 16px;font-size:15px">'+(att.check_in?'✅ 등원: '+att.check_in.slice(11,16):'')+( att.check_out?'<br>🏠 하원: '+att.check_out.slice(11,16):'')+'</div>':'';
-    // 단어 TEST
-    var vr=await getSB().from('vocab_tests').select('*').eq('student_id',studentId).eq('date',today).maybeSingle();
-    var svt=document.getElementById('s-vocab-test');
-    if(svt){
-      if(vr.data){var vt=vr.data;svt.innerHTML='<div style="padding:12px 16px;font-size:14px">'+(vt.score!=null?'<span style="font-weight:700;font-size:18px;color:#1B4D3E">'+vt.score+'/'+vt.total+'점</span> ':'')+( vt.result==='pass'?'✅ 통과':vt.result==='retest'?'🔄 재시험':'⚪ 없음')+(vt.teacher_confirmed?'<span style="float:right;font-size:11px;color:#1B4D3E">✅ 확인</span>':'<span style="float:right;font-size:11px;color:#aaa">확인 대기</span>')+'</div>';}
-      else{svt.innerHTML='<div style="padding:12px 16px;color:#aaa;font-size:13px">오늘 단어 TEST 결과를 입력해주세요</div>';}
-    }
-    var sinput=document.getElementById('s-vocab-input-row');
-    if(sinput)sinput.style.display=vr.data?'none':'block';
-    // 할일/숙제
-    var tRes=await getSB().from('tasks').select('*').eq('student_id',studentId).eq('date',today);
-    var tasks=tRes.data||[];
-    var todos=tasks.filter(function(t){return t.type==='todo';});
-    var hws=tasks.filter(function(t){return t.type==='hw';});
-    var doneCount=todos.filter(function(t){return t.student_done;}).length;
-    var pct=todos.length?Math.round(doneCount/todos.length*100):0;
-    var sc=$('s-todo-cnt');var sb=$('s-todo-bar');var sp=$('s-todo-pct');
-    if(sc)sc.textContent=doneCount+'/'+todos.length;
-    if(sb)sb.style.width=pct+'%';
-    if(sp)sp.textContent=pct+'%';
-    function staskHtml(t){
-      var confirmed=t.teacher_confirmed,done=t.student_done;
-      return '<div class="task-item'+(confirmed?' done':'')+'" onclick="studentToggle(\''+t.id+'\','+done+',\''+studentId+'\')" style="cursor:pointer">'
-        +'<div class="task-check" style="'+(done&&!confirmed?'border-color:#FFC107;color:#FFC107':'')+'">'+(confirmed?'✓':(done?'⏳':''))+'</div>'
-        +'<span class="task-text">'+t.title+(confirmed?' <span style="font-size:10px;color:#1B4D3E">✅확인됨</span>':(done?' <span style="font-size:10px;color:#FFC107">확인대기</span>':''))+'</span></div>';
-    }
-    var stl=$('s-todo-list');if(stl)stl.innerHTML=todos.map(staskHtml).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
-    var shc=$('s-hw-cnt');if(shc)shc.textContent=hws.filter(function(t){return t.student_done;}).length+'/'+hws.length;
-    var shl=$('s-hw-list');
-    if(shl)shl.innerHTML=hws.map(function(t){
-      var confirmed=t.teacher_confirmed,done=t.student_done;
-      return '<div class="task-item'+(confirmed?' done':'')+'" onclick="studentToggle(\''+t.id+'\','+done+',\''+studentId+'\')" data-id="'+t.id+'">'
-        +'<div class="task-check" style="'+(done&&!confirmed?'border-color:#FFC107;color:#FFC107':'')+'">'+( confirmed?'✓':(done?'⏳':''))+'</div>'
-        +'<span class="task-text">'+t.title+(t.due_date?' <span style="font-size:10px;color:#aaa">기한:'+t.due_date+'</span>':'')+( confirmed?' <span style="font-size:10px;color:#1B4D3E">✅확인됨</span>':(done?' <span style="font-size:10px;color:#FFC107">확인대기</span>':''))+'</span></div>';
-    }).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
-    // 기타 로드
-    loadDailyMsg();
+    // 이번 주 각오
     loadWeeklyGoalTop();
+    // 공지사항
     loadNotices();
-    checkNotifications();
-    loadStudentVocabTest();
+    // 달력
     renderCalendar('s');
+    // 반복할일 자동 적용
     applyRecurringTasks(studentId);
+    // 할일&과제 탭 로드
+    loadStudentTasks();
   } else {
-    var stl=$('s-todo-list');
-    if(stl)stl.innerHTML='<div style="padding:12px 16px;color:#aaa;font-size:13px">선생님께 초대 코드를 받아 연동해주세요</div>';
-    var shl=$('s-hw-list');if(shl)shl.innerHTML='';
+    window._currentStudentRowId=null;
+    var stl=document.getElementById('st-todo-list');
+    if(stl)stl.innerHTML='<div style="padding:12px 16px;color:#aaa">선생님께 초대 코드를 받아 연동해주세요</div>';
   }
+}
+
+// ===== 학생 할일&과제 탭 =====
+var tasksDateOffset=0;
+var tasksVocabResult=null;
+
+function changeTasksDate(dir){
+  tasksDateOffset+=dir;
+  loadStudentTasks();
+}
+
+async function loadStudentTasks(){
+  var sid=window._currentStudentRowId;
+  if(!sid){
+    var sRes=await getSB().from('students').select('id').eq('profile_id',currentProfile.id).single();
+    if(sRes.data)sid=sRes.data.id; else return;
+    window._currentStudentRowId=sid;
+  }
+  var d=new Date(); d.setDate(d.getDate()+tasksDateOffset);
+  var dateStr=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  var isToday=tasksDateOffset===0;
+  // 날짜 표시
+  var de=document.getElementById('s-tasks-date');
+  var le=document.getElementById('s-tasks-label');
+  if(de)de.textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일';
+  if(le)le.textContent=isToday?'오늘':tasksDateOffset===-1?'어제':tasksDateOffset===1?'내일':(d.getMonth()+1)+'월'+d.getDate()+'일';
+  // 할일/숙제
+  var tRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',dateStr);
+  var tasks=tRes.data||[];
+  var todos=tasks.filter(function(t){return t.type==='todo';});
+  var hws=tasks.filter(function(t){return t.type==='hw';});
+  var dc=todos.filter(function(t){return t.student_done;}).length;
+  var pct=todos.length?Math.round(dc/todos.length*100):0;
+  var tc=document.getElementById('st-todo-cnt');
+  var tb=document.getElementById('st-todo-bar');
+  var tp=document.getElementById('st-todo-pct');
+  if(tc)tc.textContent=dc+'/'+todos.length;
+  if(tb)tb.style.width=pct+'%';
+  if(tp)tp.textContent=pct+'%';
+  function th(t){
+    var c=t.teacher_confirmed,d2=t.student_done;
+    var div=document.createElement('div');
+    div.className='task-item'+(c?' done':'');
+    div.style.cursor='pointer';
+    div.dataset.id=t.id;div.dataset.done=d2;div.dataset.sid=sid;
+    div.onclick=function(){stToggle(this.dataset.id,this.dataset.done==='true',this.dataset.sid);};
+    div.innerHTML='<div class="task-check" style="'+(d2&&!c?'border-color:#FFC107;color:#FFC107':'')+'">'+(c?'✓':(d2?'⏳':''))+'</div>'
+      +'<span class="task-text">'+t.title+(c?' <span style="font-size:11px;color:#1B4D3E">✅확인됨</span>':(d2?' <span style="font-size:11px;color:#FFC107">확인대기</span>':''))+'</span>';
+    return div.outerHTML;
+  }
+  var tl=document.getElementById('st-todo-list');
+  if(tl)tl.innerHTML=todos.map(th).join('')||'<div style="padding:12px 16px;color:#aaa">할일이 없어요</div>';
+  var hc=document.getElementById('st-hw-cnt');
+  if(hc)hc.textContent=hws.filter(function(t){return t.student_done;}).length+'/'+hws.length;
+  var hl=document.getElementById('st-hw-list');
+  if(hl)hl.innerHTML=hws.map(th).join('')||'<div style="padding:12px 16px;color:#aaa">숙제가 없어요</div>';
+  // 단어 TEST
+  var vr=await getSB().from('vocab_tests').select('*').eq('student_id',sid).eq('date',dateStr).maybeSingle();
+  var vResult=document.getElementById('st-vocab-result');
+  var vInput=document.getElementById('st-vocab-input');
+  if(vr.data){
+    var vt=vr.data;
+    var rt=vt.result==='pass'?'✅ 통과':vt.result==='retest'?'🔄 재시험':'⚪ 없음';
+    if(vResult)vResult.innerHTML='<div style="padding:12px 16px;font-size:15px">'
+      +(vt.score!=null?'<span style="font-weight:700;font-size:20px;color:#1B4D3E">'+vt.score+'/'+vt.total+'점</span> ':'')
+      +rt+(vt.teacher_confirmed?'<span style="float:right;font-size:12px;color:#1B4D3E">✅ 확인</span>':'<span style="float:right;font-size:12px;color:#aaa">확인 대기</span>')+'</div>';
+    if(vInput)vInput.style.display='none';
+  } else {
+    if(vResult)vResult.innerHTML='<div style="padding:12px 16px;color:#aaa;font-size:14px">'+(isToday?'결과를 입력해주세요':'결과 없음')+'</div>';
+    if(vInput)vInput.style.display=isToday?'block':'none';
+    tasksVocabResult=null;
+    ['pass','retest','none'].forEach(function(x){var b=document.getElementById('st-rb-'+x);if(b)b.className='result-btn';});
+  }
+  // 오늘 수업 반성 한 줄
+  var dmRes=await getSB().from('daily_messages').select('*').eq('student_id',sid).eq('date',dateStr).maybeSingle();
+  var db=document.getElementById('st-daily-body');
+  var di=document.getElementById('st-daily-input-row');
+  if(dmRes.data){
+    if(db)db.innerHTML='<div style="padding:12px 16px;font-size:14px;color:#333">'+dmRes.data.content+'</div>';
+    if(di)di.style.display='none';
+  } else {
+    if(db)db.innerHTML='';
+    if(di)di.style.display=isToday?'flex':'none';
+  }
+}
+
+async function stToggle(id,isDone,studentId){
+  await getSB().from('tasks').update({student_done:!isDone}).eq('id',id);
+  loadStudentTasks();
+}
+
+function setTasksVocabResult(r){
+  tasksVocabResult=r;
+  ['pass','retest','none'].forEach(function(x){
+    var b=document.getElementById('st-rb-'+x);
+    if(b)b.className='result-btn'+(r===x?' '+r:'');
+  });
+}
+
+async function submitTasksVocabTest(){
+  if(!window._currentStudentRowId){toast('학생 연동이 필요해요');return;}
+  if(!tasksVocabResult){toast('결과를 선택해주세요');return;}
+  var score=document.getElementById('st-score').value;
+  var total=document.getElementById('st-total').value;
+  var data={student_id:window._currentStudentRowId,date:todayStr(),
+    score:score?parseInt(score):null,total:total?parseInt(total):null,
+    result:tasksVocabResult};
+  var res=await getSB().from('vocab_tests').upsert(data,{onConflict:'student_id,date'});
+  if(res.error){toast('오류: '+res.error.message);return;}
+  if(tasksVocabResult==='retest')await getSB().from('mileage').insert({student_id:window._currentStudentRowId,amount:-5,reason:'단어 재시험'});
+  // 선생님에게 알림
+  // 선생님에게 알림
+  var sv=await getSB().from('students').select('profile_id,name').eq('id',window._currentStudentRowId).single();
+  if(sv.data){
+    var tr2=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
+    if(tr2.data&&tr2.data.length>0)await sendNotification(tr2.data[0].id,'📝 '+sv.data.name+' 학생이 단어 TEST를 제출했어요! 확인해주세요','vocab');
+  }
+  toast('✅ 단어 TEST 제출 완료!');
+  loadStudentTasks();
+}
+
+async function submitDailyMsg(){
+  var sid=window._currentStudentRowId;
+  if(!sid){toast('학생 연동이 필요해요');return;}
+  var inp=document.getElementById('st-daily-msg')||document.getElementById('s-daily-msg-input');
+  if(!inp||!inp.value.trim()){toast('내용을 입력해주세요');return;}
+  var res=await getSB().from('daily_messages').upsert({student_id:sid,date:todayStr(),content:inp.value.trim()},{onConflict:'student_id,date'});
+  if(res.error){toast('오류: '+res.error.message);return;}
+  await getSB().from('mileage').insert({student_id:sid,amount:5,reason:'오늘의 한줄 작성'});
+  toast('✅ 제출 완료! +5점');
+  inp.value='';
+  loadStudentTasks();
 }
 
 // ===== 앱 시작 =====
