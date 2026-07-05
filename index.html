@@ -422,7 +422,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         </div>
       </div>
     </div>
-    <div class="section-hd">최근 성장노트</div>
     <div id="note-list"></div>
   </div>
 
@@ -834,9 +833,9 @@ var repChartInstance=null,repHwChartInstance=null;
 var taskDateOffset=0; // 오늘=0, 어제=-1, 내일=+1
 
 function getOffsetDate(offset){
-  var d=new Date();
-  d.setDate(d.getDate()+offset);
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  var d=new Date(new Date().getTime()+9*60*60*1000);
+  d.setUTCDate(d.getUTCDate()+offset);
+  return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
 function changeTaskDate(dir){
   taskDateOffset+=dir;
@@ -1240,7 +1239,7 @@ async function confirmTask(id){
 async function loadNotePreview(){
   var sid=$('note-student-sel').value;
   if(!sid){$('note-preview').classList.add('hidden');return;}
-  $('note-preview').classList.remove('hidden');currentStudentId=sid;
+  $('note-preview').classList.remove('hidden');$('note-preview').style.display='block';currentStudentId=sid;
   var today=todayStr();
   var res=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',today);
   var tasks=res.data||[];
@@ -1648,7 +1647,7 @@ async function loadChildData(idx){
   var today=todayStr();
   var aRes=await getSB().from('attendance').select('*').eq('student_id',student.id).eq('date',today).maybeSingle();
   var att=aRes.data;
-  $('p-attend').innerHTML=att?'<div style="padding:12px 16px;font-size:13px">'+(att.check_in?'✅ 등원: '+att.check_in.slice(11,16):'아직 등원 전')+(att.check_out?'<br>🏠 하원: '+att.check_out.slice(11,16):'')+'</div>':'<div style="padding:12px 16px;color:#aaa;font-size:13px">아직 등원하지 않았어요</div>';
+  $('p-attend').innerHTML=att?'<div style="padding:12px 16px;font-size:13px">'+(att.check_in?'✅ 등원: '+formatKSTTime(att.check_in):'아직 등원 전')+(att.check_out?'<br>🏠 하원: '+formatKSTTime(att.check_out):'')+'</div>':'<div style="padding:12px 16px;color:#aaa;font-size:13px">아직 등원하지 않았어요</div>';
   var tRes=await getSB().from('tasks').select('*').eq('student_id',student.id).eq('date',today);
   var tasks=tRes.data||[];
   var todos=tasks.filter(function(t){return t.type==='todo';});
@@ -2201,7 +2200,7 @@ async function loadStudentByDate(offset){
   var aRes=await getSB().from('attendance').select('*').eq('student_id',studentId).eq('date',date).maybeSingle();
   var att=aRes.data;
   var sa=document.getElementById('s-attend');
-  if(sa)sa.innerHTML=att?'<div style="padding:12px 16px;font-size:15px">'+(att.check_in?'✅ 등원: '+att.check_in.slice(11,16):'')+(att.check_out?'<br>🏠 하원: '+att.check_out.slice(11,16):'')+'</div>':'';
+  if(sa)sa.innerHTML=att?'<div style="padding:12px 16px;font-size:15px">'+(att.check_in?'✅ 등원: '+formatKSTTime(att.check_in):'')+(att.check_out?'<br>🏠 하원: '+formatKSTTime(att.check_out):'')+'</div>':'';
   var bi=document.getElementById('btn-in');var bo=document.getElementById('btn-out');
   if(bi)bi.style.display=offset===0?'':'none';if(bo)bo.style.display=offset===0?'':'none';
   var tRes=await getSB().from('tasks').select('*').eq('student_id',studentId).eq('date',date);
@@ -2233,7 +2232,7 @@ async function loadParentByDate(offset){
   var aRes=await getSB().from('attendance').select('*').eq('student_id',student.id).eq('date',date).maybeSingle();
   var att=aRes.data;
   var pa=document.getElementById('p-attend');
-  if(pa)pa.innerHTML=att?'<div style="padding:12px 16px;font-size:13px">'+(att.check_in?'✅ 등원: '+att.check_in.slice(11,16):'아직 등원 전')+(att.check_out?'<br>🏠 하원: '+att.check_out.slice(11,16):'')+'</div>':'<div style="padding:12px 16px;color:#aaa;font-size:13px">등원 기록이 없어요</div>';
+  if(pa)pa.innerHTML=att?'<div style="padding:12px 16px;font-size:13px">'+(att.check_in?'✅ 등원: '+formatKSTTime(att.check_in):'아직 등원 전')+(att.check_out?'<br>🏠 하원: '+formatKSTTime(att.check_out):'')+'</div>':'<div style="padding:12px 16px;color:#aaa;font-size:13px">등원 기록이 없어요</div>';
   var tRes=await getSB().from('tasks').select('*').eq('student_id',student.id).eq('date',date);
   var tasks=tRes.data||[];var todos=tasks.filter(function(t){return t.type==='todo';});var hws=tasks.filter(function(t){return t.type==='hw';});
   var dc=todos.filter(function(t){return t.student_done;}).length;var pct=todos.length?Math.round(dc/todos.length*100):0;
@@ -2256,11 +2255,11 @@ async function loadTeacherByDate(offset){
     var attBadge='';
     if(att){
       if(att.check_in){
-        var inTime=att.check_in.slice(11,16);
+        var inTime=formatKSTTime(att.check_in);
         attBadge+='<span style="font-size:11px;background:#1B4D3E;color:#fff;padding:2px 8px;border-radius:10px;margin-left:4px">등원 '+inTime+'</span>';
       }
       if(att.check_out){
-        var outTime=att.check_out.slice(11,16);
+        var outTime=formatKSTTime(att.check_out);
         attBadge+='<span style="font-size:11px;background:#333;color:#fff;padding:2px 8px;border-radius:10px;margin-left:4px">하원 '+outTime+'</span>';
       }
     }
@@ -2522,11 +2521,13 @@ async function renderCalendar(role){
       if(t.type==='todo')dotData[t.date].todo=true;
       else dotData[t.date].hw=true;
     });
-    var nr=await getSB().from('growth_notes').select('date').eq('student_id',sid).gte('date',ym+'-01').lte('date',ym+'-31');
-    (nr.data||[]).forEach(function(n){
-      if(!dotData[n.date])dotData[n.date]={todo:false,hw:false,note:false};
-      dotData[n.date].note=true;
-    });
+    if(role==='p'){
+      var nr=await getSB().from('growth_notes').select('date').eq('student_id',sid).gte('date',ym+'-01').lte('date',ym+'-31');
+      (nr.data||[]).forEach(function(n){
+        if(!dotData[n.date])dotData[n.date]={todo:false,hw:false,note:false};
+        dotData[n.date].note=true;
+      });
+    }
   }
   for(var i=0;i<startDay;i++){
     var pd=new Date(y,m,-(startDay-i-1));
@@ -2588,7 +2589,8 @@ async function calSelectDate(dateStr,role,el){
     html+='<div style="padding:8px 14px;background:#F0F4FF;font-size:12px;font-weight:700;color:#1a56db;border-bottom:1px solid #E8E8E8">📚 숙제</div>';
     html+=hws.map(function(t){return '<div style="padding:9px 14px;border-bottom:1px solid #F5F5F5;font-size:14px;display:flex;align-items:center;gap:8px"><span>'+(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜'))+'</span>'+t.title+'</div>';}).join('');
   }
-  if(notes.length){
+  // 학생/선생님 화면에서는 성장노트 달력에 안 보임
+  if(notes.length&&role==='p'){
     html+='<div style="padding:8px 14px;background:#FFF3F3;font-size:12px;font-weight:700;color:#E74C3C;border-bottom:1px solid #E8E8E8">📝 성장노트</div>';
     html+=notes.map(function(n){return '<div style="padding:10px 14px;font-size:13px;color:#555;line-height:1.6">'+n.content.replace(/\n/g,'<br>').slice(0,300)+'</div>';}).join('');
   }
@@ -2683,7 +2685,7 @@ async function loadStudent(){
     var cr=document.getElementById('btn-cancel-row');
     if(cr)cr.style.display=ci&&!co?'block':'none';
     var sa=document.getElementById('s-attend');
-    if(sa)sa.innerHTML=att?'<div style="padding:10px 16px;font-size:15px">'+(att.check_in?'✅ 등원: '+att.check_in.slice(11,16):'')+( att.check_out?'<br>🏠 하원: '+att.check_out.slice(11,16):'')+'</div>':'';
+    if(sa)sa.innerHTML=att?'<div style="padding:10px 16px;font-size:15px">'+(att.check_in?'✅ 등원: '+formatKSTTime(att.check_in):'')+( att.check_out?'<br>🏠 하원: '+formatKSTTime(att.check_out):'')+'</div>':'';
     // 이번 주 각오
     loadWeeklyGoalTop();
     // 공지사항
@@ -2743,9 +2745,9 @@ async function loadStudentTasks(){
     var div=document.createElement('div');
     div.className='task-item'+(c?' done':'');
     div.style.cursor='pointer';
-    div.dataset.id=t.id;div.dataset.done=d2;div.dataset.sid=sid;
+    div.dataset.id=t.id;div.dataset.done=String(d2);div.dataset.sid=sid;
     div.onclick=function(){stToggle(this.dataset.id,this.dataset.done==='true',this.dataset.sid);};
-    div.innerHTML='<div class="task-check" style="'+(d2&&!c?'border-color:#FFC107;color:#FFC107':'')+'">'+(c?'✓':(d2?'⏳':''))+'</div>'
+    div.innerHTML='<div class="task-check" style="'+(d2&&!c?'border-color:#FFC107;color:#FFC107':d2&&c?'background:#1B4D3E;border-color:#1B4D3E;color:#fff':'')+'">'+(c?'✓':(d2?'⏳':''))+'</div>'
       +'<span class="task-text">'+t.title+(c?' <span style="font-size:11px;color:#1B4D3E">✅확인됨</span>':(d2?' <span style="font-size:11px;color:#FFC107">확인대기</span>':''))+'</span>';
     return div.outerHTML;
   }
@@ -2919,6 +2921,22 @@ function editDailyMsg(){
   if(editRow)editRow.style.display='none';
 }
 
+function getKSTTimeStr(){
+  var now=new Date();
+  var kst=new Date(now.getTime()+9*60*60*1000);
+  return kst.toISOString().slice(0,19).replace('T',' ');
+}
+function formatKSTTime(isoStr){
+  if(!isoStr)return '';
+  // "+09:00" 또는 "Z" 형식 처리
+  var d;
+  if(isoStr.endsWith('Z')){
+    d=new Date(new Date(isoStr).getTime()+9*60*60*1000);
+    return String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0');
+  } else {
+    return isoStr.slice(11,16);
+  }
+}
 // ===== 앱 시작 =====
 window.addEventListener('load',function(){
   // 로그인 화면 로고 설정
