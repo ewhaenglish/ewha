@@ -592,7 +592,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
       <div class="date-sub">할일 & 과제</div>
     </div>
-    <div class="section-hd">🎯 이번 주 각오</div>
+    <div class="section-hd" style="color:#C0392B">🎯 이번주 나의 각오</div>
     <div class="card">
       <div class="card-body" id="st-weekly-body"></div>
       <div id="st-weekly-input-row" style="display:none;padding:10px 16px 14px">
@@ -603,13 +603,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <button onclick="editWeeklyGoal()" style="width:100%;padding:9px;background:#fff;color:#1B4D3E;border:1.5px solid #1B4D3E;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">✏️ 각오 수정</button>
       </div>
     </div>
-    <div class="section-hd">📌 오늘의 할일</div>
+    <div class="section-hd" style="color:#C0392B">📌 오늘의 할일</div>
     <div class="card">
       <div class="card-header"><span class="card-title">진행률</span><span class="card-count" id="st-todo-cnt">0/0</span></div>
       <div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" id="st-todo-bar" style="width:0%"></div></div><div class="progress-label"><span></span><span id="st-todo-pct">0%</span></div></div>
       <div class="card-body" id="st-todo-list"><div style="padding:12px 16px;color:#aaa;font-size:14px">할일이 없어요</div></div>
     </div>
-    <div class="section-hd">📝 단어 TEST</div>
+    <div class="section-hd" style="color:#C0392B">📝 단어 TEST 결과</div>
     <div class="card">
       <div class="card-body" id="st-vocab-result"><div style="padding:12px 16px;color:#aaa;font-size:14px">오늘 단어 TEST 결과를 입력해주세요</div></div>
       <div id="st-vocab-input" style="padding:12px 16px 14px;border-top:1px solid #F5F5F5">
@@ -627,12 +627,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <button class="btn-primary" onclick="submitTasksVocabTest()">제출하기</button>
       </div>
     </div>
-    <div class="section-hd">📚 오늘의 숙제</div>
+    <div class="section-hd" style="color:#C0392B">📚 오늘의 숙제</div>
     <div class="card">
       <div class="card-header"><span class="card-title">완료 현황</span><span class="card-count" id="st-hw-cnt">0/0</span></div>
       <div class="card-body" id="st-hw-list"><div style="padding:12px 16px;color:#aaa;font-size:14px">숙제가 없어요</div></div>
     </div>
-    <div class="section-hd">✍️ 오늘 수업을 마친 후 반성 한 줄</div>
+    <div class="section-hd" style="color:#C0392B">✍️ 오늘 수업을 마친 후 반성 한 줄</div>
     <div class="card">
       <div class="card-body" id="st-daily-body"></div>
       <div id="st-daily-input-row" style="padding:10px 16px 14px">
@@ -2602,9 +2602,7 @@ async function checkIn(){
     toast('등원 취소됐어요');loadStudent();return;
   }
   var now=new Date();
-  var kst=new Date(now.getTime()+9*60*60*1000);
-  var kstStr=kst.toISOString().replace('Z','+09:00');
-  var res=await getSB().from('attendance').insert({student_id:sid,date:todayStr(),check_in:kstStr});
+  var res=await getSB().from('attendance').insert({student_id:sid,date:todayStr(),check_in:now.toISOString()});
   if(res.error){toast('오류: '+res.error.message);return;}
   await getSB().from('mileage').insert({student_id:sid,amount:5,reason:'출석'});
   toast('✅ 등원 완료! +5점');
@@ -2622,9 +2620,7 @@ async function checkOut(){
     toast('하원 취소됐어요');loadStudent();return;
   }
   var now=new Date();
-  var kst=new Date(now.getTime()+9*60*60*1000);
-  var kstStr=kst.toISOString().replace('Z','+09:00');
-  var res=await getSB().from('attendance').update({check_out:kstStr}).eq('student_id',sid).eq('date',todayStr());
+  var res=await getSB().from('attendance').update({check_out:now.toISOString()}).eq('student_id',sid).eq('date',todayStr());
   if(res.error){toast('오류: '+res.error.message);return;}
   toast('🏠 하원 완료!');loadStudent();
 }
@@ -2913,14 +2909,10 @@ function getKSTTimeStr(){
 }
 function formatKSTTime(isoStr){
   if(!isoStr)return '';
-  // "+09:00" 또는 "Z" 형식 처리
-  var d;
-  if(isoStr.endsWith('Z')){
-    d=new Date(new Date(isoStr).getTime()+9*60*60*1000);
-    return String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0');
-  } else {
-    return isoStr.slice(11,16);
-  }
+  // UTC ISO → KST 시간 변환
+  var d=new Date(isoStr);
+  var kst=new Date(d.getTime()+9*60*60*1000);
+  return String(kst.getUTCHours()).padStart(2,'0')+':'+String(kst.getUTCMinutes()).padStart(2,'0');
 }
 // ===== 앱 시작 =====
 window.addEventListener('load',function(){
