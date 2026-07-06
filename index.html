@@ -565,16 +565,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div class="card-header"><span class="card-title" id="s-cal-detail-title">날짜 상세</span></div>
       <div class="card-body" id="s-cal-detail-body"></div>
     </div>
-    <div class="section-hd">🎯 이번 주 각오</div>
-    <div class="card" id="weekly-goal-card">
-      <div class="card-body" id="weekly-goal-body"></div>
-      <div id="weekly-goal-input-row" style="display:none;padding:10px 16px 14px">
-        <input type="text" class="add-input" id="s-weekly-goal" placeholder="이번 주 목표는? (+20점)" style="margin-bottom:8px;width:100%;box-sizing:border-box">
-        <div style="display:flex;gap:8px">
-          <button class="btn-primary" onclick="submitWeeklyGoal2(false)" style="flex:1">저장</button>
-        </div>
-      </div>
-    </div>
+
     <div class="section-hd">🏫 등·하원</div>
     <div class="card">
       <div class="card-body" id="s-attend"></div>
@@ -708,11 +699,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     </div>
   </div>
 
-  <div class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
+  <div class="bottom-nav" style="grid-template-columns:repeat(4,1fr)">
     <button class="nav-item" onclick="sTab('s-intro',this);loadIntroTab()"><span class="nav-icon">🌿</span><span class="nav-label">Intro</span></button>
     <button class="nav-item active" onclick="sTab('s-home',this)"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></button>
     <button class="nav-item" onclick="sTab('s-tasks',this);loadStudentTasks()"><span class="nav-icon">📋</span><span class="nav-label">할일&과제</span></button>
-    <button class="nav-item" onclick="sTab('s-note',this);loadStudentNotes()"><span class="nav-icon">✨</span><span class="nav-label">성장노트</span></button>
     <button class="nav-item" onclick="sTab('s-mile',this);loadMile()"><span class="nav-icon">⭐</span><span class="nav-label">마일리지</span></button>
   </div>
 </div>
@@ -2673,8 +2663,8 @@ async function loadStudent(){
     // 날짜 배너
     var sd=document.getElementById('s-date');
     var dl=document.getElementById('s-date-label');
-    var now=new Date();
-    if(sd)sd.textContent=now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
+    var now=new Date(new Date().getTime()+9*60*60*1000);
+    if(sd)sd.textContent=now.getUTCFullYear()+'년 '+(now.getUTCMonth()+1)+'월 '+now.getUTCDate()+'일';
     if(dl)dl.textContent='오늘';
     // 출결
     var aRes=await getSB().from('attendance').select('*').eq('student_id',studentId).eq('date',today).maybeSingle();
@@ -2742,14 +2732,9 @@ async function loadStudentTasks(){
   if(tp)tp.textContent=pct+'%';
   function th(t){
     var c=t.teacher_confirmed,d2=t.student_done;
-    var div=document.createElement('div');
-    div.className='task-item'+(c?' done':'');
-    div.style.cursor='pointer';
-    div.dataset.id=t.id;div.dataset.done=String(d2);div.dataset.sid=sid;
-    div.onclick=function(){stToggle(this.dataset.id,this.dataset.done==='true',this.dataset.sid);};
-    div.innerHTML='<div class="task-check" style="'+(d2&&!c?'border-color:#FFC107;color:#FFC107':d2&&c?'background:#1B4D3E;border-color:#1B4D3E;color:#fff':'')+'">'+(c?'✓':(d2?'⏳':''))+'</div>'
-      +'<span class="task-text">'+t.title+(c?' <span style="font-size:11px;color:#1B4D3E">✅확인됨</span>':(d2?' <span style="font-size:11px;color:#FFC107">확인대기</span>':''))+'</span>';
-    return div.outerHTML;
+    return '<div class="task-item'+(c?' done':'')+'" data-id="'+t.id+'" data-done="'+String(d2)+'" data-sid="'+sid+'" style="cursor:pointer" onclick="stToggle(this.dataset.id,this.dataset.done===\'true\',this.dataset.sid)">'
+      +'<div class="task-check" style="'+(c?'background:#1B4D3E;border-color:#1B4D3E;color:#fff':(d2?'border-color:#FFC107;color:#FFC107':''))+'">'+(c?'✓':(d2?'⏳':''))+'</div>'
+      +'<span class="task-text">'+t.title+(c?' <span style="font-size:11px;color:#1B4D3E">✅확인됨</span>':(d2?' <span style="font-size:11px;color:#FFC107">확인대기</span>':''))+'</span></div>';
   }
   var tl=document.getElementById('st-todo-list');
   if(tl)tl.innerHTML=todos.map(th).join('')||'<div style="padding:12px 16px;color:#aaa">할일이 없어요</div>';
