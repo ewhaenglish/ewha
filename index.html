@@ -1287,7 +1287,6 @@ async function saveNote(){
   var today=getOffsetDate(noteDateOffset);
   var res=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',today);
   var tasks=res.data||[];
-  // 이번 주 각오 가져오기
   var d2=new Date();var monday2=new Date(d2);monday2.setDate(d2.getDate()-d2.getDay()+1);
   var ms2=monday2.getFullYear()+'-'+String(monday2.getMonth()+1).padStart(2,'0')+'-'+String(monday2.getDate()).padStart(2,'0');
   var gr2=await getSB().from('weekly_goals').select('content').eq('student_id',sid).eq('week_start',ms2).maybeSingle();
@@ -1295,16 +1294,46 @@ async function saveNote(){
   var dateLabel=(function(){var d=new Date(today);return (d.getMonth()+1)+'월 '+d.getDate()+'일';})();
   var vr3=await getSB().from('vocab_tests').select('*').eq('student_id',sid).eq('date',today).maybeSingle();
   var vtText=vr3.data?((vr3.data.score!=null?vr3.data.score+'/'+vr3.data.total+'점 ':'')+(vr3.data.result==='pass'?'✅통과':vr3.data.result==='retest'?'🔄재시험':'⚪없음')):'기록없음';
-  var noteContent='📅 Date: '+dateLabel+'\n\n[단어 TEST]\n'+vtText+'\n\n[오늘의 수업]\n'+tasks.filter(function(t){return t.type==='todo';}).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')
-    +'\n\n[오늘의 과제]\n'+tasks.filter(function(t){return t.type==='hw';}).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')
-    +(goalContent?'\n\n[이번 주 각오]\n'+goalContent:'')
-    +'\n\n[피드백]\n'+feedback;
-  var r=await getSB().from('growth_notes').insert({student_id:sid,content:noteContent,date:today,ai_generated:false});
+  var todos=tasks.filter(function(t){return t.type==='todo';});
+  var hws=tasks.filter(function(t){return t.type==='hw';});
+  var todoText=todos.map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')||'없음';
+  var hwText=hws.map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')||'없음';
+  var noteContent='📅 Date: '+dateLabel+'\n\n[단어 TEST]\n'+vtText+'\n\n[오늘의 수업]\n'+todoText+'\n\n[오늘의 과제]\n'+hwText+(goalContent?'\n\n[이번 주 각오]\n'+goalContent:'')+'\n\n[피드백]\n'+feedback;
+    var r=await getSB().from('growth_notes').insert({student_id:sid,content:noteContent,date:today,ai_generated:false});
   if(r.error){toast('오류: '+r.error.message);return;}
   toast('✅ 성장노트 저장 완료!');
   $('note-feedback').value='';
   loadRecentNotes();
-  loadNotePreview();
+  // 저장된 전체 내용 모달로 보여주기
+  var studentName=(allStudents.find(function(x){return x.id===sid;})||{}).name||'학생';
+  var previewHtml='<div style="padding:16px">'
+    +'<div style="background:#1B4D3E;color:#fff;padding:12px 16px;border-radius:10px;margin-bottom:16px">'
+    +'<div style="font-size:16px;font-weight:700">🌿 '+studentName+' 이화성장노트</div>'
+    +'<div style="font-size:12px;opacity:0.8;margin-top:4px">📅 '+dateLabel+'</div>'
+    +'</div>'
+    +'<div style="background:#F8FDF9;border-radius:10px;padding:14px 16px;margin-bottom:10px">'
+    +'<div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:6px">📝 단어 TEST</div>'
+    +'<div style="font-size:14px;color:#333">'+vtText+'</div>'
+    +'</div>'
+    +'<div style="background:#F8FDF9;border-radius:10px;padding:14px 16px;margin-bottom:10px">'
+    +'<div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:6px">📌 오늘의 수업</div>'
+    +'<div style="font-size:13px;color:#333;white-space:pre-line">'+todoText+'</div>'
+    +'</div>'
+    +'<div style="background:#F8FDF9;border-radius:10px;padding:14px 16px;margin-bottom:10px">'
+    +'<div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:6px">📚 오늘의 과제</div>'
+    +'<div style="font-size:13px;color:#333;white-space:pre-line">'+hwText+'</div>'
+    +'</div>'
+    +(goalContent?'<div style="background:#F8FDF9;border-radius:10px;padding:14px 16px;margin-bottom:10px">'
+    +'<div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:6px">🎯 이번 주 각오</div>'
+    +'<div style="font-size:13px;color:#333">'+goalContent+'</div>'
+    +'</div>':'')
+    +'<div style="background:#FFF8E7;border-radius:10px;padding:14px 16px;margin-bottom:10px;border:1.5px solid #F0C040">'
+    +'<div style="font-size:12px;font-weight:700;color:#B8860B;margin-bottom:6px">✍️ 선생님 피드백</div>'
+    +'<div style="font-size:14px;color:#333;line-height:1.7;white-space:pre-line">'+feedback+'</div>'
+    +'</div>'
+    +'<button onclick="closeMod()" class="btn-primary" style="width:100%">확인</button>'
+    +'</div>';
+  openMod('이화성장노트 미리보기', previewHtml);
 }
 async function loadRecentNotes(){
   var dateFilter=getOffsetDate(noteDateOffset);
@@ -2625,9 +2654,16 @@ async function checkIn(){
   if(!sid){toast('학생 연동이 필요해요');return;}
   var dup=await getSB().from('attendance').select('*').eq('student_id',sid).eq('date',todayStr()).maybeSingle();
   if(dup.data&&dup.data.check_in){
-    // 이미 등원 - 취소 확인
-    if(!confirm('등원을 취소할까요?'))return;
-    await getSB().from('attendance').delete().eq('student_id',sid).eq('date',todayStr());
+    // 이미 등원 - 취소
+    if(!window._confirmCheckinCancel){
+      window._confirmCheckinCancel=true;
+      toast('한 번 더 누르면 등원 취소됩니다');
+      setTimeout(function(){window._confirmCheckinCancel=false;},3000);
+      return;
+    }
+    window._confirmCheckinCancel=false;
+    var delRes=await getSB().from('attendance').delete().eq('student_id',sid).eq('date',todayStr());
+    if(delRes.error){toast('오류: '+delRes.error.message);return;}
     var mRes=await getSB().from('mileage').select('id').eq('student_id',sid).eq('reason','출석').order('created_at',{ascending:false}).limit(1);
     if(mRes.data&&mRes.data.length>0)await getSB().from('mileage').delete().eq('id',mRes.data[0].id);
     toast('등원 취소됐어요');loadStudent();return;
@@ -2637,8 +2673,6 @@ async function checkIn(){
   if(res.error){toast('오류: '+res.error.message);return;}
   await getSB().from('mileage').insert({student_id:sid,amount:5,reason:'출석'});
   toast('✅ 등원 완료! +5점');
-  var cr=document.getElementById('btn-cancel-row');
-  if(cr)cr.style.display='block';
   loadStudent();
 }
 
@@ -2700,8 +2734,10 @@ async function loadStudent(){
     var bi=document.getElementById('btn-in'), bo=document.getElementById('btn-out');
     if(bi){
       bi.textContent=ci?'등원취소 ❌':'등원 ✅';
+      bi.className=ci?'attend-btn':'attend-btn in';
       bi.style.background=ci?'#E74C3C':'';
-      bi.style.color=ci?'#fff':'';
+      bi.style.color='#fff';
+      bi.disabled=false;
     }
     if(bo){
       bo.disabled=!ci;
