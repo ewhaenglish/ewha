@@ -1256,9 +1256,11 @@ async function confirmTask(id){
 // ===== 성장노트 =====
 async function loadNotePreview(){
   var sid=$('note-student-sel').value;
-  if(!sid){$('note-preview').classList.add('hidden');return;}
-  $('note-preview').classList.remove('hidden');$('note-preview').style.display='block';currentStudentId=sid;
-  var today=todayStr();
+  if(!sid){$('note-preview').classList.add('hidden');var npEl2=$('note-preview');if(npEl2)npEl2.style.cssText='';return;}
+  $('note-preview').classList.remove('hidden');
+  var npEl=$('note-preview');
+  if(npEl){npEl.style.cssText='display:block!important';}currentStudentId=sid;
+  var today=getOffsetDate(noteDateOffset);
   var res=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',today);
   var tasks=res.data||[];
   $('note-today-tasks').textContent=tasks.filter(function(t){return t.type==='todo';}).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')||'할일 없음';
@@ -1270,7 +1272,7 @@ async function loadNotePreview(){
   var goalEl=$('note-weekly-goal');
   if(goalEl)goalEl.textContent=gr2.data?gr2.data.content:'(이번 주 각오 없음)';
   // 단어 TEST
-  var vr2=await getSB().from('vocab_tests').select('*').eq('student_id',sid).eq('date',todayStr()).maybeSingle();
+  var vr2=await getSB().from('vocab_tests').select('*').eq('student_id',sid).eq('date',today).maybeSingle();
   var nvt=$('note-vocab-test');
   if(nvt){
     if(vr2.data){var vt2=vr2.data;nvt.textContent=(vt2.score!=null?vt2.score+'/'+vt2.total+'점 ':'')+(vt2.result==='pass'?'✅통과':vt2.result==='retest'?'🔄재시험':'⚪없음');}
@@ -1282,7 +1284,7 @@ async function saveNote(){
   if(!sid){toast('학생을 선택해주세요');return;}
   var feedback=$('note-feedback').value.trim();
   if(!feedback){toast('피드백을 입력해주세요');return;}
-  var today=todayStr();
+  var today=getOffsetDate(noteDateOffset);
   var res=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',today);
   var tasks=res.data||[];
   // 이번 주 각오 가져오기
@@ -2696,10 +2698,16 @@ async function loadStudent(){
     var att=aRes.data;
     var ci=!!(att&&att.check_in), co=!!(att&&att.check_out);
     var bi=document.getElementById('btn-in'), bo=document.getElementById('btn-out');
-    // 등원: 이미 했으면 취소 가능하게 (disabled 안 함)
-    if(bi){bi.textContent=ci?'등원취소 ❌':'등원 ✅';bi.style.background=ci?'#E74C3C':'';}
-    // 하원: 등원 전이면 비활성, 하원 후엔 취소 가능하게
-    if(bo){bo.disabled=!ci;bo.textContent=co?'하원취소 ↩':'하원 🏠';bo.style.opacity=ci?1:0.4;}
+    if(bi){
+      bi.textContent=ci?'등원취소 ❌':'등원 ✅';
+      bi.style.background=ci?'#E74C3C':'';
+      bi.style.color=ci?'#fff':'';
+    }
+    if(bo){
+      bo.disabled=!ci;
+      bo.textContent=co?'하원취소 ↩':'하원 🏠';
+      bo.style.opacity=ci?'1':'0.4';
+    }
     var cr=document.getElementById('btn-cancel-row');
     if(cr)cr.style.display='none';
     var sa=document.getElementById('s-attend');
