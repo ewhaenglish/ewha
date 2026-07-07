@@ -571,11 +571,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div class="card-body" id="s-attend"></div>
       <div class="attend-btns">
         <button class="attend-btn in" id="btn-in" onclick="checkIn()">등원 ✅</button>
-        <button class="attend-btn out" id="btn-out" onclick="checkOut()" disabled>하원 🏠</button>
+        <button class="attend-btn out" id="btn-out" onclick="checkOut()" style="opacity:0.4">하원 🏠</button>
       </div>
-      <div id="btn-cancel-row" style="display:none;padding:0 16px 14px">
-        <button onclick="cancelAttend()" style="width:100%;padding:10px;background:#fff;color:#E74C3C;border:1.5px solid #E74C3C;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">등원 취소</button>
-      </div>
+
     </div>
   </div>
 
@@ -836,7 +834,7 @@ function changeTaskDate(dir){
     else if(taskDateOffset===1)label.textContent='내일';
     else{var d=new Date();d.setDate(d.getDate()+taskDateOffset);label.textContent=(d.getMonth()+1)+'월'+d.getDate()+'일';}
   }
-  if(currentStudentId)renderTasks();
+  if(currentStudentId){renderTasks();loadVocabTest();}
 }
 
 var QUICK_TODO=['단어 TEST','지난시간 단어오답 복습','문제풀기','구두 TEST','문법','독해','듣기'];
@@ -1090,26 +1088,56 @@ async function saveStudent(){
 }
 function openStudentDetail(sid){
   var s=allStudents.find(function(x){return x.id===sid;});if(!s)return;
-  openMod(s.name+' 상세',
-    '<div class="form-section-title" style="border-top:none;padding-top:16px">기본 정보</div>'+
-    '<div class="info-row"><span class="info-label">학교/학년</span><span class="info-value">'+(s.school||'-')+(s.grade?' '+s.grade:'')+'</span></div>'+
-    '<div class="info-row"><span class="info-label">학생 연락처</span><span class="info-value">'+(s.student_phone||'-')+'</span></div>'+
-    '<div class="info-row"><span class="info-label">학부모</span><span class="info-value">'+(s.parent_phone||'-')+'</span></div>'+
-    '<div class="info-row"><span class="info-label">주소</span><span class="info-value">'+(s.address||'-')+'</span></div>'+
-    '<div class="info-row"><span class="info-label">기타학원</span><span class="info-value">'+(s.other_academy||'-')+'</span></div>'+
-    '<div class="form-section-title">NELT 레벨</div>'+
-    '<div class="nelt-grid">'+
-    ['종합','문법','어휘','듣기','독해'].map(function(l,i){
-      var v=[s.nelt_overall,s.nelt_grammar,s.nelt_vocabulary,s.nelt_listening,s.nelt_reading][i];
-      return '<div class="nelt-item"><div class="nelt-label">'+l+'</div><div class="nelt-val">'+(v||'-')+'</div></div>';
-    }).join('')+'</div>'+
-    '<div class="form-section-title">영역별 교재</div>'+
-    '<div class="info-row"><span class="info-label">어휘</span><span class="info-value">'+(s.book_vocab||'-')+'</span></div>'+
-    '<div class="info-row"><span class="info-label">문법</span><span class="info-value">'+(s.book_grammar||'-')+'</span></div>'+
-    '<div class="info-row"><span class="info-label">독해</span><span class="info-value">'+(s.book_reading||'-')+'</span></div>'+
-    '<div class="info-row"><span class="info-label">듣기</span><span class="info-value">'+(s.book_listening||'-')+'</span></div>'+
-    '<div class="info-row"><span class="info-label">쓰기</span><span class="info-value">'+(s.book_writing||'-')+'</span></div>'
-  );
+  var neltF=[['sd-nelt-overall','종합',s.nelt_overall],['sd-nelt-grammar','문법',s.nelt_grammar],
+    ['sd-nelt-vocab','어휘',s.nelt_vocabulary],['sd-nelt-listening','듣기',s.nelt_listening],
+    ['sd-nelt-reading','독해',s.nelt_reading]];
+  var bookF=[['sd-book-vocab','어휘',s.book_vocab],['sd-book-grammar','문법',s.book_grammar],
+    ['sd-book-reading','독해',s.book_reading],['sd-book-listening','듣기',s.book_listening],
+    ['sd-book-writing','쓰기',s.book_writing]];
+  var html='<div style="padding:0 16px">'
+    +'<div class="form-section-title" style="border-top:none;padding-top:8px">기본 정보</div>'
+    +'<div class="form-group"><label class="form-label">이름</label><input class="form-input" id="sd-name" value="'+(s.name||'')+'"></div>'
+    +'<div class="form-group"><label class="form-label">학교</label><input class="form-input" id="sd-school" value="'+(s.school||'')+'"></div>'
+    +'<div class="form-group"><label class="form-label">학년</label><input class="form-input" id="sd-grade" value="'+(s.grade||'')+'"></div>'
+    +'<div class="form-group"><label class="form-label">학생 연락처</label><input class="form-input" id="sd-sphone" value="'+(s.student_phone||'')+'"></div>'
+    +'<div class="form-group"><label class="form-label">학부모 연락처</label><input class="form-input" id="sd-pphone" value="'+(s.parent_phone||'')+'"></div>'
+    +'<div class="form-group"><label class="form-label">주소</label><input class="form-input" id="sd-addr" value="'+(s.address||'')+'"></div>'
+    +'<div class="form-group"><label class="form-label">기타 학원</label><input class="form-input" id="sd-academy" value="'+(s.other_academy||'')+'"></div>'
+    +'<div class="form-section-title">NELT 레벨</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 0 8px">'
+    +neltF.map(function(x){return '<div><label class="form-label">'+x[1]+'</label>'
+      +'<input class="form-input" id="'+x[0]+'" value="'+(x[2]||'')+'" placeholder="-"></div>';}).join('')
+    +'</div>'
+    +'<div class="form-section-title">영역별 교재</div>'
+    +bookF.map(function(x){return '<div class="form-group"><label class="form-label">'+x[1]+'</label>'
+      +'<input class="form-input" id="'+x[0]+'" value="'+(x[2]||'')+'" placeholder="-"></div>';}).join('')
+    +'<div style="padding-bottom:16px"><button class="btn-primary" id="sd-save-btn">저장</button></div>'
+    +'</div>';
+  openMod(s.name+' 정보 수정', html);
+  setTimeout(function(){
+    var b=document.getElementById('sd-save-btn');
+    if(b)b.onclick=function(){saveStudentDetail(sid);};
+  },50);
+}
+
+async function saveStudentDetail(sid){
+  var g=function(id){var el=document.getElementById(id);return el?el.value.trim():'';};
+  var data={
+    name:g('sd-name'),school:g('sd-school'),grade:g('sd-grade'),
+    student_phone:g('sd-sphone'),parent_phone:g('sd-pphone'),
+    address:g('sd-addr'),other_academy:g('sd-academy'),
+    nelt_overall:g('sd-nelt-overall')||null,nelt_grammar:g('sd-nelt-grammar')||null,
+    nelt_vocabulary:g('sd-nelt-vocab')||null,nelt_listening:g('sd-nelt-listening')||null,
+    nelt_reading:g('sd-nelt-reading')||null,
+    book_vocab:g('sd-book-vocab')||null,book_grammar:g('sd-book-grammar')||null,
+    book_reading:g('sd-book-reading')||null,book_listening:g('sd-book-listening')||null,
+    book_writing:g('sd-book-writing')||null
+  };
+  if(!data.name){toast('이름을 입력해주세요');return;}
+  var res=await getSB().from('students').update(data).eq('id',sid);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('✅ 저장 완료!');closeMod();
+  await loadStudentsData();populateStudentSelects();loadStudents();
 }
 async function deleteStudent(sid){
   if(!confirm('정말 삭제할까요?'))return;
@@ -1274,6 +1302,7 @@ async function saveNote(){
   toast('✅ 성장노트 저장 완료!');
   $('note-feedback').value='';
   loadRecentNotes();
+  loadNotePreview();
 }
 async function loadRecentNotes(){
   var dateFilter=getOffsetDate(noteDateOffset);
@@ -2667,9 +2696,12 @@ async function loadStudent(){
     var att=aRes.data;
     var ci=!!(att&&att.check_in), co=!!(att&&att.check_out);
     var bi=document.getElementById('btn-in'), bo=document.getElementById('btn-out');
-    if(bi)bi.disabled=ci; if(bo)bo.disabled=!ci||co;
+    // 등원: 이미 했으면 취소 가능하게 (disabled 안 함)
+    if(bi){bi.textContent=ci?'등원취소 ❌':'등원 ✅';bi.style.background=ci?'#E74C3C':'';}
+    // 하원: 등원 전이면 비활성, 하원 후엔 취소 가능하게
+    if(bo){bo.disabled=!ci;bo.textContent=co?'하원취소 ↩':'하원 🏠';bo.style.opacity=ci?1:0.4;}
     var cr=document.getElementById('btn-cancel-row');
-    if(cr)cr.style.display=ci&&!co?'block':'none';
+    if(cr)cr.style.display='none';
     var sa=document.getElementById('s-attend');
     if(sa)sa.innerHTML=att?'<div style="padding:10px 16px;font-size:15px">'+(att.check_in?'✅ 등원: '+formatKSTTime(att.check_in):'')+( att.check_out?'<br>🏠 하원: '+formatKSTTime(att.check_out):'')+'</div>':'';
     // 이번 주 각오
