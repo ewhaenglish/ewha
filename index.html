@@ -655,11 +655,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div id="s-note-list"></div>
   </div>
   <div id="s-mile" class="s-tab content">
+    <!-- 이번 달 마일리지 히어로 -->
     <div class="mileage-hero">
       <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:4px">이번 달 마일리지</div>
       <div class="mile-pts"><span id="s-total-pts">0</span>점</div>
       <div class="mile-sub" id="s-won">= 0원 사용 가능</div>
     </div>
+    <!-- 1. 이번 달 랭킹 -->
+    <div class="section-hd">🏆 이번 달 랭킹</div>
+    <div class="card" style="margin-bottom:12px"><div class="card-body" id="s-mile-rank"></div></div>
+    <!-- 2. 마일리지 안내 -->
     <div class="card" style="margin-bottom:12px">
       <div class="card-header"><span class="card-title">⭐ 마일리지 안내</span></div>
       <div style="padding:12px 16px">
@@ -671,7 +676,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
           <span>✍️ 오늘의 한 줄</span><span style="font-weight:700;color:#1B4D3E">+5점</span>
           <span>🎯 이번 주 각오</span><span style="font-weight:700;color:#1B4D3E">+20점</span>
           <span>🏆 월 100% 출석 보너스</span><span style="font-weight:700;color:#1B4D3E">+500점</span>
-          <span>🌟 과제+할일 100% 완수 보너스</span><span style="font-weight:700;color:#1B4D3E">+480점</span>
+          <span>🌟 과제+할일 100% 완수</span><span style="font-weight:700;color:#1B4D3E">+480점</span>
         </div>
         <div style="font-size:12px;font-weight:700;color:#E74C3C;margin-bottom:6px">차감</div>
         <div style="display:grid;grid-template-columns:1fr auto;gap:5px;font-size:12px">
@@ -684,8 +689,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         </div>
       </div>
     </div>
-    <div class="section-hd">🏆 이번 달 랭킹</div>
-    <div class="card"><div class="card-body" id="s-mile-rank"></div></div>
+    <!-- 3. 내 포인트 내역 -->
     <div class="section-hd">내 포인트 내역</div>
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #F5F5F5">
@@ -695,8 +699,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
       <div class="card-body" id="s-mile-list"></div>
     </div>
-  </div>
-
   <div class="bottom-nav" style="grid-template-columns:repeat(4,1fr)">
     <button class="nav-item" onclick="sTab('s-intro',this);loadIntroTab()"><span class="nav-icon">🌿</span><span class="nav-label">Intro</span></button>
     <button class="nav-item active" onclick="sTab('s-home',this)"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></button>
@@ -2383,11 +2385,21 @@ async function submitStudentVocabTest(){
 }
 
 function renderNoteCardWithCheck(n){
-  return '<div style="position:relative;margin-bottom:4px">'
+  var d=new Date(n.date);
+  var dateLabel=(d.getMonth()+1)+'월 '+d.getDate()+'일';
+  var studentName=n.students?n.students.name:'';
+  var preview=(n.content||'').split('\n').slice(-3).join(' ').slice(0,60);
+  return '<div style="position:relative;margin-bottom:8px;background:#fff;border-radius:12px;border:0.5px solid #E8E8E8;overflow:hidden">'
     +'<div style="position:absolute;top:14px;left:12px;z-index:10">'
-    +'<input type="checkbox" class="note-del-check" value="'+n.id+'" style="width:18px;height:18px;accent-color:#E74C3C;cursor:pointer">'
+    +'<input type="checkbox" class="note-del-check" value="'+n.id+'" style="width:18px;height:18px;accent-color:#E74C3C;cursor:pointer" onclick="event.stopPropagation()">'
     +'</div>'
-    +'<div style="padding-left:10px">'+renderNoteCard(n,true)+'</div>'
+    +'<div style="padding:12px 14px 12px 40px;cursor:pointer" onclick="openNoteDetail(this.dataset.id)" data-id="'+n.id+'">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+    +'<span style="font-size:14px;font-weight:700;color:#1B4D3E">'+studentName+'</span>'
+    +'<span style="font-size:11px;color:#aaa">'+dateLabel+'</span>'
+    +'</div>'
+    +'<div style="font-size:12px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+preview+'...</div>'
+    +'</div>'
     +'</div>';
 }
 async function deleteSelectedNotes(){
@@ -2990,6 +3002,46 @@ function formatKSTTime(isoStr){
   var kst=new Date(d.getTime()+9*60*60*1000);
   return String(kst.getUTCHours()).padStart(2,'0')+':'+String(kst.getUTCMinutes()).padStart(2,'0');
 }
+function openNoteDetail(noteId){
+  getSB().from('growth_notes').select('*, students(name)').eq('id',noteId).single().then(function(res){
+    var n=res.data;if(!n)return;
+    var studentName=n.students?n.students.name:'';
+    var d=new Date(n.date);
+    var dateLabel=(d.getMonth()+1)+'월 '+d.getDate()+'일';
+    // content 파싱
+    var c=n.content||'';
+    function extractSection(label){
+      var re=new RegExp('\\['+label+'\\]\\n([\\s\\S]*?)(?=\\n\\[|$)');
+      var m=c.match(re);return m?m[1].trim():'';
+    }
+    var vocab=extractSection('단어 TEST');
+    var todos=extractSection('오늘의 수업');
+    var hws=extractSection('오늘의 과제');
+    var goal=extractSection('이번 주 각오');
+    var feedback=extractSection('피드백');
+    function makeSection(icon,title,txt,bg,border){
+      if(!txt)return '';
+      return '<div style="background:'+(bg||'#F8FDF9')+';border-radius:10px;padding:14px 16px;margin-bottom:10px'+(border?';border:1.5px solid '+border:'')+'">'
+        +'<div style="font-size:12px;font-weight:700;color:'+(border?'#B8860B':'#1B4D3E')+';margin-bottom:6px">'+icon+' '+title+'</div>'
+        +'<div style="font-size:14px;color:#333;line-height:1.7;white-space:pre-line">'+txt+'</div>'
+        +'</div>';
+    }
+    var html='<div style="padding:16px">'
+      +'<div style="background:#1B4D3E;color:#fff;padding:12px 16px;border-radius:10px;margin-bottom:16px">'
+      +'<div style="font-size:16px;font-weight:700">🌿 '+studentName+' 이화성장노트</div>'
+      +'<div style="font-size:12px;opacity:0.8;margin-top:4px">📅 '+dateLabel+'</div>'
+      +'</div>'
+      +makeSection('📝','단어 TEST',vocab)
+      +makeSection('📌','오늘의 수업',todos)
+      +makeSection('📚','오늘의 과제',hws)
+      +makeSection('🎯','이번 주 각오',goal)
+      +makeSection('✍️','선생님 피드백',feedback,'#FFF8E7','#F0C040')
+      +'<button onclick="closeMod()" class="btn-primary" style="width:100%">닫기</button>'
+      +'</div>';
+    openMod('이화성장노트', html);
+  });
+}
+
 // ===== 앱 시작 =====
 window.addEventListener('load',function(){
   // 로그인 화면 로고 설정
