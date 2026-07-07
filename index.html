@@ -655,16 +655,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div id="s-note-list"></div>
   </div>
   <div id="s-mile" class="s-tab content">
-    <!-- 이번 달 마일리지 히어로 -->
     <div class="mileage-hero">
       <div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:4px">이번 달 마일리지</div>
       <div class="mile-pts"><span id="s-total-pts">0</span>점</div>
       <div class="mile-sub" id="s-won">= 0원 사용 가능</div>
     </div>
-    <!-- 1. 이번 달 랭킹 -->
     <div class="section-hd">🏆 이번 달 랭킹</div>
     <div class="card" style="margin-bottom:12px"><div class="card-body" id="s-mile-rank"></div></div>
-    <!-- 2. 마일리지 안내 -->
     <div class="card" style="margin-bottom:12px">
       <div class="card-header"><span class="card-title">⭐ 마일리지 안내</span></div>
       <div style="padding:12px 16px">
@@ -689,7 +686,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         </div>
       </div>
     </div>
-    <!-- 3. 내 포인트 내역 -->
     <div class="section-hd">내 포인트 내역</div>
     <div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #F5F5F5">
@@ -2407,8 +2403,12 @@ async function deleteSelectedNotes(){
   if(!checks.length){toast('삭제할 노트를 선택해주세요');return;}
   if(!confirm(checks.length+'개 삭제할까요?'))return;
   var ids=Array.from(checks).map(function(c){return c.value;});
-  var res=await getSB().from('growth_notes').delete().in('id',ids);
-  if(res.error){toast('오류: '+res.error.message);return;}
+  var failed=0;
+  for(var i=0;i<ids.length;i++){
+    var res=await getSB().from('growth_notes').delete().eq('id',ids[i]);
+    if(res.error)failed++;
+  }
+  if(failed>0){toast('일부 삭제 실패 ('+failed+'개)');return;}
   toast('✅ '+ids.length+'개 삭제 완료!');
   loadRecentNotes();
 }
@@ -2664,22 +2664,22 @@ async function calSelectDate(dateStr,role,el){
 async function checkIn(){
   var sid=window._currentStudentRowId;
   if(!sid){toast('학생 연동이 필요해요');return;}
-  var dup=await getSB().from('attendance').select('*').eq('student_id',sid).eq('date',todayStr()).maybeSingle();
-  if(dup.data&&dup.data.check_in){
-    // 이미 등원 - 취소
-    if(!window._confirmCheckinCancel){
-      window._confirmCheckinCancel=true;
-      toast('한 번 더 누르면 등원 취소됩니다');
-      setTimeout(function(){window._confirmCheckinCancel=false;},3000);
-      return;
-    }
-    window._confirmCheckinCancel=false;
+  // 버튼 텍스트로 현재 상태 판단
+  var bi=document.getElementById('btn-in');
+  var isCancelMode=bi&&bi.textContent.indexOf('취소')>=0;
+  if(isCancelMode){
+    // 등원 취소
     var delRes=await getSB().from('attendance').delete().eq('student_id',sid).eq('date',todayStr());
     if(delRes.error){toast('오류: '+delRes.error.message);return;}
     var mRes=await getSB().from('mileage').select('id').eq('student_id',sid).eq('reason','출석').order('created_at',{ascending:false}).limit(1);
     if(mRes.data&&mRes.data.length>0)await getSB().from('mileage').delete().eq('id',mRes.data[0].id);
-    toast('등원 취소됐어요');loadStudent();return;
+    toast('등원 취소됐어요');
+    loadStudent();
+    return;
   }
+  // 등원 처리
+  var dup=await getSB().from('attendance').select('id').eq('student_id',sid).eq('date',todayStr()).maybeSingle();
+  if(dup.data){toast('이미 등원 처리됐어요');loadStudent();return;}
   var now=new Date();
   var res=await getSB().from('attendance').insert({student_id:sid,date:todayStr(),check_in:now.toISOString()});
   if(res.error){toast('오류: '+res.error.message);return;}
