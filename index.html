@@ -1997,6 +1997,13 @@ function setupRealtime(profile){
         var s=allStudents.find(function(x){return x.id===payload.new.student_id;});
         if(s)popupNotif(s.name+' 한 줄을 남겼어요!','✍️');
       })
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'vocab_tests'},function(payload){
+        var s=allStudents.find(function(x){return x.id===payload.new.student_id;});
+        var name=s?s.name:'학생';
+        popupNotif(name+' 단어 TEST 제출! 확인해주세요','📝');
+        checkNotifications();
+        if(currentStudentId===payload.new.student_id)loadVocabTest();
+      })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'weekly_goals'},function(payload){
         loadTeacherMsgs();
         var s=allStudents.find(function(x){return x.id===payload.new.student_id;});
@@ -2669,6 +2676,10 @@ async function calSelectDate(dateStr,role,el){
     html+=notes.map(function(n){return '<div style="padding:10px 14px;font-size:13px;color:#555;line-height:1.6">'+n.content.replace(/\n/g,'<br>').slice(0,300)+'</div>';}).join('');
   }
   if(!html)html='<div style="padding:20px;text-align:center;color:#aaa;font-size:13px">이날의 기록이 없어요</div>';
+  // 학생: 할일&과제 탭으로 이동 버튼 추가
+  if(role==='s'&&(todos.length||hws.length)){
+    html+='<div style="padding:10px 14px"><button onclick="goToTasksDate(this.dataset.date)" data-date="'+dateStr+'" style="width:100%;padding:10px;background:#1B4D3E;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">📋 할일&과제 탭에서 체크하기</button></div>';
+  }
   if(detailBody)detailBody.innerHTML=html;
 }
 
@@ -3116,6 +3127,23 @@ async function deleteNeltReport(id,sid){
   if(res.error){toast('오류: '+res.error.message);return;}
   toast('삭제됐어요');
   loadNeltReports(sid);
+}
+
+// 달력에서 할일&과제 탭으로 이동 (해당 날짜)
+function goToTasksDate(dateStr){
+  // 날짜 offset 계산
+  var target=new Date(dateStr);
+  var today=new Date(new Date().getTime()+9*60*60*1000);
+  var todayMid=new Date(today.getUTCFullYear(),today.getUTCMonth(),today.getUTCDate());
+  var targetMid=new Date(target.getFullYear(),target.getMonth(),target.getDate());
+  var diff=Math.round((targetMid-todayMid)/(24*60*60*1000));
+  tasksDateOffset=diff;
+  // 할일&과제 탭으로 전환
+  var tabs=document.querySelectorAll('#screen-student .nav-item');
+  var tasksBtn=null;
+  tabs.forEach(function(b){if(b.textContent.indexOf('할일')>=0)tasksBtn=b;});
+  sTab('s-tasks',tasksBtn);
+  loadStudentTasks();
 }
 
 // ===== 앱 시작 =====
