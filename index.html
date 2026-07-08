@@ -842,10 +842,10 @@ var QUICK_HW=['클래스카드 단어 Day','문법 S.B 풀어오기','문법 W.B
 function $(id){return document.getElementById(id);}
 function toast(msg){var t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2500);}
 function setDate(){
-  var d=new Date(),days=['일','월','화','수','목','금','토'];
-  var str=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일';
+  var d=new Date(new Date().getTime()+9*60*60*1000),days=['일','월','화','수','목','금','토'];
+  var str=d.getUTCFullYear()+'년 '+(d.getUTCMonth()+1)+'월 '+d.getUTCDate()+'일('+days[d.getUTCDay()]+')';
   ['t-date','t-date2','t-date3','t-date4','s-date','p-date'].forEach(function(id){if($(id))$(id).textContent=str;});
-  if($('t-day'))$('t-day').textContent=days[d.getDay()]+'요일';
+  if($('t-day'))$('t-day').textContent=days[d.getUTCDay()]+'요일';
 }
 function todayStr(){var d=new Date(new Date().getTime()+9*60*60*1000);return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');}
 function openMod(title,html){$('mod-title').textContent=title;$('mod-body').innerHTML=html;$('modal-bg').classList.add('open');}
@@ -2024,6 +2024,12 @@ function setupRealtime(profile){
         }
       })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'notices'},function(){loadNotices();})
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'vocab_tests'},function(payload){
+        if(window._currentStudentRowId&&payload.new.student_id===window._currentStudentRowId&&payload.new.teacher_confirmed){
+          popupNotif('단어 TEST 결과가 확인됐어요!','📝');
+          loadStudentTasks();
+        }
+      })
       .subscribe();
   } else if(profile.role==='parent'){
     sb.channel('parent-rt-'+Date.now())
@@ -2761,7 +2767,8 @@ async function loadStudent(){
     var sd=document.getElementById('s-date');
     var dl=document.getElementById('s-date-label');
     var now=new Date(new Date().getTime()+9*60*60*1000);
-    if(sd)sd.textContent=now.getUTCFullYear()+'년 '+(now.getUTCMonth()+1)+'월 '+now.getUTCDate()+'일';
+    var dayNames=['일','월','화','수','목','금','토'];
+    if(sd)sd.textContent=now.getUTCFullYear()+'년 '+(now.getUTCMonth()+1)+'월 '+now.getUTCDate()+'일('+dayNames[now.getUTCDay()]+')';
     if(dl)dl.textContent='오늘';
     // 출결
     var aRes=await getSB().from('attendance').select('*').eq('student_id',studentId).eq('date',today).maybeSingle();
