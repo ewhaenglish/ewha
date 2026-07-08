@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="#1B4D3E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="이화영어">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%231B4D3E'/%3E%3Ctext x='50' y='62' font-size='40' text-anchor='middle' fill='white'%3E🌿%3C/text%3E%3C/svg%3E">
 <title>이화영어 학습관리</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -247,6 +251,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
       <div class="date-sub" id="t-day"></div>
     </div>
+    <div class="section-hd">💬 학부모 문의</div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-body" id="t-inquiry-list"><div style="padding:12px 16px;color:#aaa;font-size:13px">문의가 없어요</div></div>
+    </div>
     <div class="section-hd">📢 공지사항</div>
     <div class="card">
       <div class="card-header"><span class="card-title">공지사항</span><button class="btn-sm" onclick="openNoticeModal()">+ 작성</button></div>
@@ -486,9 +494,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
           <label class="form-label">선생님 총평</label>
           <textarea class="form-input" id="rep-comment" rows="3" placeholder="선생님 총평..."></textarea>
         </div>
-        <div style="padding:0 16px 14px;display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <button class="btn-primary" onclick="saveReport()">저장</button>
-          <button class="btn-secondary" onclick="exportPDF()" style="margin-top:8px">📄 PDF 저장</button>
+        <div style="padding:0 16px 14px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+            <button class="btn-primary" onclick="saveReport()">저장</button>
+            <button class="btn-secondary" onclick="exportPDF()">📄 PDF 저장</button>
+          </div>
+          <button onclick="sendReportToParent()" style="width:100%;padding:14px;background:linear-gradient(135deg,#1B4D3E,#2D6A54);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(27,77,62,0.3)">💌 학부모에게 리포트 전송</button>
         </div>
       </div>
     </div>
@@ -629,6 +640,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div class="card">
       <div class="card-header"><span class="card-title">완료 현황</span><span class="card-count" id="st-hw-cnt">0/0</span></div>
       <div class="card-body" id="st-hw-list"><div style="padding:12px 16px;color:#aaa;font-size:14px">숙제가 없어요</div></div>
+      <div style="padding:10px 16px 14px;border-top:1px solid #F5F5F5">
+        <div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:8px">📸 숙제 사진 제출</div>
+        <div id="st-hw-photos" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
+        <input type="file" id="st-hw-photo-file" accept="image/*" style="display:none" onchange="uploadHwPhoto()">
+        <button onclick="document.getElementById('st-hw-photo-file').click()" style="width:100%;padding:10px;background:#fff;color:#1B4D3E;border:1.5px dashed #1B4D3E;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">📷 사진 선택해서 제출하기</button>
+      </div>
     </div>
     <div class="section-hd" style="color:#C0392B">✍️ 오늘 수업을 마친 후 반성 한 줄</div>
     <div class="card">
@@ -746,6 +763,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div class="date-sub" id="p-child">학습 현황</div>
     </div>
     <div id="p-child-tabs" class="hidden" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"></div>
+    <div id="p-report-area"></div>
     <div id="p-notice-area"></div>
     <!-- 달력 -->
     <div class="calendar-wrap">
@@ -796,10 +814,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div id="p-note-list"></div>
   </div>
 
-  <div class="bottom-nav" style="grid-template-columns:repeat(4,1fr)">
+  <!-- 학부모 문의 탭 -->
+  <div id="p-inquiry" class="p-tab content">
+    <div class="date-banner"><div><div class="date-main">1:1 문의</div><div class="date-sub">선생님께 궁금한 점을 남겨주세요</div></div></div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-header"><span class="card-title">✏️ 새 문의 작성</span></div>
+      <div style="padding:12px 16px">
+        <textarea id="p-inquiry-input" placeholder="문의 내용을 입력해주세요..." style="width:100%;min-height:80px;padding:12px;border:1.5px solid #E8E8E8;border-radius:10px;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>
+        <button class="btn-primary" onclick="submitParentInquiry()" style="margin-top:8px">문의 보내기</button>
+      </div>
+    </div>
+    <div class="section-hd">📋 문의 내역</div>
+    <div id="p-inquiry-list"></div>
+  </div>
+
+
+  <div class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
     <button class="nav-item" onclick="pTab('p-intro',this);loadIntroTab()"><span class="nav-icon">🌿</span><span class="nav-label">Intro</span></button>
     <button class="nav-item active" onclick="pTab('p-home',this)"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></button>
     <button class="nav-item" onclick="pTab('p-note',this);loadParentNotes()"><span class="nav-icon">✨</span><span class="nav-label">성장노트</span></button>
+    <button class="nav-item" onclick="pTab('p-inquiry',this);loadParentInquiries()"><span class="nav-icon">💬</span><span class="nav-label">문의</span></button>
     <button class="nav-item" onclick="showAddChildModal()"><span class="nav-icon">➕</span><span class="nav-label">자녀추가</span></button>
   </div>
 </div>
@@ -831,7 +865,7 @@ function changeTaskDate(dir){
     if(taskDateOffset===0)label.textContent='오늘';
     else if(taskDateOffset===-1)label.textContent='어제';
     else if(taskDateOffset===1)label.textContent='내일';
-    else{var d=new Date();d.setDate(d.getDate()+taskDateOffset);label.textContent=(d.getMonth()+1)+'월'+d.getDate()+'일';}
+    else{var d=new Date();d.setDate(d.getDate()+taskDateOffset);label.textContent=(d.getMonth()+1)+'월'+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';}
   }
   if(currentStudentId){renderTasks();loadVocabTest();}
 }
@@ -944,6 +978,7 @@ function enterWithProfile(profile){
   if(profile.role==='teacher'){$('t-name').textContent=profile.name;loadTeacher();}
   else if(profile.role==='student'){$('s-name').textContent=profile.name;loadStudent();}
   else if(profile.role==='parent'){$('p-name').textContent=profile.name;loadParent();}
+  showInstallBanner();
   toast(profile.name+'님, 환영해요 👋');
   setupRealtime(profile);
   checkNotifications();
@@ -974,6 +1009,7 @@ async function loadTeacher(){
   loadTaskOverview();
   renderCalendar('t');
   loadTeacherMsgs();
+  loadTeacherInquiries();
   loadNotices();
   checkNotifications();
 }
@@ -1302,7 +1338,7 @@ async function saveNote(){
   var ms2=monday2.getFullYear()+'-'+String(monday2.getMonth()+1).padStart(2,'0')+'-'+String(monday2.getDate()).padStart(2,'0');
   var gr2=await getSB().from('weekly_goals').select('content').eq('student_id',sid).eq('week_start',ms2).maybeSingle();
   var goalContent=gr2.data?gr2.data.content:'';
-  var dateLabel=(function(){var d=new Date(today);return (d.getMonth()+1)+'월 '+d.getDate()+'일';})();
+  var dateLabel=(function(){var d=new Date(today);return (d.getMonth()+1)+'월 '+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';})();
   var vr3=await getSB().from('vocab_tests').select('*').eq('student_id',sid).eq('date',today).maybeSingle();
   var vtText=vr3.data?((vr3.data.score!=null?vr3.data.score+'/'+vr3.data.total+'점 ':'')+(vr3.data.result==='pass'?'✅통과':vr3.data.result==='retest'?'🔄재시험':'⚪없음')):'기록없음';
   var todos=tasks.filter(function(t){return t.type==='todo';});
@@ -1352,7 +1388,7 @@ async function loadRecentNotes(){
   var res=await query;
   var notes=res.data||[];
   var el=$('note-list');if(!el)return;
-  var label=noteDateOffset===0?'오늘':(function(){var d=new Date();d.setDate(d.getDate()+noteDateOffset);return (d.getMonth()+1)+'월 '+d.getDate()+'일';})();
+  var label=noteDateOffset===0?'오늘':(function(){var d=new Date();d.setDate(d.getDate()+noteDateOffset);return (d.getMonth()+1)+'월 '+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';})();
   if(notes.length){
     el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0 8px">'
       +'<span style="font-size:13px;color:#aaa;font-weight:700">📅 '+label+'의 성장노트</span>'
@@ -1371,7 +1407,7 @@ async function loadStudentNotes(){
   var query=getSB().from('growth_notes').select('*').eq('student_id',sRes.data.id).eq('date',dateFilter).order('created_at',{ascending:false});
   var res=await query;
   var notes=res.data||[];
-  var label=noteDateOffset===0?'오늘':(function(){var d=new Date();d.setDate(d.getDate()+noteDateOffset);return (d.getMonth()+1)+'월 '+d.getDate()+'일';})();
+  var label=noteDateOffset===0?'오늘':(function(){var d=new Date();d.setDate(d.getDate()+noteDateOffset);return (d.getMonth()+1)+'월 '+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';})();
   $('s-note-list').innerHTML=notes.length?'<div style="font-size:12px;color:#aaa;font-weight:700;padding:8px 0 6px">📅 '+label+'의 성장노트</div>'+notes.map(function(n){return renderNoteCard(n,true);}).join(''):'<div style="padding:16px;color:#aaa;text-align:center">'+label+'의 성장노트가 없어요</div>';
 }
 async function loadMile(){
@@ -1998,6 +2034,11 @@ function setupRealtime(profile){
         var s=allStudents.find(function(x){return x.id===payload.new.student_id;});
         if(s)popupNotif(s.name+' 한 줄을 남겼어요!','✍️');
       })
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'parent_inquiries'},function(payload){
+        popupNotif('학부모 문의가 도착했어요!','💬');
+        loadTeacherInquiries();
+        checkNotifications();
+      })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'vocab_tests'},function(payload){
         var s=allStudents.find(function(x){return x.id===payload.new.student_id;});
         var name=s?s.name:'학생';
@@ -2172,7 +2213,7 @@ function changeNoteDate(dir){
   labels.forEach(function(id){
     var el=document.getElementById(id);if(!el)return;
     if(noteDateOffset===0)el.textContent='오늘';
-    else{var d=new Date();d.setDate(d.getDate()+noteDateOffset);el.textContent=(d.getMonth()+1)+'월'+d.getDate()+'일';}
+    else{var d=new Date();d.setDate(d.getDate()+noteDateOffset);el.textContent=(d.getMonth()+1)+'월'+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';}
   });
   if(currentProfile){
     if(currentProfile.role==='teacher')loadRecentNotes();
@@ -2252,10 +2293,10 @@ async function saveIntroContent(){
 
 var homeOffset=0;
 function getHomeDateStr(offset){var d=new Date();d.setDate(d.getDate()+offset);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-function getHomeDateLabel(offset){if(offset===0)return '오늘';if(offset===-1)return '어제';if(offset===1)return '내일';var d=new Date();d.setDate(d.getDate()+offset);return (d.getMonth()+1)+'월 '+d.getDate()+'일';}
+function getHomeDateLabel(offset){if(offset===0)return '오늘';if(offset===-1)return '어제';if(offset===1)return '내일';var d=new Date();d.setDate(d.getDate()+offset);return (d.getMonth()+1)+'월 '+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';}
 function updateHomeDateBanners(){
   var d=new Date();d.setDate(d.getDate()+homeOffset);
-  var dateStr=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일';
+  var dateStr=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';
   ['s-date','p-date','t-date'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=dateStr;});
   ['s-date-label','p-date-label','t-date-label'].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=getHomeDateLabel(homeOffset);});
 }
@@ -2408,7 +2449,7 @@ async function submitStudentVocabTest(){
 
 function renderNoteCardWithCheck(n){
   var d=new Date(n.date);
-  var dateLabel=(d.getMonth()+1)+'월 '+d.getDate()+'일';
+  var dateLabel=(d.getMonth()+1)+'월 '+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';
   var studentName=n.students?n.students.name:'';
   var preview=(n.content||'').split('\n').slice(-3).join(' ').slice(0,60);
   return '<div style="position:relative;margin-bottom:8px;background:#fff;border-radius:12px;border:0.5px solid #E8E8E8;overflow:hidden">'
@@ -2830,8 +2871,8 @@ async function loadStudentTasks(){
   // 날짜 표시
   var de=document.getElementById('s-tasks-date');
   var le=document.getElementById('s-tasks-label');
-  if(de)de.textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일';
-  if(le)le.textContent=isToday?'오늘':tasksDateOffset===-1?'어제':tasksDateOffset===1?'내일':(d.getMonth()+1)+'월'+d.getDate()+'일';
+  if(de)de.textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';
+  if(le)le.textContent=isToday?'오늘':tasksDateOffset===-1?'어제':tasksDateOffset===1?'내일':(d.getMonth()+1)+'월'+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';
   // 할일/숙제
   var tRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',dateStr);
   var tasks=tRes.data||[];
@@ -2891,6 +2932,7 @@ async function loadStudentTasks(){
     tasksVocabResult=null;
     ['pass','retest','none'].forEach(function(x){var b=document.getElementById('st-rb-'+x);if(b)b.className='result-btn';});
   }
+  loadHwPhotos();
   // 오늘 수업 반성 한 줄
   var dmRes=await getSB().from('daily_messages').select('*').eq('student_id',sid).eq('date',dateStr).maybeSingle();
   var db=document.getElementById('st-daily-body');
@@ -3038,7 +3080,7 @@ function openNoteDetail(noteId){
     var n=res.data;if(!n)return;
     var studentName=n.students?n.students.name:'';
     var d=new Date(n.date);
-    var dateLabel=(d.getMonth()+1)+'월 '+d.getDate()+'일';
+    var dateLabel=(d.getMonth()+1)+'월 '+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';
     // content 파싱
     var c=n.content||'';
     function extractSection(label){
@@ -3183,6 +3225,216 @@ async function confirmVocabTest(){
   // 학생에게 알림
   var s=allStudents.find(function(x){return x.id===currentStudentId;});
   if(s&&s.profile_id)await sendNotification(s.profile_id,'📝 단어 TEST 결과가 확인됐어요!','vocab');
+}
+
+// ===== 숙제 사진 제출 =====
+async function uploadHwPhoto(){
+  var sid=window._currentStudentRowId;
+  if(!sid){toast('학생 연동이 필요해요');return;}
+  var fileInput=document.getElementById('st-hw-photo-file');
+  if(!fileInput||!fileInput.files.length)return;
+  var file=fileInput.files[0];
+  if(file.size>10*1024*1024){toast('10MB 이하만 가능해요');return;}
+  toast('업로드 중...');
+  var d=new Date();d.setDate(d.getDate()+tasksDateOffset);
+  var dateStr=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  var ext=file.name.split('.').pop()||'jpg';
+  var fileName=sid+'/'+dateStr+'_'+Date.now()+'.'+ext;
+  var upRes=await getSB().storage.from('homework-photos').upload(fileName,file);
+  if(upRes.error){
+    // 버킷명 다르면 공백 버전으로 재시도
+    upRes=await getSB().storage.from('homework photos').upload(fileName,file);
+    if(upRes.error){toast('업로드 오류: '+upRes.error.message);return;}
+    var urlData=getSB().storage.from('homework photos').getPublicUrl(fileName);
+  } else {
+    var urlData=getSB().storage.from('homework-photos').getPublicUrl(fileName);
+  }
+  var publicUrl=urlData.data.publicUrl;
+  var insRes=await getSB().from('homework_photos').insert({student_id:sid,photo_url:publicUrl});
+  if(insRes.error){toast('저장 오류: '+insRes.error.message);return;}
+  toast('✅ 숙제 사진 제출 완료!');
+  fileInput.value='';
+  loadHwPhotos();
+  // 교사에게 알림
+  var s=await getSB().from('students').select('name').eq('id',sid).single();
+  var tr=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
+  if(tr.data&&tr.data.length>0&&s.data)await sendNotification(tr.data[0].id,'📸 '+s.data.name+' 학생이 숙제 사진을 제출했어요!','hwphoto');
+}
+
+async function loadHwPhotos(){
+  var sid=window._currentStudentRowId;
+  if(!sid)return;
+  var el=document.getElementById('st-hw-photos');
+  if(!el)return;
+  var d=new Date();d.setDate(d.getDate()+tasksDateOffset);
+  var dayStart=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  var res=await getSB().from('homework_photos').select('*').eq('student_id',sid).gte('created_at',dayStart+'T00:00:00').lte('created_at',dayStart+'T23:59:59').order('created_at',{ascending:false});
+  var items=res.data||[];
+  el.innerHTML=items.map(function(p){
+    return '<div style="position:relative"><img src="'+p.photo_url+'" style="width:70px;height:70px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="window.open(this.src)">'
+      +'<button onclick="deleteHwPhoto(this.dataset.id)" data-id="'+p.id+'" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#E74C3C;color:#fff;border:none;font-size:11px;cursor:pointer;line-height:1">✕</button></div>';
+  }).join('');
+}
+
+async function deleteHwPhoto(id){
+  if(!confirm('사진을 삭제할까요?'))return;
+  await getSB().from('homework_photos').delete().eq('id',id);
+  loadHwPhotos();toast('삭제됐어요');
+}
+
+// ===== 학부모 1:1 문의 =====
+async function submitParentInquiry(){
+  var input=document.getElementById('p-inquiry-input');
+  if(!input||!input.value.trim()){toast('문의 내용을 입력해주세요');return;}
+  var studentId=parentChildren&&parentChildren.length>0?parentChildren[currentChildIndex||0].id:null;
+  var res=await getSB().from('parent_inquiries').insert({
+    parent_id:currentProfile.id,
+    student_id:studentId,
+    content:input.value.trim()
+  });
+  if(res.error){toast('오류: '+res.error.message);return;}
+  // 교사에게 알림 (무조건)
+  var tr=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
+  var childName=studentId&&parentChildren?parentChildren[currentChildIndex||0].name:'';
+  if(tr.data&&tr.data.length>0)await sendNotification(tr.data[0].id,'💬 '+(childName?childName+' ':'')+'학부모님이 문의를 남겼어요!','inquiry');
+  toast('✅ 문의가 전송됐어요!');
+  input.value='';
+  loadParentInquiries();
+}
+
+async function loadParentInquiries(){
+  var el=document.getElementById('p-inquiry-list');
+  if(!el)return;
+  var res=await getSB().from('parent_inquiries').select('*').eq('parent_id',currentProfile.id).order('created_at',{ascending:false}).limit(20);
+  var items=res.data||[];
+  if(!items.length){el.innerHTML='<div class="card"><div style="padding:16px;color:#aaa;text-align:center;font-size:13px">문의 내역이 없어요</div></div>';return;}
+  el.innerHTML=items.map(function(q){
+    var d=new Date(q.created_at);
+    var dateLabel=(d.getMonth()+1)+'/'+d.getDate()+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+    return '<div class="card" style="margin-bottom:8px">'
+      +'<div style="padding:12px 16px">'
+      +'<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:11px;color:#aaa">'+dateLabel+'</span>'
+      +(q.reply?'<span style="font-size:11px;color:#1B4D3E;font-weight:700">✅ 답변완료</span>':'<span style="font-size:11px;color:#F0A030">⏳ 대기중</span>')+'</div>'
+      +'<div style="font-size:14px;color:#333;line-height:1.6">'+q.content+'</div>'
+      +(q.reply?'<div style="margin-top:10px;padding:10px 12px;background:#F8FDF9;border-radius:8px;border-left:3px solid #1B4D3E"><div style="font-size:11px;font-weight:700;color:#1B4D3E;margin-bottom:4px">선생님 답변</div><div style="font-size:13px;color:#333;line-height:1.6">'+q.reply+'</div></div>':'')
+      +'</div></div>';
+  }).join('');
+}
+
+// ===== 교사 문의 목록 & 답변 =====
+async function loadTeacherInquiries(){
+  var el=document.getElementById('t-inquiry-list');
+  if(!el)return;
+  var res=await getSB().from('parent_inquiries').select('*, students(name)').order('created_at',{ascending:false}).limit(10);
+  var items=res.data||[];
+  if(!items.length){el.innerHTML='<div style="padding:12px 16px;color:#aaa;font-size:13px">문의가 없어요</div>';return;}
+  el.innerHTML=items.map(function(q){
+    var d=new Date(q.created_at);
+    var dateLabel=(d.getMonth()+1)+'/'+d.getDate();
+    var sname=q.students?q.students.name:'';
+    return '<div style="padding:12px 16px;border-bottom:1px solid #F5F5F5">'
+      +'<div style="display:flex;justify-content:space-between;margin-bottom:4px">'
+      +'<span style="font-size:13px;font-weight:700;color:#1B4D3E">'+(sname?sname+' 학부모':'학부모')+'</span>'
+      +'<span style="font-size:11px;color:#aaa">'+dateLabel+'</span></div>'
+      +'<div style="font-size:13px;color:#333;margin-bottom:8px">'+q.content+'</div>'
+      +(q.reply
+        ?'<div style="padding:8px 10px;background:#F8FDF9;border-radius:6px;font-size:12px;color:#555">↳ '+q.reply+'</div>'
+        :'<button onclick="openReplyModal(this.dataset.id)" data-id="'+q.id+'" style="padding:6px 14px;background:#1B4D3E;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer">답변하기</button>')
+      +'</div>';
+  }).join('');
+}
+
+function openReplyModal(inquiryId){
+  openMod('문의 답변',
+    '<div style="padding:16px">'
+    +'<textarea id="reply-input" placeholder="답변을 입력해주세요..." style="width:100%;min-height:100px;padding:12px;border:1.5px solid #E8E8E8;border-radius:10px;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>'
+    +'<button class="btn-primary" id="reply-send-btn" style="margin-top:10px">답변 보내기</button>'
+    +'</div>');
+  setTimeout(function(){
+    var b=document.getElementById('reply-send-btn');
+    if(b)b.onclick=function(){sendReply(inquiryId);};
+  },50);
+}
+
+async function sendReply(inquiryId){
+  var input=document.getElementById('reply-input');
+  if(!input||!input.value.trim()){toast('답변을 입력해주세요');return;}
+  var res=await getSB().from('parent_inquiries').update({reply:input.value.trim(),replied_at:new Date().toISOString()}).eq('id',inquiryId);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  // 학부모에게 알림
+  var q=await getSB().from('parent_inquiries').select('parent_id').eq('id',inquiryId).single();
+  if(q.data)await sendNotification(q.data.parent_id,'💬 문의에 답변이 도착했어요!','inquiry');
+  toast('✅ 답변 전송 완료!');
+  closeMod();
+  loadTeacherInquiries();
+}
+
+// ===== 홈화면 설치 안내 배너 =====
+function showInstallBanner(){
+  // 이미 설치됨(standalone) 또는 이미 닫음이면 표시 안함
+  if(window.matchMedia('(display-mode: standalone)').matches)return;
+  if(window.navigator.standalone===true)return;
+  if(localStorage.getItem('installBannerClosed')==='1')return;
+  var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+  var isAndroid=/Android/.test(navigator.userAgent);
+  if(!isIOS&&!isAndroid)return;
+  var banner=document.createElement('div');
+  banner.id='install-banner';
+  banner.style.cssText='position:fixed;bottom:70px;left:12px;right:12px;background:#1B4D3E;color:#fff;border-radius:14px;padding:14px 16px;z-index:9998;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:flex;align-items:center;gap:12px';
+  var instruction=isIOS
+    ?'하단 <b>공유버튼 <span style="font-size:15px">⬆️</span></b> → <b>"홈 화면에 추가"</b>를 눌러 앱처럼 설치하세요!'
+    :'브라우저 메뉴(⋮) → <b>"홈 화면에 추가"</b>를 눌러 앱처럼 설치하세요!';
+  banner.innerHTML='<span style="font-size:28px">🌿</span>'
+    +'<div style="flex:1;font-size:13px;line-height:1.5">'+instruction+'</div>'
+    +'<button onclick="closeInstallBanner()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:26px;height:26px;border-radius:50%;font-size:13px;cursor:pointer;flex-shrink:0">✕</button>';
+  document.body.appendChild(banner);
+}
+
+function closeInstallBanner(){
+  var b=document.getElementById('install-banner');
+  if(b)b.remove();
+  localStorage.setItem('installBannerClosed','1');
+}
+
+// ===== 리포트 학부모 전송 =====
+async function sendReportToParent(){
+  var sid=document.getElementById('report-student-sel').value;
+  if(!sid){toast('학생을 선택해주세요');return;}
+  // 먼저 저장
+  await saveReport();
+  // 학생의 학부모 찾기
+  var links=await getSB().from('parent_children').select('parent_id').eq('student_id',sid);
+  var parents=links.data||[];
+  if(!parents.length){toast('연동된 학부모가 없어요');return;}
+  var s=allStudents.find(function(x){return x.id===sid;});
+  var d=new Date();
+  for(var i=0;i<parents.length;i++){
+    await sendNotification(parents[i].parent_id,'📊 '+(s?s.name:'')+' 학생의 '+(d.getMonth()+1)+'월 리포트가 도착했어요!','report');
+  }
+  toast('💌 학부모에게 리포트 전송 완료!');
+}
+
+// ===== 학부모 리포트 보기 =====
+async function loadParentReport(){
+  if(!parentChildren||!parentChildren.length)return;
+  var sid=parentChildren[currentChildIndex||0].id;
+  var d=new Date();
+  var res=await getSB().from('monthly_reports').select('*').eq('student_id',sid).eq('year',d.getFullYear()).eq('month',d.getMonth()+1).maybeSingle();
+  var el=document.getElementById('p-report-area');
+  if(!el)return;
+  if(!res.data){el.innerHTML='';return;}
+  var r=res.data;
+  var childName=parentChildren[currentChildIndex||0].name;
+  el.innerHTML='<div class="section-hd">📊 '+(d.getMonth()+1)+'월 이화 Monthly Report</div>'
+    +'<div style="background:linear-gradient(135deg,#1B4D3E,#2D6A54);border-radius:14px;padding:18px;margin-bottom:12px;color:#fff">'
+    +'<div style="font-size:16px;font-weight:700;margin-bottom:2px">🌿 '+childName+'</div>'
+    +'<div style="font-size:11px;opacity:0.7;margin-bottom:14px">'+d.getFullYear()+'년 '+(d.getMonth()+1)+'월 학습 리포트</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    +'<div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:12px;text-align:center"><div style="font-size:11px;opacity:0.8">할일 완료율</div><div style="font-size:24px;font-weight:700;margin-top:4px">'+(r.task_completion_rate||0)+'%</div></div>'
+    +'<div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:12px;text-align:center"><div style="font-size:11px;opacity:0.8">숙제 완료율</div><div style="font-size:24px;font-weight:700;margin-top:4px">'+(r.homework_completion_rate||0)+'%</div></div>'
+    +'</div></div>'
+    +(r.monthly_summary?'<div class="card" style="margin-bottom:10px"><div style="padding:14px 16px"><div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:6px">📚 이번 달 수업 요약</div><div style="font-size:14px;color:#333;line-height:1.7">'+r.monthly_summary+'</div></div></div>':'')
+    +(r.teacher_comment?'<div class="card" style="margin-bottom:12px;border:1.5px solid #F0C040"><div style="padding:14px 16px;background:#FFF8E7;border-radius:12px"><div style="font-size:12px;font-weight:700;color:#B8860B;margin-bottom:6px">✍️ 선생님 총평</div><div style="font-size:14px;color:#333;line-height:1.7">'+r.teacher_comment+'</div></div></div>':'');
 }
 
 // ===== 앱 시작 =====
