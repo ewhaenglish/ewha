@@ -373,6 +373,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div class="card">
         <div class="card-header"><span class="card-title">📚 숙제</span><span class="card-count" id="hw-count"></span></div>
         <div class="card-body" id="hw-list"></div>
+        <div id="t-hw-photos-section" style="display:none;padding:10px 16px;border-top:1px solid #F5F5F5">
+          <div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:8px">📸 학생이 제출한 숙제 사진</div>
+          <div id="t-hw-photos" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+        </div>
         <div class="quick-phrases" id="hw-quick"></div>
         <div class="add-row">
           <input type="text" class="add-input" id="hw-input" placeholder="숙제 입력...">
@@ -643,8 +647,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div style="padding:10px 16px 14px;border-top:1px solid #F5F5F5">
         <div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:8px">📸 숙제 사진 제출</div>
         <div id="st-hw-photos" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
-        <input type="file" id="st-hw-photo-file" accept="image/*" style="display:none" onchange="uploadHwPhoto()">
-        <button onclick="document.getElementById('st-hw-photo-file').click()" style="width:100%;padding:10px;background:#fff;color:#1B4D3E;border:1.5px dashed #1B4D3E;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">📷 사진 선택해서 제출하기</button>
+        <input type="file" id="st-hw-photo-file" accept="image/*" multiple style="display:none" onchange="uploadHwPhoto()">
+        <button onclick="document.getElementById('st-hw-photo-file').click()" style="width:100%;padding:10px;background:#fff;color:#1B4D3E;border:1.5px dashed #1B4D3E;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">📷 사진 제출하기 (여러 장 가능)</button>
       </div>
     </div>
     <div class="section-hd" style="color:#C0392B">✍️ 오늘 수업을 마친 후 반성 한 줄</div>
@@ -867,7 +871,7 @@ function changeTaskDate(dir){
     else if(taskDateOffset===1)label.textContent='내일';
     else{var d=new Date();d.setDate(d.getDate()+taskDateOffset);label.textContent=(d.getMonth()+1)+'월'+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';}
   }
-  if(currentStudentId){renderTasks();loadVocabTest();}
+  if(currentStudentId){renderTasks();loadVocabTest();loadTeacherHwPhotos();}
 }
 
 var QUICK_TODO=['단어 TEST','지난시간 단어오답 복습','문제풀기','구두 TEST','문법','독해','듣기'];
@@ -1210,7 +1214,7 @@ async function loadTaskForStudent(){
   var sid=$('task-student-sel').value;
   if(!sid){$('task-area').classList.add('hidden');return;}
   $('task-area').classList.remove('hidden');currentStudentId=sid;
-  await renderTasks();renderQuickPhrases();loadVocabTest();
+  await renderTasks();renderQuickPhrases();loadVocabTest();loadTeacherHwPhotos();
   loadRecurringTasks();renderCalendar('t');
 }
 function renderQuickPhrases(){
@@ -2033,6 +2037,11 @@ function setupRealtime(profile){
         loadTeacherMsgs();
         var s=allStudents.find(function(x){return x.id===payload.new.student_id;});
         if(s)popupNotif(s.name+' 한 줄을 남겼어요!','✍️');
+      })
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'homework_photos'},function(payload){
+        var s=allStudents.find(function(x){return x.id===payload.new.student_id;});
+        popupNotif((s?s.name:'학생')+' 숙제 사진 제출!','📸');
+        if(currentStudentId===payload.new.student_id)loadTeacherHwPhotos();
       })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'parent_inquiries'},function(payload){
         popupNotif('학부모 문의가 도착했어요!','💬');
@@ -3233,32 +3242,35 @@ async function uploadHwPhoto(){
   if(!sid){toast('학생 연동이 필요해요');return;}
   var fileInput=document.getElementById('st-hw-photo-file');
   if(!fileInput||!fileInput.files.length)return;
-  var file=fileInput.files[0];
-  if(file.size>10*1024*1024){toast('10MB 이하만 가능해요');return;}
-  toast('업로드 중...');
+  var files=Array.from(fileInput.files);
   var d=new Date();d.setDate(d.getDate()+tasksDateOffset);
   var dateStr=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  var ext=file.name.split('.').pop()||'jpg';
-  var fileName=sid+'/'+dateStr+'_'+Date.now()+'.'+ext;
-  var upRes=await getSB().storage.from('homework-photos').upload(fileName,file);
-  if(upRes.error){
-    // 버킷명 다르면 공백 버전으로 재시도
-    upRes=await getSB().storage.from('homework photos').upload(fileName,file);
-    if(upRes.error){toast('업로드 오류: '+upRes.error.message);return;}
-    var urlData=getSB().storage.from('homework photos').getPublicUrl(fileName);
-  } else {
+  toast('업로드 중... ('+files.length+'장)');
+  var successCount=0;
+  for(var i=0;i<files.length;i++){
+    var file=files[i];
+    if(file.size>10*1024*1024){toast(file.name+': 10MB 초과로 건너뜀');continue;}
+    var ext=(file.name.split('.').pop()||'jpg').toLowerCase();
+    var fileName=sid+'/'+dateStr+'_'+Date.now()+'_'+i+'.'+ext;
+    var upRes=await getSB().storage.from('homework-photos').upload(fileName,file,{contentType:file.type||'image/jpeg'});
+    if(upRes.error){toast('업로드 오류: '+upRes.error.message);continue;}
     var urlData=getSB().storage.from('homework-photos').getPublicUrl(fileName);
+    var publicUrl=urlData.data.publicUrl;
+    var insRes=await getSB().from('homework_photos').insert({student_id:sid,photo_url:publicUrl,photo_date:dateStr});
+    if(insRes.error){
+      insRes=await getSB().from('homework_photos').insert({student_id:sid,photo_url:publicUrl});
+      if(insRes.error){toast('저장 오류: '+insRes.error.message);continue;}
+    }
+    successCount++;
   }
-  var publicUrl=urlData.data.publicUrl;
-  var insRes=await getSB().from('homework_photos').insert({student_id:sid,photo_url:publicUrl});
-  if(insRes.error){toast('저장 오류: '+insRes.error.message);return;}
-  toast('✅ 숙제 사진 제출 완료!');
   fileInput.value='';
-  loadHwPhotos();
-  // 교사에게 알림
-  var s=await getSB().from('students').select('name').eq('id',sid).single();
-  var tr=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
-  if(tr.data&&tr.data.length>0&&s.data)await sendNotification(tr.data[0].id,'📸 '+s.data.name+' 학생이 숙제 사진을 제출했어요!','hwphoto');
+  if(successCount>0){
+    toast('✅ 숙제 사진 '+successCount+'장 제출 완료!');
+    loadHwPhotos();
+    var s=await getSB().from('students').select('name').eq('id',sid).single();
+    var tr=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
+    if(tr.data&&tr.data.length>0&&s.data)await sendNotification(tr.data[0].id,'📸 '+s.data.name+' 학생이 숙제 사진 '+successCount+'장을 제출했어요!','hwphoto');
+  }
 }
 
 async function loadHwPhotos(){
@@ -3266,14 +3278,33 @@ async function loadHwPhotos(){
   if(!sid)return;
   var el=document.getElementById('st-hw-photos');
   if(!el)return;
+  var res=await getSB().from('homework_photos').select('*').eq('student_id',sid).order('created_at',{ascending:false}).limit(30);
+  var all=res.data||[];
   var d=new Date();d.setDate(d.getDate()+tasksDateOffset);
-  var dayStart=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  var res=await getSB().from('homework_photos').select('*').eq('student_id',sid).gte('created_at',dayStart+'T00:00:00').lte('created_at',dayStart+'T23:59:59').order('created_at',{ascending:false});
-  var items=res.data||[];
+  var dateStr=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  var items=all.filter(function(p){
+    if(p.photo_date)return p.photo_date===dateStr;
+    var cd=new Date(new Date(p.created_at).getTime()+9*60*60*1000);
+    var cds=cd.getUTCFullYear()+'-'+String(cd.getUTCMonth()+1).padStart(2,'0')+'-'+String(cd.getUTCDate()).padStart(2,'0');
+    return cds===dateStr;
+  });
+  if(!items.length){el.innerHTML='<div style="font-size:12px;color:#aaa">제출된 사진이 없어요 (여러 장 제출 가능!)</div>';return;}
   el.innerHTML=items.map(function(p){
-    return '<div style="position:relative"><img src="'+p.photo_url+'" style="width:70px;height:70px;object-fit:cover;border-radius:8px;cursor:pointer" onclick="window.open(this.src)">'
-      +'<button onclick="deleteHwPhoto(this.dataset.id)" data-id="'+p.id+'" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;background:#E74C3C;color:#fff;border:none;font-size:11px;cursor:pointer;line-height:1">✕</button></div>';
+    var t=formatKSTTime(p.created_at);
+    return '<div style="position:relative;text-align:center">'
+      +'<img src="'+p.photo_url+'" style="width:74px;height:74px;object-fit:cover;border-radius:10px;cursor:pointer;border:1.5px solid #E8E8E8" onclick="viewHwPhoto(this.dataset.url)" data-url="'+p.photo_url+'">'
+      +'<button onclick="deleteHwPhoto(this.dataset.id)" data-id="'+p.id+'" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:#E74C3C;color:#fff;border:2px solid #fff;font-size:11px;cursor:pointer;line-height:1">✕</button>'
+      +'<div style="font-size:10px;color:#888;margin-top:3px">🕐 '+t+'</div>'
+      +'</div>';
   }).join('');
+}
+
+function viewHwPhoto(url){
+  openMod('📸 숙제 사진',
+    '<div style="padding:12px;text-align:center">'
+    +'<img src="'+url+'" style="max-width:100%;max-height:65vh;border-radius:10px">'
+    +'<button onclick="closeMod()" class="btn-primary" style="margin-top:12px">닫기</button>'
+    +'</div>');
 }
 
 async function deleteHwPhoto(id){
@@ -3435,6 +3466,32 @@ async function loadParentReport(){
     +'</div></div>'
     +(r.monthly_summary?'<div class="card" style="margin-bottom:10px"><div style="padding:14px 16px"><div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:6px">📚 이번 달 수업 요약</div><div style="font-size:14px;color:#333;line-height:1.7">'+r.monthly_summary+'</div></div></div>':'')
     +(r.teacher_comment?'<div class="card" style="margin-bottom:12px;border:1.5px solid #F0C040"><div style="padding:14px 16px;background:#FFF8E7;border-radius:12px"><div style="font-size:12px;font-weight:700;color:#B8860B;margin-bottom:6px">✍️ 선생님 총평</div><div style="font-size:14px;color:#333;line-height:1.7">'+r.teacher_comment+'</div></div></div>':'');
+}
+
+// ===== 교사 숙제 사진 확인 =====
+async function loadTeacherHwPhotos(){
+  if(!currentStudentId)return;
+  var section=document.getElementById('t-hw-photos-section');
+  var el=document.getElementById('t-hw-photos');
+  if(!el||!section)return;
+  var res=await getSB().from('homework_photos').select('*').eq('student_id',currentStudentId).order('created_at',{ascending:false}).limit(30);
+  var all=res.data||[];
+  var dateStr=getOffsetDate(taskDateOffset);
+  var items=all.filter(function(p){
+    if(p.photo_date)return p.photo_date===dateStr;
+    var cd=new Date(new Date(p.created_at).getTime()+9*60*60*1000);
+    var cds=cd.getUTCFullYear()+'-'+String(cd.getUTCMonth()+1).padStart(2,'0')+'-'+String(cd.getUTCDate()).padStart(2,'0');
+    return cds===dateStr;
+  });
+  if(!items.length){section.style.display='none';return;}
+  section.style.display='block';
+  el.innerHTML=items.map(function(p){
+    var t=formatKSTTime(p.created_at);
+    return '<div style="text-align:center">'
+      +'<img src="'+p.photo_url+'" style="width:74px;height:74px;object-fit:cover;border-radius:10px;cursor:pointer;border:1.5px solid #E8E8E8" onclick="viewHwPhoto(this.dataset.url)" data-url="'+p.photo_url+'">'
+      +'<div style="font-size:10px;color:#888;margin-top:3px">🕐 '+t+'</div>'
+      +'</div>';
+  }).join('');
 }
 
 // ===== 앱 시작 =====
