@@ -318,13 +318,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <button onclick="changeTaskDate(1)" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer">▶</button>
       </div>
     </div>
-    <div class="card">
-      <div class="card-header"><span class="card-title">🎯 학생 선택</span></div>
-      <div class="form-group" style="padding-top:12px">
-        <select class="form-select" id="task-student-sel" onchange="loadTaskForStudent()">
-          <option value="">학생을 선택하세요</option>
-        </select>
-      </div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-header"><span class="card-title">🎯 학생 빠른 선택</span></div>
+      <div id="task-student-chips" style="display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px"></div>
+      <select class="form-select" id="task-student-sel" onchange="loadTaskForStudent()" style="display:none">
+        <option value="">학생을 선택하세요</option>
+      </select>
     </div>
     <div class="card" style="margin-bottom:12px">
       <div class="card-header">
@@ -351,6 +350,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
             <button class="result-btn" id="rb-none" onclick="setVocabResult('none')">없음</button>
           </div>
           <button class="btn-sm" onclick="saveVocabTest()" style="margin-left:4px">저장</button>
+          <button class="btn-sm" onclick="confirmVocabTest()" style="margin-left:4px;background:#F0C040;color:#333">✅ Confirm</button>
         </div>
       </div>
       <div class="card">
@@ -1001,6 +1001,7 @@ async function renderTeacherHome(){
 function populateStudentSelects(){
   var opts='<option value="">학생을 선택하세요</option>'+allStudents.map(function(s){return '<option value="'+s.id+'">'+s.name+'</option>';}).join('');
   ['task-student-sel','note-student-sel','report-student-sel'].forEach(function(id){if($(id))$(id).innerHTML=opts;});
+  renderTaskStudentChips();
 }
 function goToConfirm(sid){
   tTab('t-task',document.querySelectorAll('#screen-teacher .nav-item')[1]);
@@ -2131,7 +2132,7 @@ async function loadVocabTest(){
     var vs=document.getElementById('vocab-score');var vt=document.getElementById('vocab-total');
     if(vs)vs.value=t.score||'';if(vt)vt.value=t.total||'';
     vocabResult=t.result;setVocabResult(t.result);
-    if(badge)badge.textContent=t.result==='pass'?'✅ 통과':t.result==='retest'?'🔄 재시':'⚪ 없음';
+    if(badge)badge.textContent=(t.result==='pass'?'✅ 통과':t.result==='retest'?'🔄 재시':'⚪ 없음')+(t.teacher_confirmed?' · Confirm됨':' · 미확인');
   } else {
     var vs=document.getElementById('vocab-score');var vt=document.getElementById('vocab-total');
     if(vs)vs.value='';if(vt)vt.value='';
@@ -3144,6 +3145,37 @@ function goToTasksDate(dateStr){
   tabs.forEach(function(b){if(b.textContent.indexOf('할일')>=0)tasksBtn=b;});
   sTab('s-tasks',tasksBtn);
   loadStudentTasks();
+}
+
+// ===== 학생 빠른 선택 칩 =====
+function renderTaskStudentChips(){
+  var el=document.getElementById('task-student-chips');
+  if(!el)return;
+  if(!allStudents.length){el.innerHTML='<div style="color:#aaa;font-size:13px">등록된 학생이 없어요</div>';return;}
+  el.innerHTML=allStudents.map(function(s){
+    var active=currentStudentId===s.id;
+    return '<button onclick="selectTaskStudent(this.dataset.sid)" data-sid="'+s.id+'" style="padding:8px 16px;border-radius:20px;border:1.5px solid '+(active?'#1B4D3E':'#E8E8E8')+';background:'+(active?'#1B4D3E':'#fff')+';color:'+(active?'#fff':'#333')+';font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">'+s.name+'</button>';
+  }).join('');
+}
+
+function selectTaskStudent(sid){
+  var sel=document.getElementById('task-student-sel');
+  if(sel)sel.value=sid;
+  loadTaskForStudent();
+  renderTaskStudentChips();
+}
+
+// ===== 교사 단어TEST Confirm =====
+async function confirmVocabTest(){
+  if(!currentStudentId){toast('학생을 선택해주세요');return;}
+  var today=getOffsetDate(taskDateOffset);
+  var res=await getSB().from('vocab_tests').update({teacher_confirmed:true}).eq('student_id',currentStudentId).eq('date',today);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('✅ 단어 TEST 확인 완료!');
+  loadVocabTest();
+  // 학생에게 알림
+  var s=allStudents.find(function(x){return x.id===currentStudentId;});
+  if(s&&s.profile_id)await sendNotification(s.profile_id,'📝 단어 TEST 결과가 확인됐어요!','vocab');
 }
 
 // ===== 앱 시작 =====
