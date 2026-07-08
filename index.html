@@ -1110,12 +1110,23 @@ function openStudentDetail(sid){
     +'<div class="form-section-title">영역별 교재</div>'
     +bookF.map(function(x){return '<div class="form-group"><label class="form-label">'+x[1]+'</label>'
       +'<input class="form-input" id="'+x[0]+'" value="'+(x[2]||'')+'" placeholder="-"></div>';}).join('')
+    +'<div class="form-section-title">📄 NELT 결과지</div>'
+    +'<div id="sd-nelt-reports" style="margin-bottom:10px"><div style="padding:8px 0;color:#aaa;font-size:13px">불러오는 중...</div></div>'
+    +'<div style="background:#F8FDF9;border-radius:10px;padding:12px;margin-bottom:14px">'
+    +'<div class="form-group" style="margin-bottom:8px"><label class="form-label">시험 날짜</label><input type="date" class="form-input" id="sd-nelt-date"></div>'
+    +'<div class="form-group" style="margin-bottom:8px"><label class="form-label">메모 (선택)</label><input type="text" class="form-input" id="sd-nelt-memo" placeholder="예: 3월 정기시험"></div>'
+    +'<input type="file" id="sd-nelt-file" accept="application/pdf" style="margin-bottom:8px;font-size:13px;width:100%">'
+    +'<button class="btn-primary" id="sd-nelt-upload-btn" style="font-size:13px;padding:10px">📤 결과지 업로드</button>'
+    +'</div>'
     +'<div style="padding-bottom:16px"><button class="btn-primary" id="sd-save-btn">저장</button></div>'
     +'</div>';
   openMod(s.name+' 정보 수정', html);
   setTimeout(function(){
     var b=document.getElementById('sd-save-btn');
     if(b)b.onclick=function(){saveStudentDetail(sid);};
+    var ub=document.getElementById('sd-nelt-upload-btn');
+    if(ub)ub.onclick=function(){uploadNeltReport(sid);};
+    loadNeltReports(sid);
   },50);
 }
 
@@ -3041,6 +3052,70 @@ function openNoteDetail(noteId){
       +'</div>';
     openMod('이화성장노트', html);
   });
+}
+
+// ===== NELT 결과지 =====
+async function loadNeltReports(sid){
+  var el=document.getElementById('sd-nelt-reports');
+  if(!el)return;
+  var res=await getSB().from('nelt_reports').select('*').eq('student_id',sid).order('test_date',{ascending:false});
+  var items=res.data||[];
+  if(!items.length){el.innerHTML='<div style="padding:8px 0;color:#aaa;font-size:13px">업로드된 결과지가 없어요</div>';return;}
+  el.innerHTML=items.map(function(r){
+    var d=new Date(r.test_date);
+    var dateLabel=d.getFullYear()+'.'+String(d.getMonth()+1).padStart(2,'0')+'.'+String(d.getDate()).padStart(2,'0');
+    return '<div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#fff;border:1px solid #E8E8E8;border-radius:8px;margin-bottom:6px">'
+      +'<span style="font-size:20px">📄</span>'
+      +'<div style="flex:1"><div style="font-size:13px;font-weight:700;color:#1B4D3E">'+dateLabel+' NELT</div>'
+      +(r.memo?'<div style="font-size:11px;color:#888">'+r.memo+'</div>':'')
+      +'</div>'
+      +'<button onclick="viewNeltPdf(this.dataset.url)" data-url="'+r.file_url+'" style="background:#1B4D3E;color:#fff;border:none;border-radius:6px;padding:6px 10px;font-size:11px;cursor:pointer">보기</button>'
+      +'<button onclick="deleteNeltReport(this.dataset.id,this.dataset.sid)" data-id="'+r.id+'" data-sid="'+sid+'" style="background:#fff;color:#E74C3C;border:1px solid #E74C3C;border-radius:6px;padding:6px 10px;font-size:11px;cursor:pointer">삭제</button>'
+      +'</div>';
+  }).join('');
+}
+
+function viewNeltPdf(url){
+  var html='<div style="padding:12px">'
+    +'<iframe src="'+url+'" style="width:100%;height:70vh;border:none;border-radius:8px;background:#f5f5f5"></iframe>'
+    +'<div style="display:flex;gap:8px;margin-top:10px">'
+    +'<button onclick="window.open(this.dataset.url)" data-url="'+url+'" class="btn-primary" style="flex:1">새 탭에서 열기</button>'
+    +'<button onclick="closeMod()" style="flex:1;padding:12px;background:#fff;border:1.5px solid #ddd;border-radius:8px;cursor:pointer;font-family:inherit">닫기</button>'
+    +'</div></div>';
+  openMod('📄 NELT 결과지', html);
+}
+
+async function uploadNeltReport(sid){
+  var fileInput=document.getElementById('sd-nelt-file');
+  var dateInput=document.getElementById('sd-nelt-date');
+  var memoInput=document.getElementById('sd-nelt-memo');
+  if(!fileInput||!fileInput.files.length){toast('PDF 파일을 선택해주세요');return;}
+  if(!dateInput||!dateInput.value){toast('시험 날짜를 선택해주세요');return;}
+  var file=fileInput.files[0];
+  if(file.type!=='application/pdf'){toast('PDF 파일만 업로드 가능해요');return;}
+  if(file.size>10*1024*1024){toast('10MB 이하 파일만 가능해요');return;}
+  toast('업로드 중...');
+  var fileName=sid+'/'+Date.now()+'.pdf';
+  var upRes=await getSB().storage.from('nelt-reports').upload(fileName,file,{contentType:'application/pdf'});
+  if(upRes.error){toast('업로드 오류: '+upRes.error.message);return;}
+  var urlData=getSB().storage.from('nelt-reports').getPublicUrl(fileName);
+  var publicUrl=urlData.data.publicUrl;
+  var insRes=await getSB().from('nelt_reports').insert({
+    student_id:sid,test_date:dateInput.value,file_url:publicUrl,
+    file_name:file.name,memo:memoInput?memoInput.value.trim():''
+  });
+  if(insRes.error){toast('저장 오류: '+insRes.error.message);return;}
+  toast('✅ 결과지 업로드 완료!');
+  fileInput.value='';dateInput.value='';if(memoInput)memoInput.value='';
+  loadNeltReports(sid);
+}
+
+async function deleteNeltReport(id,sid){
+  if(!confirm('이 결과지를 삭제할까요?'))return;
+  var res=await getSB().from('nelt_reports').delete().eq('id',id);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('삭제됐어요');
+  loadNeltReports(sid);
 }
 
 // ===== 앱 시작 =====
