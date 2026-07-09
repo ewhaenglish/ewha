@@ -47,7 +47,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
 .card-title{font-size:16px;font-weight:700;color:#1B4D3E}
 .card-count{font-size:11px;color:#aaa}
 .card-body{padding:4px 0;font-size:16px}
-.section-hd{font-size:14px;font-weight:700;color:#aaa;padding:12px 0 6px;letter-spacing:0.05em}
+.section-hd{font-size:14px;font-weight:700;color:#1B4D3E;padding:12px 0 6px;letter-spacing:0.02em;display:flex;align-items:center;gap:7px}
+.section-hd::before{content:'';display:inline-block;width:4px;height:15px;background:#1B4D3E;border-radius:2px;flex-shrink:0}
+.gold-star{color:#F0C040}
 .date-banner{background:#1B4D3E;border-radius:12px;padding:16px;margin-bottom:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
 .date-main{color:#fff;font-size:20px;font-weight:700;text-align:center}
 .date-sub{color:rgba(255,255,255,0.7);font-size:12px;margin-top:4px;text-align:center}
@@ -251,16 +253,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
       <div class="date-sub" id="t-day"></div>
     </div>
-    <div class="section-hd">💬 학부모 문의</div>
+    <div class="section-hd">학부모 문의</div>
     <div class="card" style="margin-bottom:12px">
       <div class="card-body" id="t-inquiry-list"><div style="padding:12px 16px;color:#aaa;font-size:13px">문의가 없어요</div></div>
     </div>
-    <div class="section-hd">📢 공지사항</div>
+    <div class="section-hd">공지사항</div>
     <div class="card">
       <div class="card-header"><span class="card-title">공지사항</span><button class="btn-sm" onclick="openNoticeModal()">+ 작성</button></div>
       <div class="card-body" id="t-notices"></div>
     </div>
-    <div class="section-hd">📅 달력</div>
+    <div class="section-hd">달력</div>
     <div class="calendar-wrap">
       <div class="calendar-header">
         <button class="calendar-nav" onclick="calMove(-1,'t')">◀</button>
@@ -280,10 +282,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     </div>
     <div class="section-hd">오늘 학생 현황</div>
     <div class="card">
-      <div class="card-header"><span class="card-title">📋 출결 &amp; 할일 현황</span><span class="card-count" id="t-attend-count"></span></div>
+      <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 출결 &amp; 할일 현황</span><span class="card-count" id="t-attend-count"></span></div>
       <div class="card-body" id="t-student-list"></div>
     </div>
-    <div class="section-hd">📌 학생별 할일/숙제 현황</div>
+    <div class="section-hd">학생별 할일/숙제 현황</div>
     <div style="background:#fff;border-radius:12px;overflow:hidden;margin-bottom:12px;display:flex;min-height:300px">
       <!-- 왼쪽 학생 목록 -->
       <div id="t-student-sidebar" style="width:90px;flex-shrink:0;border-right:1px solid #E8E8E8;overflow-y:auto"></div>
@@ -312,7 +314,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     </div>
     <!-- 선생님 전용: 내용 수정 버튼 -->
     <div style="padding:8px 16px 16px;flex-shrink:0">
-      <button onclick="openIntroEdit()" style="width:100%;padding:12px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:12px;font-size:13px;cursor:pointer;font-family:inherit">✏️ 내용 수정</button>
+      <button onclick="openIntroEdit()" style="width:100%;padding:12px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:12px;font-size:13px;cursor:pointer;font-family:inherit">수정</button>
     </div>
   </div>
 
@@ -327,7 +329,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
     </div>
     <div class="card" style="margin-bottom:12px">
-      <div class="card-header"><span class="card-title">🎯 학생 빠른 선택</span></div>
+      <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 학생 빠른 선택</span></div>
       <div id="task-student-chips" style="display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px"></div>
       <select class="form-select" id="task-student-sel" onchange="loadTaskForStudent()" style="display:none">
         <option value="">학생을 선택하세요</option>
@@ -335,7 +337,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     </div>
     <div class="card" style="margin-bottom:12px">
       <div class="card-header">
-        <span class="card-title">🔁 반복 할일/숙제 관리</span>
+        <span class="card-title"><span class="gold-star">✦</span> 반복 할일/숙제 관리</span>
         <button class="btn-sm" onclick="openRecurringModal()">+ 추가</button>
       </div>
       <div class="card-body" id="recurring-list"></div>
@@ -362,7 +364,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><span class="card-title">📌 오늘의 할일</span><span class="card-count" id="todo-count"></span></div>
+        <div class="card-header"><span class="card-title">오늘의 할일</span><span class="card-count" id="todo-count"></span></div>
         <div class="card-body" id="todo-list"></div>
         <div class="quick-phrases" id="todo-quick"></div>
         <div class="add-row">
@@ -371,10 +373,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><span class="card-title">📚 숙제</span><span class="card-count" id="hw-count"></span></div>
+        <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 숙제</span><span class="card-count" id="hw-count"></span></div>
         <div class="card-body" id="hw-list"></div>
         <div id="t-hw-photos-section" style="display:none;padding:10px 16px;border-top:1px solid #F5F5F5">
-          <div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:8px">📸 학생이 제출한 숙제 사진</div>
+          <div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:8px"><span style="color:#F0C040">✦</span> 학생이 제출한 숙제 사진</div>
           <div id="t-hw-photos" style="display:flex;flex-wrap:wrap;gap:8px"></div>
         </div>
         <div class="quick-phrases" id="hw-quick"></div>
@@ -401,7 +403,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
     </div>
     <div class="card">
-      <div class="card-header"><span class="card-title">📝 성장노트 생성</span></div>
+      <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 성장노트 생성</span></div>
       <div class="form-group" style="padding-top:12px">
         <label class="form-label">학생 선택</label>
         <select class="form-select" id="note-student-sel" onchange="loadNotePreview()">
@@ -410,7 +412,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
       <div id="note-preview" class="hidden">
         <div class="note-section" style="margin:0 16px 8px">
-          <div class="note-section-title">📌 오늘의 수업 (할일에서 자동 반영)</div>
+          <div class="note-section-title">오늘의 수업 (할일에서 자동 반영)</div>
           <div class="note-section-text" id="note-today-tasks">-</div>
         </div>
         <div class="note-section" style="margin:0 16px 8px">
@@ -422,7 +424,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
           <div class="note-section-text" id="note-vocab-test">-</div>
         </div>
         <div class="note-section" style="margin:0 16px 8px">
-          <div class="note-section-title">🎯 이번 주 각오</div>
+          <div class="note-section-title">이번 주 각오</div>
           <div class="note-section-text" id="note-weekly-goal">-</div>
         </div>
         <div class="form-group">
@@ -447,7 +449,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
   <!-- 마일리지 관리 -->
   <div id="t-mileage" class="t-tab content">
     <div class="date-banner"><div class="date-main">마일리지 관리</div><div class="date-sub">학생 포인트 현황</div></div>
-    <div class="section-hd">🏆 전체 랭킹</div>
+    <div class="section-hd">전체 랭킹</div>
     <div class="card"><div class="card-body" id="t-mile-rank"></div></div>
     <div class="section-hd">수동 적립 / 차감</div>
     <div class="card">
@@ -481,15 +483,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <div class="stat-card"><div class="stat-label">성장노트</div><div class="stat-num" id="rep-notes">0<span class="stat-unit">개</span></div></div>
       </div>
       <div class="card">
-        <div class="card-header"><span class="card-title">📊 할일 완료 추이</span></div>
+        <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 할일 완료 추이</span></div>
         <div class="chart-container"><canvas id="rep-chart"></canvas></div>
       </div>
       <div class="card">
-        <div class="card-header"><span class="card-title">📊 숙제 완료 추이</span></div>
+        <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 숙제 완료 추이</span></div>
         <div class="chart-container"><canvas id="rep-hw-chart"></canvas></div>
       </div>
       <div class="card">
-        <div class="card-header"><span class="card-title">📝 이번 달 요약 &amp; 총평</span></div>
+        <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 이번 달 요약 &amp; 총평</span></div>
         <div class="form-group" style="padding-top:12px">
           <label class="form-label">이번 달 수업 요약</label>
           <textarea class="form-input" id="rep-summary" rows="3" placeholder="이번 달 학습 내용 요약..."></textarea>
@@ -501,9 +503,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <div style="padding:0 16px 14px">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
             <button class="btn-primary" onclick="saveReport()">저장</button>
-            <button class="btn-secondary" onclick="exportPDF()">📄 PDF 저장</button>
+            <button class="btn-secondary" onclick="exportPDF()">PDF 저장</button>
           </div>
-          <button onclick="sendReportToParent()" style="width:100%;padding:14px;background:linear-gradient(135deg,#1B4D3E,#2D6A54);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(27,77,62,0.3)">💌 학부모에게 리포트 전송</button>
+          <button onclick="sendReportToParent()" style="width:100%;padding:14px;background:linear-gradient(135deg,#1B4D3E,#2D6A54);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(27,77,62,0.3)">✦ 학부모에게 리포트 전송</button>
         </div>
       </div>
     </div>
@@ -581,7 +583,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div class="card-body" id="s-cal-detail-body"></div>
     </div>
 
-    <div class="section-hd">🏫 등·하원</div>
+    <div class="section-hd">등·하원</div>
     <div class="card">
       <div class="card-body" id="s-attend"></div>
       <div class="attend-btns">
@@ -605,7 +607,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
       <div class="date-sub">할일 & 과제</div>
     </div>
-    <div class="section-hd" style="color:#C0392B">🎯 이번주 나의 각오</div>
+    <div class="section-hd" style="color:#C0392B">이번주 나의 각오</div>
     <div class="card">
       <div class="card-body" id="st-weekly-body"></div>
       <div id="st-weekly-input-row" style="display:none;padding:10px 16px 14px">
@@ -613,16 +615,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <button class="btn-primary" onclick="submitWeeklyGoal2(false)">저장</button>
       </div>
       <div id="st-weekly-edit-row" style="display:none;padding:0 16px 14px">
-        <button onclick="editWeeklyGoal()" style="width:100%;padding:9px;background:#fff;color:#1B4D3E;border:1.5px solid #1B4D3E;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">✏️ 각오 수정</button>
+        <button onclick="editWeeklyGoal()" style="width:100%;padding:9px;background:#fff;color:#1B4D3E;border:1.5px solid #1B4D3E;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">수정</button>
       </div>
     </div>
-    <div class="section-hd" style="color:#C0392B">📌 오늘의 할일</div>
+    <div class="section-hd" style="color:#C0392B">오늘의 할일</div>
     <div class="card">
       <div class="card-header"><span class="card-title">진행률</span><span class="card-count" id="st-todo-cnt">0/0</span></div>
       <div class="progress-wrap"><div class="progress-bar"><div class="progress-fill" id="st-todo-bar" style="width:0%"></div></div><div class="progress-label"><span></span><span id="st-todo-pct">0%</span></div></div>
       <div class="card-body" id="st-todo-list"><div style="padding:12px 16px;color:#aaa;font-size:14px">할일이 없어요</div></div>
     </div>
-    <div class="section-hd" style="color:#C0392B">📝 단어 TEST 결과</div>
+    <div class="section-hd" style="color:#C0392B">단어 TEST 결과</div>
     <div class="card">
       <div class="card-body" id="st-vocab-result"><div style="padding:12px 16px;color:#aaa;font-size:14px">오늘 단어 TEST 결과를 입력해주세요</div></div>
       <div id="st-vocab-input" style="padding:12px 16px 14px;border-top:1px solid #F5F5F5">
@@ -640,18 +642,18 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <button class="btn-primary" onclick="submitTasksVocabTest()">제출하기</button>
       </div>
     </div>
-    <div class="section-hd" style="color:#C0392B">📚 오늘의 숙제</div>
+    <div class="section-hd" style="color:#C0392B">오늘의 숙제</div>
     <div class="card">
       <div class="card-header"><span class="card-title">완료 현황</span><span class="card-count" id="st-hw-cnt">0/0</span></div>
       <div class="card-body" id="st-hw-list"><div style="padding:12px 16px;color:#aaa;font-size:14px">숙제가 없어요</div></div>
       <div style="padding:10px 16px 14px;border-top:1px solid #F5F5F5">
-        <div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:8px">📸 숙제 사진 제출</div>
+        <div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:8px"><span style="color:#F0C040">✦</span> 숙제 사진 제출</div>
         <div id="st-hw-photos" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px"></div>
         <input type="file" id="st-hw-photo-file" accept="image/*" multiple style="display:none" onchange="uploadHwPhoto()">
-        <button onclick="document.getElementById('st-hw-photo-file').click()" style="width:100%;padding:10px;background:#fff;color:#1B4D3E;border:1.5px dashed #1B4D3E;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">📷 사진 제출하기 (여러 장 가능)</button>
+        <button onclick="document.getElementById('st-hw-photo-file').click()" style="width:100%;padding:10px;background:#fff;color:#1B4D3E;border:1.5px dashed #1B4D3E;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">✦ 사진 제출하기 (여러 장 가능)</button>
       </div>
     </div>
-    <div class="section-hd" style="color:#C0392B">✍️ 오늘 수업을 마친 후 반성 한 줄</div>
+    <div class="section-hd" style="color:#C0392B">오늘 수업을 마친 후 반성 한 줄</div>
     <div class="card">
       <div class="card-body" id="st-daily-body"></div>
       <div id="st-daily-input-row" style="padding:10px 16px 14px">
@@ -659,7 +661,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <button class="btn-primary" onclick="submitDailyMsg()">저장</button>
       </div>
       <div id="st-daily-edit-row" style="display:none;padding:0 16px 14px">
-        <button onclick="editDailyMsg()" style="width:100%;padding:9px;background:#fff;color:#1B4D3E;border:1.5px solid #1B4D3E;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">✏️ 수정</button>
+        <button onclick="editDailyMsg()" style="width:100%;padding:9px;background:#fff;color:#1B4D3E;border:1.5px solid #1B4D3E;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">수정</button>
       </div>
     </div>
   </div>
@@ -681,26 +683,26 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div class="mile-pts"><span id="s-total-pts">0</span>점</div>
       <div class="mile-sub" id="s-won">= 0원 사용 가능</div>
     </div>
-    <div class="section-hd">🏆 이번 달 랭킹</div>
+    <div class="section-hd">이번 달 랭킹</div>
     <div class="card" style="margin-bottom:12px"><div class="card-body" id="s-mile-rank"></div></div>
     <div class="card" style="margin-bottom:12px">
-      <div class="card-header"><span class="card-title">⭐ 마일리지 안내</span></div>
+      <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 마일리지 안내</span></div>
       <div style="padding:12px 16px">
         <div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:6px">적립</div>
         <div style="display:grid;grid-template-columns:1fr auto;gap:5px;font-size:12px;margin-bottom:10px">
-          <span>✅ 할일 완료</span><span style="font-weight:700;color:#1B4D3E">+10점</span>
-          <span>📚 숙제 완료</span><span style="font-weight:700;color:#1B4D3E">+10점</span>
-          <span>🏫 출석 1회</span><span style="font-weight:700;color:#1B4D3E">+5점</span>
-          <span>✍️ 오늘의 한 줄</span><span style="font-weight:700;color:#1B4D3E">+5점</span>
-          <span>🎯 이번 주 각오</span><span style="font-weight:700;color:#1B4D3E">+20점</span>
-          <span>🏆 월 100% 출석 보너스</span><span style="font-weight:700;color:#1B4D3E">+500점</span>
-          <span>🌟 과제+할일 100% 완수</span><span style="font-weight:700;color:#1B4D3E">+480점</span>
+          <span>할일 완료</span><span style="font-weight:700;color:#1B4D3E">+10점</span>
+          <span>숙제 완료</span><span style="font-weight:700;color:#1B4D3E">+10점</span>
+          <span>출석 1회</span><span style="font-weight:700;color:#1B4D3E">+5점</span>
+          <span>오늘의 한 줄</span><span style="font-weight:700;color:#1B4D3E">+5점</span>
+          <span>이번 주 각오</span><span style="font-weight:700;color:#1B4D3E">+20점</span>
+          <span>월 100% 출석 보너스</span><span style="font-weight:700;color:#1B4D3E">+500점</span>
+          <span>과제+할일 100% 완수</span><span style="font-weight:700;color:#1B4D3E">+480점</span>
         </div>
         <div style="font-size:12px;font-weight:700;color:#E74C3C;margin-bottom:6px">차감</div>
         <div style="display:grid;grid-template-columns:1fr auto;gap:5px;font-size:12px">
-          <span>📚 숙제 미완료</span><span style="font-weight:700;color:#E74C3C">-10점</span>
-          <span>🚫 당일 결석</span><span style="font-weight:700;color:#E74C3C">-5점</span>
-          <span>📝 단어 재시험</span><span style="font-weight:700;color:#E74C3C">-5점</span>
+          <span>숙제 미완료</span><span style="font-weight:700;color:#E74C3C">-10점</span>
+          <span>당일 결석</span><span style="font-weight:700;color:#E74C3C">-5점</span>
+          <span>단어 재시험</span><span style="font-weight:700;color:#E74C3C">-5점</span>
         </div>
         <div style="margin-top:10px;padding-top:10px;border-top:1px solid #F5F5F5;font-size:11px;color:#aaa">
           💡 1점 = 1원 사용 가능 · 최대 월 2,000점
@@ -788,12 +790,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div class="card-body" id="p-cal-detail-body"></div>
     </div>
     <div class="card">
-      <div class="card-header"><span class="card-title">🏫 등·하원 현황</span></div>
+      <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 등·하원 현황</span></div>
       <div class="card-body" id="p-attend"></div>
     </div>
     <div class="section-hd">오늘의 할일</div>
     <div class="card">
-      <div class="card-header"><span class="card-title">📌 할일 현황</span><span class="card-count" id="p-todo-cnt">-</span></div>
+      <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 할일 현황</span><span class="card-count" id="p-todo-cnt">-</span></div>
       <div class="card-body" id="p-todo-list"></div>
       <div class="progress-wrap">
         <div class="progress-bg"><div class="progress-fill" id="p-todo-bar" style="width:0%"></div></div>
@@ -802,7 +804,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     </div>
     <div class="section-hd">오늘 숙제</div>
     <div class="card">
-      <div class="card-header"><span class="card-title">📚 숙제 현황</span><span class="card-count" id="p-hw-cnt">-</span></div>
+      <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 숙제 현황</span><span class="card-count" id="p-hw-cnt">-</span></div>
       <div class="card-body" id="p-hw-list"></div>
     </div>
   </div>
@@ -822,13 +824,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
   <div id="p-inquiry" class="p-tab content">
     <div class="date-banner"><div><div class="date-main">1:1 문의</div><div class="date-sub">선생님께 궁금한 점을 남겨주세요</div></div></div>
     <div class="card" style="margin-bottom:12px">
-      <div class="card-header"><span class="card-title">✏️ 새 문의 작성</span></div>
+      <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 새 문의 작성</span></div>
       <div style="padding:12px 16px">
         <textarea id="p-inquiry-input" placeholder="문의 내용을 입력해주세요..." style="width:100%;min-height:80px;padding:12px;border:1.5px solid #E8E8E8;border-radius:10px;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box"></textarea>
         <button class="btn-primary" onclick="submitParentInquiry()" style="margin-top:8px">문의 보내기</button>
       </div>
     </div>
-    <div class="section-hd">📋 문의 내역</div>
+    <div class="section-hd">문의 내역</div>
     <div id="p-inquiry-list"></div>
   </div>
 
@@ -1151,13 +1153,13 @@ function openStudentDetail(sid){
     +'<div class="form-section-title">영역별 교재</div>'
     +bookF.map(function(x){return '<div class="form-group"><label class="form-label">'+x[1]+'</label>'
       +'<input class="form-input" id="'+x[0]+'" value="'+(x[2]||'')+'" placeholder="-"></div>';}).join('')
-    +'<div class="form-section-title">📄 NELT 결과지</div>'
+    +'<div class="form-section-title">NELT 결과지</div>'
     +'<div id="sd-nelt-reports" style="margin-bottom:10px"><div style="padding:8px 0;color:#aaa;font-size:13px">불러오는 중...</div></div>'
     +'<div style="background:#F8FDF9;border-radius:10px;padding:12px;margin-bottom:14px">'
     +'<div class="form-group" style="margin-bottom:8px"><label class="form-label">시험 날짜</label><input type="date" class="form-input" id="sd-nelt-date"></div>'
     +'<div class="form-group" style="margin-bottom:8px"><label class="form-label">메모 (선택)</label><input type="text" class="form-input" id="sd-nelt-memo" placeholder="예: 3월 정기시험"></div>'
     +'<input type="file" id="sd-nelt-file" accept="application/pdf" style="margin-bottom:8px;font-size:13px;width:100%">'
-    +'<button class="btn-primary" id="sd-nelt-upload-btn" style="font-size:13px;padding:10px">📤 결과지 업로드</button>'
+    +'<button class="btn-primary" id="sd-nelt-upload-btn" style="font-size:13px;padding:10px">✦ 결과지 업로드</button>'
     +'</div>'
     +'<div style="padding-bottom:16px"><button class="btn-primary" id="sd-save-btn">저장</button></div>'
     +'</div>';
@@ -1342,7 +1344,7 @@ async function saveNote(){
   var ms2=monday2.getFullYear()+'-'+String(monday2.getMonth()+1).padStart(2,'0')+'-'+String(monday2.getDate()).padStart(2,'0');
   var gr2=await getSB().from('weekly_goals').select('content').eq('student_id',sid).eq('week_start',ms2).maybeSingle();
   var goalContent=gr2.data?gr2.data.content:'';
-  var dateLabel=(function(){var d=new Date(today);return (d.getMonth()+1)+'월 '+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';})();
+  var dateLabel=(function(){var d=new Date(today);var days=['일','월','화','수','목','금','토'];return d.getFullYear()+'. '+String(d.getMonth()+1).padStart(2,'0')+'. '+String(d.getDate()).padStart(2,'0')+' ('+days[d.getDay()]+')';})();
   var vr3=await getSB().from('vocab_tests').select('*').eq('student_id',sid).eq('date',today).maybeSingle();
   var vtText=vr3.data?((vr3.data.score!=null?vr3.data.score+'/'+vr3.data.total+'점 ':'')+(vr3.data.result==='pass'?'✅통과':vr3.data.result==='retest'?'🔄재시험':'⚪없음')):'기록없음';
   var todos=tasks.filter(function(t){return t.type==='todo';});
@@ -1357,34 +1359,8 @@ async function saveNote(){
   loadRecentNotes();
   // 저장된 전체 내용 모달로 보여주기
   var studentName=(allStudents.find(function(x){return x.id===sid;})||{}).name||'학생';
-  var previewHtml='<div style="padding:16px">'
-    +'<div style="background:#1B4D3E;color:#fff;padding:12px 16px;border-radius:10px;margin-bottom:16px">'
-    +'<div style="font-size:16px;font-weight:700">🌿 '+studentName+' 이화성장노트</div>'
-    +'<div style="font-size:12px;opacity:0.8;margin-top:4px">📅 '+dateLabel+'</div>'
-    +'</div>'
-    +'<div style="background:#F8FDF9;border-radius:10px;padding:14px 16px;margin-bottom:10px">'
-    +'<div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:6px">📝 단어 TEST</div>'
-    +'<div style="font-size:14px;color:#333">'+vtText+'</div>'
-    +'</div>'
-    +'<div style="background:#F8FDF9;border-radius:10px;padding:14px 16px;margin-bottom:10px">'
-    +'<div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:6px">📌 오늘의 수업</div>'
-    +'<div style="font-size:13px;color:#333;white-space:pre-line">'+todoText+'</div>'
-    +'</div>'
-    +'<div style="background:#F8FDF9;border-radius:10px;padding:14px 16px;margin-bottom:10px">'
-    +'<div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:6px">📚 오늘의 과제</div>'
-    +'<div style="font-size:13px;color:#333;white-space:pre-line">'+hwText+'</div>'
-    +'</div>'
-    +(goalContent?'<div style="background:#F8FDF9;border-radius:10px;padding:14px 16px;margin-bottom:10px">'
-    +'<div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:6px">🎯 이번 주 각오</div>'
-    +'<div style="font-size:13px;color:#333">'+goalContent+'</div>'
-    +'</div>':'')
-    +'<div style="background:#FFF8E7;border-radius:10px;padding:14px 16px;margin-bottom:10px;border:1.5px solid #F0C040">'
-    +'<div style="font-size:12px;font-weight:700;color:#B8860B;margin-bottom:6px">✍️ 선생님 피드백</div>'
-    +'<div style="font-size:14px;color:#333;line-height:1.7;white-space:pre-line">'+feedback+'</div>'
-    +'</div>'
-    +'<button onclick="closeMod()" class="btn-primary" style="width:100%">확인</button>'
-    +'</div>';
-  openMod('이화성장노트 미리보기', previewHtml);
+  var previewHtml=buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,feedback);
+  openMod('이화성장노트', previewHtml);
 }
 async function loadRecentNotes(){
   var dateFilter=getOffsetDate(noteDateOffset);
@@ -1395,7 +1371,7 @@ async function loadRecentNotes(){
   var label=noteDateOffset===0?'오늘':(function(){var d=new Date();d.setDate(d.getDate()+noteDateOffset);return (d.getMonth()+1)+'월 '+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';})();
   if(notes.length){
     el.innerHTML='<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0 8px">'
-      +'<span style="font-size:13px;color:#aaa;font-weight:700">📅 '+label+'의 성장노트</span>'
+      +'<span style="font-size:13px;color:#aaa;font-weight:700">'+label+'의 성장노트</span>'
       +'<button onclick="deleteSelectedNotes()" style="background:#E74C3C;color:#fff;border:none;padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit">선택 삭제</button>'
       +'</div>'
       +notes.map(function(n){return renderNoteCardWithCheck(n);}).join('');
@@ -1412,7 +1388,7 @@ async function loadStudentNotes(){
   var res=await query;
   var notes=res.data||[];
   var label=noteDateOffset===0?'오늘':(function(){var d=new Date();d.setDate(d.getDate()+noteDateOffset);return (d.getMonth()+1)+'월 '+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';})();
-  $('s-note-list').innerHTML=notes.length?'<div style="font-size:12px;color:#aaa;font-weight:700;padding:8px 0 6px">📅 '+label+'의 성장노트</div>'+notes.map(function(n){return renderNoteCard(n,true);}).join(''):'<div style="padding:16px;color:#aaa;text-align:center">'+label+'의 성장노트가 없어요</div>';
+  $('s-note-list').innerHTML=notes.length?'<div style="font-size:12px;color:#aaa;font-weight:700;padding:8px 0 6px">'+label+'의 성장노트</div>'+notes.map(function(n){return renderNoteCard(n,true);}).join(''):'<div style="padding:16px;color:#aaa;text-align:center">'+label+'의 성장노트가 없어요</div>';
 }
 async function loadMile(){
   await loadMileRanking('s-mile-rank');
@@ -1625,8 +1601,8 @@ function renderStudentOverview(sid, allTasks){
     +'<span style="font-size:14px;font-weight:700;color:#1B4D3E">'+s.name+'</span>'
     +'<span style="font-size:11px;color:#aaa;margin-left:8px">할일 '+todos.length+'개 · 숙제 '+hws.length+'개</span>'
     +'</div>'
-    +(todos.length?'<div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:#1B4D3E;background:#F8FDF9">📌 오늘의 할일</div>'+todos.map(taskHtml).join(''):'')
-    +(hws.length?'<div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:#1a56db;background:#F0F4FF">📚 숙제</div>'+hws.map(taskHtml).join(''):'')
+    +(todos.length?'<div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:#1B4D3E;background:#F8FDF9">오늘의 할일</div>'+todos.map(taskHtml).join(''):'')
+    +(hws.length?'<div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:#1a56db;background:#F0F4FF"><span class="gold-star">✦</span> 숙제</div>'+hws.map(taskHtml).join(''):'')
     +(!tasks.length?'<div style="padding:24px;text-align:center;color:#aaa;font-size:13px">오늘 등록된 할일/숙제가 없어요</div>':'');
 }
 
@@ -2106,7 +2082,7 @@ async function loadNotices(){
         +'<div style="padding:10px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.15)">'
         +'<span style="font-size:14px;font-weight:700;color:#fff">📢 '+n.title+'</span>'
         +'<div style="display:flex;gap:6px">'
-        +'<button onclick="openNoticeModal(this.dataset.id,this.dataset.title,this.dataset.content)" data-id="'+n.id+'" data-title="'+n.title+'" data-content="'+n.content+'" style="background:rgba(255,255,255,0.25);border:none;color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer">✏️ 수정</button>'
+        +'<button onclick="openNoticeModal(this.dataset.id,this.dataset.title,this.dataset.content)" data-id="'+n.id+'" data-title="'+n.title+'" data-content="'+n.content+'" style="background:rgba(255,255,255,0.25);border:none;color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer">수정</button>'
         +'<button onclick="deleteNotice(this.dataset.id)" data-id="'+n.id+'" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer">삭제</button>'
         +'</div></div>'
         +'<div style="background:#FFF8E7;padding:12px 14px;font-size:13px;color:#3D2B00;line-height:1.6;font-weight:500">'+n.content+'</div>'
@@ -2724,7 +2700,7 @@ async function calSelectDate(dateStr,role,el){
     html+=todos.map(function(t){return '<div style="padding:9px 14px;border-bottom:1px solid #F5F5F5;font-size:14px;display:flex;align-items:center;gap:8px"><span>'+(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜'))+'</span>'+t.title+'</div>';}).join('');
   }
   if(hws.length){
-    html+='<div style="padding:8px 14px;background:#F0F4FF;font-size:12px;font-weight:700;color:#1a56db;border-bottom:1px solid #E8E8E8">📚 숙제</div>';
+    html+='<div style="padding:8px 14px;background:#F0F4FF;font-size:12px;font-weight:700;color:#1a56db;border-bottom:1px solid #E8E8E8"><span class="gold-star">✦</span> 숙제</div>';
     html+=hws.map(function(t){return '<div style="padding:9px 14px;border-bottom:1px solid #F5F5F5;font-size:14px;display:flex;align-items:center;gap:8px"><span>'+(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜'))+'</span>'+t.title+'</div>';}).join('');
   }
   // 학생/선생님 화면에서는 성장노트 달력에 안 보임
@@ -2735,7 +2711,7 @@ async function calSelectDate(dateStr,role,el){
   if(!html)html='<div style="padding:20px;text-align:center;color:#aaa;font-size:13px">이날의 기록이 없어요</div>';
   // 학생: 할일&과제 탭으로 이동 버튼 추가
   if(role==='s'&&(todos.length||hws.length)){
-    html+='<div style="padding:10px 14px"><button onclick="goToTasksDate(this.dataset.date)" data-date="'+dateStr+'" style="width:100%;padding:10px;background:#1B4D3E;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">📋 할일&과제 탭에서 체크하기</button></div>';
+    html+='<div style="padding:10px 14px"><button onclick="goToTasksDate(this.dataset.date)" data-date="'+dateStr+'" style="width:100%;padding:10px;background:#1B4D3E;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">✦ 할일&과제 탭에서 체크하기</button></div>';
   }
   if(detailBody)detailBody.innerHTML=html;
 }
@@ -3089,8 +3065,8 @@ function openNoteDetail(noteId){
     var n=res.data;if(!n)return;
     var studentName=n.students?n.students.name:'';
     var d=new Date(n.date);
-    var dateLabel=(d.getMonth()+1)+'월 '+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';
-    // content 파싱
+    var days=['일','월','화','수','목','금','토'];
+    var dateLabel=d.getFullYear()+'. '+String(d.getMonth()+1).padStart(2,'0')+'. '+String(d.getDate()).padStart(2,'0')+' ('+days[d.getDay()]+')';
     var c=n.content||'';
     function extractSection(label){
       var re=new RegExp('\\['+label+'\\]\\n([\\s\\S]*?)(?=\\n\\[|$)');
@@ -3101,26 +3077,7 @@ function openNoteDetail(noteId){
     var hws=extractSection('오늘의 과제');
     var goal=extractSection('이번 주 각오');
     var feedback=extractSection('피드백');
-    function makeSection(icon,title,txt,bg,border){
-      if(!txt)return '';
-      return '<div style="background:'+(bg||'#F8FDF9')+';border-radius:10px;padding:14px 16px;margin-bottom:10px'+(border?';border:1.5px solid '+border:'')+'">'
-        +'<div style="font-size:12px;font-weight:700;color:'+(border?'#B8860B':'#1B4D3E')+';margin-bottom:6px">'+icon+' '+title+'</div>'
-        +'<div style="font-size:14px;color:#333;line-height:1.7;white-space:pre-line">'+txt+'</div>'
-        +'</div>';
-    }
-    var html='<div style="padding:16px">'
-      +'<div style="background:#1B4D3E;color:#fff;padding:12px 16px;border-radius:10px;margin-bottom:16px">'
-      +'<div style="font-size:16px;font-weight:700">🌿 '+studentName+' 이화성장노트</div>'
-      +'<div style="font-size:12px;opacity:0.8;margin-top:4px">📅 '+dateLabel+'</div>'
-      +'</div>'
-      +makeSection('📝','단어 TEST',vocab)
-      +makeSection('📌','오늘의 수업',todos)
-      +makeSection('📚','오늘의 과제',hws)
-      +makeSection('🎯','이번 주 각오',goal)
-      +makeSection('✍️','선생님 피드백',feedback,'#FFF8E7','#F0C040')
-      +'<button onclick="closeMod()" class="btn-primary" style="width:100%">닫기</button>'
-      +'</div>';
-    openMod('이화성장노트', html);
+    openMod('이화성장노트', buildNoteHtml(studentName,dateLabel,vocab,todos,hws,goal,feedback));
   });
 }
 
@@ -3442,7 +3399,7 @@ async function sendReportToParent(){
   for(var i=0;i<parents.length;i++){
     await sendNotification(parents[i].parent_id,'📊 '+(s?s.name:'')+' 학생의 '+(d.getMonth()+1)+'월 리포트가 도착했어요!','report');
   }
-  toast('💌 학부모에게 리포트 전송 완료!');
+  toast('✦ 학부모에게 리포트 전송 완료!');
 }
 
 // ===== 학부모 리포트 보기 =====
@@ -3456,16 +3413,16 @@ async function loadParentReport(){
   if(!res.data){el.innerHTML='';return;}
   var r=res.data;
   var childName=parentChildren[currentChildIndex||0].name;
-  el.innerHTML='<div class="section-hd">📊 '+(d.getMonth()+1)+'월 이화 Monthly Report</div>'
+  el.innerHTML='<div class="section-hd">'+(d.getMonth()+1)+'월 이화 Monthly Report</div>'
     +'<div style="background:linear-gradient(135deg,#1B4D3E,#2D6A54);border-radius:14px;padding:18px;margin-bottom:12px;color:#fff">'
-    +'<div style="font-size:16px;font-weight:700;margin-bottom:2px">🌿 '+childName+'</div>'
+    +'<div style="font-size:16px;font-weight:700;margin-bottom:2px">'+childName+'</div>'
     +'<div style="font-size:11px;opacity:0.7;margin-bottom:14px">'+d.getFullYear()+'년 '+(d.getMonth()+1)+'월 학습 리포트</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
     +'<div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:12px;text-align:center"><div style="font-size:11px;opacity:0.8">할일 완료율</div><div style="font-size:24px;font-weight:700;margin-top:4px">'+(r.task_completion_rate||0)+'%</div></div>'
     +'<div style="background:rgba(255,255,255,0.12);border-radius:10px;padding:12px;text-align:center"><div style="font-size:11px;opacity:0.8">숙제 완료율</div><div style="font-size:24px;font-weight:700;margin-top:4px">'+(r.homework_completion_rate||0)+'%</div></div>'
     +'</div></div>'
-    +(r.monthly_summary?'<div class="card" style="margin-bottom:10px"><div style="padding:14px 16px"><div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:6px">📚 이번 달 수업 요약</div><div style="font-size:14px;color:#333;line-height:1.7">'+r.monthly_summary+'</div></div></div>':'')
-    +(r.teacher_comment?'<div class="card" style="margin-bottom:12px;border:1.5px solid #F0C040"><div style="padding:14px 16px;background:#FFF8E7;border-radius:12px"><div style="font-size:12px;font-weight:700;color:#B8860B;margin-bottom:6px">✍️ 선생님 총평</div><div style="font-size:14px;color:#333;line-height:1.7">'+r.teacher_comment+'</div></div></div>':'');
+    +(r.monthly_summary?'<div class="card" style="margin-bottom:10px"><div style="padding:14px 16px"><div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:6px">이번 달 수업 요약</div><div style="font-size:14px;color:#333;line-height:1.7">'+r.monthly_summary+'</div></div></div>':'')
+    +(r.teacher_comment?'<div class="card" style="margin-bottom:12px;border:1.5px solid #F0C040"><div style="padding:14px 16px;background:#FFF8E7;border-radius:12px"><div style="font-size:12px;font-weight:700;color:#B8860B;margin-bottom:6px">선생님 총평</div><div style="font-size:14px;color:#333;line-height:1.7">'+r.teacher_comment+'</div></div></div>':'');
 }
 
 // ===== 교사 숙제 사진 확인 =====
@@ -3492,6 +3449,51 @@ async function loadTeacherHwPhotos(){
       +'<div style="font-size:10px;color:#888;margin-top:3px">🕐 '+t+'</div>'
       +'</div>';
   }).join('');
+}
+
+// ===== 이화성장노트 통일 디자인 =====
+function buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,feedback){
+  function noteSection(title,txt,isGold){
+    if(!txt)return '';
+    return '<div style="margin-bottom:14px'+(isGold?';background:#FFFDF5;border:1.5px solid #F0C040;border-radius:10px;padding:12px 14px':'')+'">'
+      +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
+      +'<span style="display:inline-block;width:3.5px;height:14px;background:'+(isGold?'#F0C040':'#1B4D3E')+';border-radius:2px"></span>'
+      +'<span style="font-size:13px;font-weight:700;color:'+(isGold?'#B8860B':'#1B4D3E')+'">'+title+'</span></div>'
+      +'<div style="font-size:14px;color:#333;line-height:1.8;white-space:pre-line;padding-left:10px">'+txt+'</div>'
+      +'</div>';
+  }
+  return '<div style="padding:16px">'
+    +'<div style="background:#1B4D3E;border-radius:12px;padding:18px 16px;margin-bottom:6px;text-align:center">'
+    +'<div style="font-size:19px;font-weight:800;color:#fff;letter-spacing:0.15em">이화성장노트</div>'
+    +'<div style="font-size:10px;color:#F0C040;letter-spacing:0.3em;margin-top:5px">✦ EWHA ENGLISH ✦</div>'
+    +'</div>'
+    +'<div style="background:#fff;border:1px solid #E8E8E8;border-top:3px solid #F0C040;border-radius:0 0 12px 12px;padding:14px 16px;margin-bottom:16px">'
+    +'<div style="display:flex;gap:24px">'
+    +'<div style="flex:1"><span style="font-size:11px;color:#999">날짜</span><div style="font-size:14px;font-weight:700;color:#1B4D3E;border-bottom:1.5px solid #E8E8E8;padding:3px 0">'+dateLabel+'</div></div>'
+    +'<div style="flex:1"><span style="font-size:11px;color:#999">이름</span><div style="font-size:14px;font-weight:700;color:#1B4D3E;border-bottom:1.5px solid #E8E8E8;padding:3px 0">'+studentName+'</div></div>'
+    +'</div></div>'
+    +noteSection('단어 TEST',vtText)
+    +noteSection('오늘의 수업',todoText)
+    +noteSection('오늘의 과제',hwText)
+    +noteSection('이번 주 각오',goalContent)
+    +noteSection('선생님 한마디',feedback,true)
+    +'<button onclick="closeMod()" class="btn-primary" style="width:100%;margin-top:4px">확인</button>'
+    +'</div>';
+}
+
+// ===== 성장노트 카드 (학생/학부모용) =====
+function renderNoteCard(n,clickable){
+  var d=new Date(n.date);
+  var days=['일','월','화','수','목','금','토'];
+  var dateLabel=(d.getMonth()+1)+'월 '+d.getDate()+'일('+days[d.getDay()]+')';
+  var preview=(n.content||'').split('\n').filter(function(l){return l.trim()&&l.indexOf('[')<0&&l.indexOf('Date:')<0;}).slice(-2).join(' ').slice(0,55);
+  return '<div style="background:#fff;border:1px solid #E8E8E8;border-left:4px solid #1B4D3E;border-radius:12px;padding:13px 15px;margin-bottom:9px;cursor:pointer" onclick="openNoteDetail(this.dataset.id)" data-id="'+n.id+'">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">'
+    +'<span style="font-size:13px;font-weight:700;color:#1B4D3E"><span style="color:#F0C040">✦</span> '+(n.student_name||'')+' 성장노트</span>'
+    +'<span style="font-size:11px;color:#aaa">'+dateLabel+'</span></div>'
+    +'<div style="font-size:12px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+preview+'...</div>'
+    +'<div style="font-size:11px;color:#1B4D3E;margin-top:6px;font-weight:600">눌러서 전체 보기 →</div>'
+    +'</div>';
 }
 
 // ===== 앱 시작 =====
