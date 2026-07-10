@@ -38,9 +38,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
 .logout-btn{background:none;border:none;color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;font-family:inherit}
 .bottom-nav{background:#fff;border-top:1px solid #E8E8E8;display:grid;padding:8px 0 20px;position:sticky;bottom:0;z-index:100}
 .nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0;cursor:pointer;background:none;border:none;font-family:inherit}
-.nav-icon{font-size:19px;color:#aaa;filter:grayscale(1);opacity:0.45;transition:all 0.15s}
+.nav-icon{display:flex;align-items:center;justify-content:center;color:#B4B2A9;transition:color 0.15s}
+.nav-svg{width:21px;height:21px}
 .nav-label{font-size:10px;color:#aaa}
-.nav-item.active .nav-icon{filter:grayscale(1) sepia(1) hue-rotate(110deg) saturate(3) brightness(0.55);opacity:1}
+.nav-item.active .nav-icon{color:#1B4D3E}
+.nav-item.active .nav-svg{stroke-width:2.3}
 .nav-item.active .nav-label{color:#1B4D3E;font-weight:700}
 .content{flex:1;overflow-y:auto;padding:16px 16px 4px}
 .card{background:#fff;border-radius:12px;margin-bottom:12px;overflow:hidden}
@@ -460,13 +462,25 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
     </div>
     <div class="section-hd">학생별 내역</div>
-    <div class="card"><div class="card-body" id="t-mile-history"></div></div>
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #F5F5F5">
+        <button onclick="changeTMileMonth(-1)" style="background:none;border:none;font-size:18px;cursor:pointer;color:#1B4D3E">◀</button>
+        <span id="t-mile-month-label" style="font-size:14px;font-weight:700;color:#1B4D3E"></span>
+        <button onclick="changeTMileMonth(1)" style="background:none;border:none;font-size:18px;cursor:pointer;color:#1B4D3E">▶</button>
+      </div>
+      <div class="card-body" id="t-mile-history"></div>
+    </div>
   </div>
 
   <!-- Monthly Report -->
   <div id="t-report" class="t-tab content">
     <div class="date-banner"><div class="date-main" id="t-date4"></div><div class="date-sub">Monthly Report</div></div>
     <div class="card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #F5F5F5">
+        <button onclick="changeRepMonth(-1)" style="background:none;border:none;font-size:18px;cursor:pointer;color:#1B4D3E">◀</button>
+        <span id="rep-month-label" style="font-size:14px;font-weight:700;color:#1B4D3E"></span>
+        <button onclick="changeRepMonth(1)" style="background:none;border:none;font-size:18px;cursor:pointer;color:#1B4D3E">▶</button>
+      </div>
       <div id="report-student-chips" style="display:flex;flex-wrap:wrap;gap:8px;padding:12px 16px"></div>
       <select class="form-select" id="report-student-sel" onchange="loadReport()" style="display:none">
         <option value="">학생을 선택하세요</option>
@@ -511,13 +525,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
 
 
   <div class="bottom-nav" style="grid-template-columns:repeat(7,1fr)">
-    <button class="nav-item active" onclick="tTab('t-home',this)"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></button>
-    <button class="nav-item" onclick="tTab('t-task',this)"><span class="nav-icon">📋</span><span class="nav-label">할일/숙제</span></button>
-    <button class="nav-item" onclick="tTab('t-note',this);loadRecentNotes();populateStudentSelects()"><span class="nav-icon">✨</span><span class="nav-label">성장노트</span></button>
-    <button class="nav-item" onclick="tTab('t-students',this);loadStudents()"><span class="nav-icon">👥</span><span class="nav-label">학생관리</span></button>
-    <button class="nav-item" onclick="tTab('t-mileage',this);loadMileageTab()"><span class="nav-icon">⭐</span><span class="nav-label">마일리지</span></button>
-    <button class="nav-item" onclick="tTab('t-report',this);populateStudentSelects()"><span class="nav-icon">📊</span><span class="nav-label">리포트</span></button>
-    <button class="nav-item" onclick="tTab('t-intro',this);loadIntroTab();loadIntroToTeacher()"><span class="nav-icon">🌿</span><span class="nav-label">Intro</span></button>
+    <button class="nav-item active" onclick="tTab('t-home',this)"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span><span class="nav-label">홈</span></button>
+    <button class="nav-item" onclick="tTab('t-task',this)"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 9l2 2 4-4"/><path d="M9 15h6"/></svg></span><span class="nav-label">할일/숙제</span></button>
+    <button class="nav-item" onclick="tTab('t-note',this);loadRecentNotes();populateStudentSelects()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l1.5 4.5L18 10l-4.5 1.5L12 16l-1.5-4.5L6 10l4.5-1.5z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/></svg></span><span class="nav-label">성장노트</span></button>
+    <button class="nav-item" onclick="tTab('t-students',this);loadStudents()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 15c2.5 0 5 1.6 5 4"/></svg></span><span class="nav-label">학생관리</span></button>
+    <button class="nav-item" onclick="tTab('t-mileage',this);loadMileageTab()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.4 5.4 5.6.6-4.2 3.9 1.2 5.6-5-3-5 3 1.2-5.6L4 9l5.6-.6z"/></svg></span><span class="nav-label">마일리지</span></button>
+    <button class="nav-item" onclick="tTab('t-report',this);populateStudentSelects()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg></span><span class="nav-label">리포트</span></button>
+    <button class="nav-item" onclick="tTab('t-intro',this);loadIntroTab();loadIntroToTeacher()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-2 3-6 4-6 9a6 6 0 0 0 12 0c0-5-4-6-6-9z"/><path d="M12 21v-6"/></svg></span><span class="nav-label">Intro</span></button>
   </div>
 </div>
 
@@ -718,10 +732,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     </div>
   </div>
   <div class="bottom-nav" style="grid-template-columns:repeat(4,1fr)">
-    <button class="nav-item" onclick="sTab('s-intro',this);loadIntroTab()"><span class="nav-icon">🌿</span><span class="nav-label">Intro</span></button>
-    <button class="nav-item active" onclick="sTab('s-home',this)"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></button>
-    <button class="nav-item" onclick="sTab('s-tasks',this);loadStudentTasks()"><span class="nav-icon">📋</span><span class="nav-label">할일&과제</span></button>
-    <button class="nav-item" onclick="sTab('s-mile',this);loadMile()"><span class="nav-icon">⭐</span><span class="nav-label">마일리지</span></button>
+    <button class="nav-item" onclick="sTab('s-intro',this);loadIntroTab()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-2 3-6 4-6 9a6 6 0 0 0 12 0c0-5-4-6-6-9z"/><path d="M12 21v-6"/></svg></span><span class="nav-label">Intro</span></button>
+    <button class="nav-item active" onclick="sTab('s-home',this)"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span><span class="nav-label">홈</span></button>
+    <button class="nav-item" onclick="sTab('s-tasks',this);loadStudentTasks()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 9l2 2 4-4"/><path d="M9 15h6"/></svg></span><span class="nav-label">할일&과제</span></button>
+    <button class="nav-item" onclick="sTab('s-mile',this);loadMile()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.4 5.4 5.6.6-4.2 3.9 1.2 5.6-5-3-5 3 1.2-5.6L4 9l5.6-.6z"/></svg></span><span class="nav-label">마일리지</span></button>
   </div>
 </div>
 
@@ -834,11 +848,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
 
 
   <div class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
-    <button class="nav-item" onclick="pTab('p-intro',this);loadIntroTab()"><span class="nav-icon">🌿</span><span class="nav-label">Intro</span></button>
-    <button class="nav-item active" onclick="pTab('p-home',this)"><span class="nav-icon">🏠</span><span class="nav-label">홈</span></button>
-    <button class="nav-item" onclick="pTab('p-note',this);loadParentNotes()"><span class="nav-icon">✨</span><span class="nav-label">성장노트</span></button>
-    <button class="nav-item" onclick="pTab('p-inquiry',this);loadParentInquiries()"><span class="nav-icon">💬</span><span class="nav-label">문의</span></button>
-    <button class="nav-item" onclick="showAddChildModal()"><span class="nav-icon">➕</span><span class="nav-label">자녀추가</span></button>
+    <button class="nav-item" onclick="pTab('p-intro',this);loadIntroTab()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-2 3-6 4-6 9a6 6 0 0 0 12 0c0-5-4-6-6-9z"/><path d="M12 21v-6"/></svg></span><span class="nav-label">Intro</span></button>
+    <button class="nav-item active" onclick="pTab('p-home',this)"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span><span class="nav-label">홈</span></button>
+    <button class="nav-item" onclick="pTab('p-note',this);loadParentNotes()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l1.5 4.5L18 10l-4.5 1.5L12 16l-1.5-4.5L6 10l4.5-1.5z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/></svg></span><span class="nav-label">성장노트</span></button>
+    <button class="nav-item" onclick="pTab('p-inquiry',this);loadParentInquiries()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></svg></span><span class="nav-label">문의</span></button>
+    <button class="nav-item" onclick="showAddChildModal()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span><span class="nav-label">자녀추가</span></button>
   </div>
 </div>
 
@@ -1885,20 +1899,34 @@ async function loadMileageTab(){
   }
 }
 
+var tMileMonthOffset=0;
+function changeTMileMonth(dir){
+  tMileMonthOffset+=dir;
+  var sel=document.getElementById('mile-student-sel');
+  loadMileHistory(sel?sel.value:'');
+}
 async function loadMileHistory(sid){
-  if(!sid){$('t-mile-history').innerHTML='';return;}
-  var res=await getSB().from('mileage').select('*').eq('student_id',sid).order('created_at',{ascending:false});
+  var d=new Date();d.setMonth(d.getMonth()+tMileMonthOffset);
+  var label=document.getElementById('t-mile-month-label');
+  if(label)label.textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월';
+  if(!sid){$('t-mile-history').innerHTML='<div style="padding:16px;color:#aaa;text-align:center;font-size:13px">위에서 학생을 선택해주세요</div>';return;}
+  var ym=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+  var nextM=new Date(d.getFullYear(),d.getMonth()+1,1);
+  var nextYm=nextM.getFullYear()+'-'+String(nextM.getMonth()+1).padStart(2,'0');
+  var res=await getSB().from('mileage').select('*').eq('student_id',sid).gte('created_at',ym+'-01T00:00:00').lt('created_at',nextYm+'-01T00:00:00').order('created_at',{ascending:false});
   var items=res.data||[];
   var total=items.reduce(function(s,i){return s+i.amount;},0);
-  $('t-mile-history').innerHTML='<div style="padding:12px 16px;font-weight:700;font-size:15px;color:#1B4D3E;border-bottom:1px solid #F5F5F5">현재 총 '+total+'점</div>'
+  $('t-mile-history').innerHTML='<div style="padding:12px 16px;font-weight:700;font-size:15px;color:#1B4D3E;border-bottom:1px solid #F5F5F5">'+(d.getMonth()+1)+'월 합계 '+(total>0?'+':'')+total+'점</div>'
     +items.map(function(i){
       var plus=i.amount>0;
+      var cd=new Date(new Date(i.created_at).getTime()+9*60*60*1000);
+      var dateStr=(cd.getUTCMonth()+1)+'/'+cd.getUTCDate();
       return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #F5F5F5">'
         +'<div><div style="font-size:13px">'+(i.reason||i.memo||'마일리지')+'</div>'
-        +'<div style="font-size:11px;color:#aaa">'+i.created_at.slice(0,10)+'</div></div>'
+        +'<div style="font-size:11px;color:#aaa">'+dateStr+'</div></div>'
         +'<span style="font-weight:700;color:'+(plus?'#1B4D3E':'#E74C3C')+'">'+(plus?'+':'')+i.amount+'점</span>'
         +'</div>';
-    }).join('')||'<div style="padding:16px;color:#aaa;text-align:center">내역 없음</div>';
+    }).join('')||'<div style="padding:16px;color:#aaa;text-align:center">이 달 내역 없음</div>';
 }
 
 function openMileModal(type){
@@ -2463,11 +2491,23 @@ async function deleteSelectedNotes(){
   loadRecentNotes();
 }
 
+var repMonthOffset=0;
+function changeRepMonth(dir){
+  repMonthOffset+=dir;
+  updateRepMonthLabel();
+  loadReport();
+}
+function updateRepMonthLabel(){
+  var d=new Date();d.setMonth(d.getMonth()+repMonthOffset);
+  var el=document.getElementById('rep-month-label');
+  if(el)el.textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월';
+}
 async function loadReport(){
+  updateRepMonthLabel();
   var sid=document.getElementById('report-student-sel').value;
   if(!sid){document.getElementById('report-area').classList.add('hidden');return;}
   document.getElementById('report-area').classList.remove('hidden');
-  var d=new Date();
+  var d=new Date();d.setMonth(d.getMonth()+repMonthOffset);
   var ym=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
   var res=await getSB().from('tasks').select('*').eq('student_id',sid).gte('date',ym+'-01').lte('date',ym+'-31');
   var tasks=res.data||[];
@@ -3184,7 +3224,7 @@ function selectChipStudent(containerId,selId,sid,onSelect){
 function renderTaskStudentChips(){
   renderStudentChips('task-student-chips','task-student-sel','loadTaskForStudent');
   renderStudentChips('note-student-chips','note-student-sel','loadNotePreview');
-  renderStudentChips('mile-student-chips','mile-student-sel','');
+  renderStudentChips('mile-student-chips','mile-student-sel','loadMileHistoryFromSel');
   renderStudentChips('report-student-chips','report-student-sel','loadReport');
 }
 
@@ -3508,6 +3548,10 @@ function renderNoteCard(n,clickable){
     +'</div>';
 }
 
+function loadMileHistoryFromSel(){
+  var sel=document.getElementById('mile-student-sel');
+  loadMileHistory(sel?sel.value:'');
+}
 // ===== 앱 시작 =====
 window.addEventListener('load',function(){
   // 로그인 화면 로고 설정
