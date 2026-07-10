@@ -2242,17 +2242,15 @@ async function loadIntroTab(){
 
 async function loadIntroContent(tab){
   currentIntroTab = tab;
-  var icons = {philosophy:'🌱', classrule:'📖', absrule:'📅'};
   var titles = {philosophy:'교육철학', classrule:'수업 규칙', absrule:'출석 및 보강 규칙'};
   var key = 'intro_' + tab;
   var res = await getSB().from('rules').select('content').eq('title', key).maybeSingle();
   var text = res.data ? res.data.content : '아직 내용이 등록되지 않았어요.';
   var html = '<div style="text-align:center;margin-bottom:24px">'
-    + '<div style="font-size:48px;margin-bottom:12px">' + icons[tab] + '</div>'
-    + '<div style="font-size:22px;font-weight:700;color:#1B4D3E">' + titles[tab] + '</div>'
+    + '<div style="font-size:21px;font-weight:700;color:#1B4D3E">' + titles[tab] + '</div>'
     + '<div style="width:48px;height:3px;background:#1B4D3E;border-radius:2px;margin:12px auto 0"></div>'
     + '</div>'
-    + '<div style="white-space:pre-wrap;font-size:17px;line-height:2.2;color:#333;text-align:center">' + text + '</div>';
+    + '<div style="white-space:pre-wrap;font-size:16px;line-height:2.2;color:#333;text-align:center">' + text + '</div>';
   ['intro-content','p-intro-content','t-intro-content'].forEach(function(id){
     var el = document.getElementById(id);
     if(el) el.innerHTML = html;
