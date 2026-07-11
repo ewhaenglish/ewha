@@ -466,10 +466,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
   <!-- 학생관리 -->
   <div id="t-students" class="t-tab content">
     <div class="section-hd">학생 관리</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-      <button class="btn-primary" onclick="openAddStudent()">+ 학생 등록</button>
-      <button onclick="openAttendanceBook()" style="padding:12px;background:#fff;color:#1B4D3E;border:1.5px solid #1B4D3E;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit">출석부 보기</button>
-    </div>
+    <button class="btn-primary" style="margin-bottom:12px" onclick="openAddStudent()">+ 학생 등록</button>
     <div class="card"><div class="card-body" id="student-list"></div></div>
   </div>
 
@@ -770,7 +767,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <div class="header-logo"><img id="p-logo" src="" alt=""><span class="header-logo-text">이화영어</span></div>
     <div class="header-user">
       <span class="header-badge">학부모</span>
-      <span class="header-name" id="p-name"></span>
+      <span class="header-name" id="p-name" onclick="openParentNicknameModal()" style="cursor:pointer;text-decoration:underline;text-decoration-style:dotted"></span>
       <button class="logout-btn" onclick="doLogout()">로그아웃</button>
     </div>
   </div>
@@ -955,19 +952,21 @@ async function registerWithCode(){
   if(pRes.data){
     var student=pRes.data;
     var existing=await getSB().from('profiles').select('*').eq('id',currentUser.id).maybeSingle();
-    if(!existing.data){
-      var name=(currentUser.user_metadata&&(currentUser.user_metadata.full_name||currentUser.user_metadata.name))||'학부모';
-      var pr=await getSB().from('profiles').insert({id:currentUser.id,name:name,role:'parent'});
+    var isNew=!existing.data;
+    if(isNew){
+      var defaultName=student.name+' 학부모';
+      var pr=await getSB().from('profiles').insert({id:currentUser.id,name:defaultName,role:'parent'});
       if(pr.error){toast('오류: '+pr.error.message);return;}
-      currentProfile={id:currentUser.id,name:name,role:'parent'};
+      currentProfile={id:currentUser.id,name:defaultName,role:'parent'};
     } else {currentProfile=existing.data;}
     var dup=await getSB().from('student_parent').select('*').eq('student_id',student.id).eq('parent_id',currentUser.id).maybeSingle();
     if(!dup.data){
       var linkRes=await getSB().from('student_parent').insert({student_id:student.id,parent_id:currentUser.id});
       if(linkRes.error){toast('연동 오류: '+linkRes.error.message);return;}
     }
-    closeMod();toast('✅ '+student.name+' 자녀 연동 완료!');
+    closeMod();
     enterWithProfile(currentProfile);
+    if(isNew)setTimeout(function(){openParentNicknameModal(student.name);},600);
     return;
   }
   toast('코드를 찾을 수 없어요. 번호를 다시 확인해주세요');
@@ -2782,15 +2781,18 @@ async function calSelectDate(dateStr,role,el){
   if(role==='p'){
     var ar2=await getSB().from('attendance').select('*').eq('student_id',sid).eq('date',dateStr).maybeSingle();
     var att2=ar2.data;
-    var html2;
-    if(att2&&(att2.check_in||att2.check_out)){
-      html2='<div style="padding:16px">'
-        +(att2.check_in?'<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #F5F5F5"><span style="color:#1B4D3E;font-weight:700">등원</span><span style="color:#333">'+formatKSTTime(att2.check_in)+'</span></div>':'')
-        +(att2.check_out?'<div style="display:flex;align-items:center;gap:8px;padding:10px 0"><span style="color:#1B4D3E;font-weight:700">하원</span><span style="color:#333">'+formatKSTTime(att2.check_out)+'</span></div>':'')
-        +'</div>';
-    } else {
-      html2='<div style="padding:20px;text-align:center;color:#aaa;font-size:13px">이날은 등하원 기록이 없어요</div>';
-    }
+    var ci=att2&&att2.check_in, co=att2&&att2.check_out;
+    var html2='<div style="display:flex;gap:10px;padding:14px 16px">'
+      +'<div style="flex:1;background:'+(ci?'#F8FDF9':'#FAFAFA')+';border:1.5px solid '+(ci?'#1B4D3E':'#E8E8E8')+';border-radius:10px;padding:12px;text-align:center">'
+      +'<div style="font-size:11px;font-weight:700;color:'+(ci?'#1B4D3E':'#bbb')+';letter-spacing:0.05em">등원 IN</div>'
+      +'<div style="font-size:17px;font-weight:700;color:'+(ci?'#1B4D3E':'#ccc')+';margin-top:4px">'+(ci?formatKSTTime(att2.check_in):'--:--')+'</div>'
+      +'</div>'
+      +'<div style="flex:1;background:'+(co?'#F8FDF9':'#FAFAFA')+';border:1.5px solid '+(co?'#1B4D3E':'#E8E8E8')+';border-radius:10px;padding:12px;text-align:center">'
+      +'<div style="font-size:11px;font-weight:700;color:'+(co?'#1B4D3E':'#bbb')+';letter-spacing:0.05em">하원 OUT</div>'
+      +'<div style="font-size:17px;font-weight:700;color:'+(co?'#1B4D3E':'#ccc')+';margin-top:4px">'+(co?formatKSTTime(att2.check_out):'--:--')+'</div>'
+      +'</div>'
+      +'</div>'
+      +(!ci?'<div style="padding:0 16px 12px;color:#aaa;font-size:12px;text-align:center">이날은 등원 기록이 없어요</div>':'');
     if(detailBody)detailBody.innerHTML=html2;
     return;
   }
@@ -3778,72 +3780,34 @@ async function sendBulkReminder(){
 
 // ===== 교사용 출석부 (월간 캘린더 뷰) =====
 var attBookMonthOffset=0;
-async function openAttendanceBook(){
-  attBookMonthOffset=0;
-  var html='<div style="padding:4px">'
-    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
-    +'<button onclick="changeAttBookMonth(-1)" style="background:none;border:none;font-size:18px;cursor:pointer;color:#1B4D3E">◀</button>'
-    +'<span id="attbook-month-label" style="font-size:15px;font-weight:700;color:#1B4D3E"></span>'
-    +'<button onclick="changeAttBookMonth(1)" style="background:none;border:none;font-size:18px;cursor:pointer;color:#1B4D3E">▶</button>'
-    +'</div>'
-    +'<div id="attbook-grid" style="overflow-x:auto"></div>'
-    +'<div style="display:flex;gap:14px;justify-content:center;margin-top:12px;font-size:11px;color:#888">'
-    +'<span><span style="color:#1B4D3E;font-weight:700">●</span> 등원</span>'
-    +'<span><span style="color:#E74C3C;font-weight:700">✕</span> 결석/미등원</span>'
-    +'<span><span style="color:#ddd">-</span> 수업일 아님(주말 등)</span>'
-    +'</div>'
+
+
+
+
+
+
+function openParentNicknameModal(suggestedName){
+  var current=currentProfile?currentProfile.name:'';
+  var placeholder=suggestedName?suggestedName+' 어머니':'예: 봉수 어머니';
+  var html='<div style="padding:20px">'
+    +'<p style="color:#666;margin-bottom:14px;font-size:13px">교사가 알아보기 쉽도록 표시 이름을 설정해주세요<br>(예: 봉수 어머니, 지우 아버지)</p>'
+    +'<input type="text" class="form-input" id="parent-nickname-input" value="'+(current||'')+'" placeholder="'+placeholder+'" style="margin-bottom:10px">'
+    +'<button class="btn-primary" onclick="saveParentNickname()">저장</button>'
     +'</div>';
-  openMod('출석부', html);
-  await renderAttendanceBook();
+  openMod('표시 이름 설정', html);
 }
 
-function changeAttBookMonth(dir){
-  attBookMonthOffset+=dir;
-  renderAttendanceBook();
-}
-
-async function renderAttendanceBook(){
-  var grid=document.getElementById('attbook-grid');
-  if(!grid)return;
-  grid.innerHTML='<div style="padding:20px;text-align:center;color:#aaa">불러오는 중...</div>';
-  var d=new Date();d.setMonth(d.getMonth()+attBookMonthOffset);
-  var y=d.getFullYear(),m=d.getMonth();
-  var label=document.getElementById('attbook-month-label');
-  if(label)label.textContent=y+'년 '+(m+1)+'월';
-  var daysInMonth=new Date(y,m+1,0).getDate();
-  var ym=y+'-'+String(m+1).padStart(2,'0');
-  var res=await getSB().from('attendance').select('student_id,date,check_in').gte('date',ym+'-01').lte('date',ym+'-31');
-  var records=res.data||[];
-  var todayD=new Date(new Date().getTime()+9*60*60*1000);
-  var todayDate=todayD.getUTCDate(),todayM=todayD.getUTCMonth(),todayY=todayD.getUTCFullYear();
-
-  var html='<table style="border-collapse:collapse;font-size:11px;white-space:nowrap">';
-  html+='<tr><th style="position:sticky;left:0;background:#fff;padding:6px 10px;border-bottom:2px solid #1B4D3E;text-align:left;font-size:12px;color:#1B4D3E">학생</th>';
-  for(var day=1;day<=daysInMonth;day++){
-    var wd=new Date(y,m,day).getDay();
-    var col=wd===0?'#E74C3C':wd===6?'#3B6FD6':'#666';
-    html+='<th style="padding:5px 6px;border-bottom:2px solid #1B4D3E;color:'+col+';font-weight:600">'+day+'</th>';
-  }
-  html+='</tr>';
-
-  allStudents.forEach(function(s){
-    html+='<tr><td style="position:sticky;left:0;background:#fff;padding:6px 10px;border-bottom:1px solid #F0F0F0;font-weight:700;color:#333">'+s.name+'</td>';
-    for(var day=1;day<=daysInMonth;day++){
-      var dateStr=ym+'-'+String(day).padStart(2,'0');
-      var wd=new Date(y,m,day).getDay();
-      var isFuture=(y>todayY)||(y===todayY&&m>todayM)||(y===todayY&&m===todayM&&day>todayDate);
-      var rec=records.find(function(r){return r.student_id===s.id&&r.date===dateStr;});
-      var mark;
-      if(isFuture){mark='<span style="color:#ddd">·</span>';}
-      else if(rec&&rec.check_in){mark='<span style="color:#1B4D3E;font-weight:700">●</span>';}
-      else if(wd===0||wd===6){mark='<span style="color:#ddd">-</span>';}
-      else{mark='<span style="color:#E74C3C;font-weight:700">✕</span>';}
-      html+='<td style="padding:5px 6px;border-bottom:1px solid #F0F0F0;text-align:center">'+mark+'</td>';
-    }
-    html+='</tr>';
-  });
-  html+='</table>';
-  grid.innerHTML=html;
+async function saveParentNickname(){
+  var input=document.getElementById('parent-nickname-input');
+  if(!input||!input.value.trim()){toast('이름을 입력해주세요');return;}
+  var newName=input.value.trim();
+  var res=await getSB().from('profiles').update({name:newName}).eq('id',currentProfile.id);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  currentProfile.name=newName;
+  var el=document.getElementById('p-name');
+  if(el)el.textContent=newName;
+  toast('✅ 표시 이름이 변경됐어요!');
+  closeMod();
 }
 
 // ===== 앱 시작 =====
