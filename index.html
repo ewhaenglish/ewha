@@ -833,7 +833,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div><div class="date-main">이화성장노트</div></div>
       <div style="display:flex;align-items:center;gap:6px">
         <button onclick="changeNoteDate(-1)" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">◀</button>
-        <span id="p-note-date-label" style="color:#fff;font-size:11px;white-space:nowrap">최근순</span>
+        <span id="p-note-date-label" style="color:#fff;font-size:11px;white-space:nowrap">오늘</span>
         <button onclick="changeNoteDate(1)" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">▶</button>
       </div>
     </div>
@@ -1756,18 +1756,48 @@ async function loadChildData(idx){
   var today=todayStr();
   var aRes=await getSB().from('attendance').select('*').eq('student_id',student.id).eq('date',today).maybeSingle();
   var att=aRes.data;
-  $('p-attend').innerHTML=att?'<div style="padding:12px 16px;font-size:13px">'+(att.check_in?'✅ 등원: '+formatKSTTime(att.check_in):'아직 등원 전')+(att.check_out?'<br>🏠 하원: '+formatKSTTime(att.check_out):'')+'</div>':'<div style="padding:12px 16px;color:#aaa;font-size:13px">아직 등원하지 않았어요</div>';
+  (function(){
+    var el=$('p-attend');
+    var ci=att&&att.check_in, co=att&&att.check_out;
+    el.innerHTML='<div style="display:flex;gap:10px;padding:14px 16px">'
+      +'<div style="flex:1;background:'+(ci?'#F8FDF9':'#FAFAFA')+';border:1.5px solid '+(ci?'#1B4D3E':'#E8E8E8')+';border-radius:10px;padding:12px;text-align:center">'
+      +'<div style="font-size:11px;font-weight:700;color:'+(ci?'#1B4D3E':'#bbb')+';letter-spacing:0.05em">등원 IN</div>'
+      +'<div style="font-size:17px;font-weight:700;color:'+(ci?'#1B4D3E':'#ccc')+';margin-top:4px">'+(ci?formatKSTTime(att.check_in):'--:--')+'</div>'
+      +'</div>'
+      +'<div style="flex:1;background:'+(co?'#F8FDF9':'#FAFAFA')+';border:1.5px solid '+(co?'#1B4D3E':'#E8E8E8')+';border-radius:10px;padding:12px;text-align:center">'
+      +'<div style="font-size:11px;font-weight:700;color:'+(co?'#1B4D3E':'#bbb')+';letter-spacing:0.05em">하원 OUT</div>'
+      +'<div style="font-size:17px;font-weight:700;color:'+(co?'#1B4D3E':'#ccc')+';margin-top:4px">'+(co?formatKSTTime(att.check_out):'--:--')+'</div>'
+      +'</div>'
+      +'</div>'
+      +(!ci?'<div style="padding:0 16px 12px;color:#aaa;font-size:12px;text-align:center">아직 등원하지 않았어요</div>':'');
+  })();
   renderCalendar('p');
   loadNotices();
 }
 async function loadParentNotes(){
   if(!parentChildren.length){$('p-note-list').innerHTML='<div style="padding:16px;color:#aaa;text-align:center">연동된 자녀가 없어요</div>';return;}
-  var student=parentChildren[currentChildIndex];
-  var res=await getSB().from('growth_notes').select('*').eq('student_id',student.id).order('created_at',{ascending:false});
-  var notes=res.data||[];
-  $('p-note-list').innerHTML=notes.length?notes.map(function(n){
-    var nn=Object.assign({},n);nn.student_name=student.name;return renderNoteCard(nn,true);
-  }).join(''):'<div style="padding:16px;color:#aaa;text-align:center">성장노트가 없어요</div>';
+  var student=parentChildren[currentChildIndex||0];
+  var dateStr=getOffsetDate(noteDateOffset);
+  var res=await getSB().from('growth_notes').select('*').eq('student_id',student.id).eq('date',dateStr).maybeSingle();
+  var n=res.data;
+  if(!n){
+    $('p-note-list').innerHTML='<div style="padding:40px 16px;color:#aaa;text-align:center;font-size:13px">이 날짜엔 성장노트가 없어요</div>';
+    return;
+  }
+  var d=new Date(n.date);
+  var days=['일','월','화','수','목','금','토'];
+  var dateLabel=d.getFullYear()+'. '+String(d.getMonth()+1).padStart(2,'0')+'. '+String(d.getDate()).padStart(2,'0')+' ('+days[d.getDay()]+')';
+  var c=n.content||'';
+  function extractSection(label){
+    var re=new RegExp('\\['+label+'\\]\\n([\\s\\S]*?)(?=\\n\\[|$)');
+    var m=c.match(re);return m?m[1].trim():'';
+  }
+  var vocab=extractSection('단어 TEST');
+  var todos=extractSection('오늘의 수업');
+  var hws=extractSection('오늘의 과제');
+  var goal=extractSection('이번 주 각오');
+  var feedback=extractSection('피드백');
+  $('p-note-list').innerHTML=buildNoteHtml(student.name,dateLabel,vocab,todos,hws,goal,feedback).replace('<button onclick="closeMod()" class="btn-primary" style="width:100%;margin-top:4px">확인</button>','');
 }
 
 // ===== PDF 저장 =====
@@ -2804,6 +2834,24 @@ async function checkOut(){
   var res=await getSB().from('attendance').update({check_out:now.toISOString()}).eq('student_id',sid).eq('date',todayStr());
   if(res.error){toast('오류: '+res.error.message);return;}
   toast('🏠 하원 완료!');loadStudent();
+  notifyHwUnfinishedOnCheckout(sid);
+}
+
+async function notifyHwUnfinishedOnCheckout(sid){
+  var res=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',todayStr()).eq('type','hw');
+  var hws=res.data||[];
+  if(!hws.length)return;
+  var undone=hws.filter(function(t){return !t.student_done;});
+  if(!undone.length)return;
+  var s=allStudents?allStudents.find(function(x){return x.id===sid;}):null;
+  var sname=s?s.name:'학생';
+  var tr=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
+  if(tr.data&&tr.data.length>0)await sendNotification(tr.data[0].id,'✕ '+sname+' 학생이 숙제를 다 못 마치고 하원했어요 ('+undone.length+'개 미완료)','hwundone');
+  var pr=await getSB().from('student_parent').select('parent_id').eq('student_id',sid);
+  var parents=pr.data||[];
+  for(var i=0;i<parents.length;i++){
+    await sendNotification(parents[i].parent_id,'✕ 오늘 숙제 '+undone.length+'개가 아직 안 끝났어요','hwundone');
+  }
 }
 
 async function cancelAttend(){
@@ -2820,7 +2868,6 @@ async function cancelAttend(){
 
 async function studentToggle(id,isDone,studentId){
   await getSB().from('tasks').update({student_done:!isDone,is_done:!isDone}).eq('id',id);
-  // 어느 탭에서 눌렀는지 확인
   var tasksTab=document.getElementById('s-tasks');
   if(tasksTab&&tasksTab.style.display!=='none'&&!tasksTab.classList.contains('hidden')){
     loadStudentTasks();
@@ -2828,6 +2875,29 @@ async function studentToggle(id,isDone,studentId){
     await loadStudentByDate(homeOffset);
   } else {
     await loadStudent();
+  }
+  checkHwCompletionNotify(studentId);
+}
+
+var _hwNotifySent={};
+async function checkHwCompletionNotify(sid){
+  if(!sid)return;
+  var today=getOffsetDate(typeof tasksDateOffset!=='undefined'?tasksDateOffset:0);
+  var res=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',today).eq('type','hw');
+  var hws=res.data||[];
+  if(!hws.length)return;
+  var doneCount=hws.filter(function(t){return t.student_done;}).length;
+  var key=sid+'_'+today;
+  if(doneCount!==hws.length||_hwNotifySent[key]==='done')return;
+  _hwNotifySent[key]='done';
+  var s=allStudents?allStudents.find(function(x){return x.id===sid;}):null;
+  var sname=s?s.name:'학생';
+  var tr=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
+  if(tr.data&&tr.data.length>0)await sendNotification(tr.data[0].id,'✔ '+sname+' 학생이 오늘 숙제를 100% 완료했어요!','hwdone');
+  var pr=await getSB().from('student_parent').select('parent_id').eq('student_id',sid);
+  var parents=pr.data||[];
+  for(var i=0;i<parents.length;i++){
+    await sendNotification(parents[i].parent_id,'✔ 오늘 숙제를 다 마쳤어요!','hwdone');
   }
 }
 
@@ -2986,6 +3056,7 @@ async function loadStudentTasks(){
 async function stToggle(id,isDone,studentId){
   await getSB().from('tasks').update({student_done:!isDone}).eq('id',id);
   loadStudentTasks();
+  checkHwCompletionNotify(studentId);
 }
 
 function setTasksVocabResult(r){
