@@ -1376,7 +1376,7 @@ async function saveNote(){
   var goalContent=gr2.data?gr2.data.content:'';
   var dateLabel=(function(){var d=new Date(today);var days=['일','월','화','수','목','금','토'];return d.getFullYear()+'. '+String(d.getMonth()+1).padStart(2,'0')+'. '+String(d.getDate()).padStart(2,'0')+' ('+days[d.getDay()]+')';})();
   var vr3=await getSB().from('vocab_tests').select('*').eq('student_id',sid).eq('date',today).maybeSingle();
-  var vtText=vr3.data?((vr3.data.score!=null&&vr3.data.total?vr3.data.score+'/'+vr3.data.total+'점 ('+Math.round(vr3.data.score/vr3.data.total*100)+'%) ':'')+(vr3.data.result==='pass'?'통과 ✔':vr3.data.result==='retest'?'재시험 ✕':'없음')):'기록없음';
+  var vtText=vr3.data?((vr3.data.score!=null&&vr3.data.total?vr3.data.score+'/'+vr3.data.total+'점 ':'')+'('+(vr3.data.result==='pass'?'통과 ✔':vr3.data.result==='retest'?'재시 ✕':'미응시')+')'):'기록없음';
   var todos=tasks.filter(function(t){return t.type==='todo';});
   var hws=tasks.filter(function(t){return t.type==='hw';});
   var todoText=todos.map(function(t){return (t.student_done?'✔':'✕')+' '+t.title;}).join('\n')||'없음';
@@ -3630,13 +3630,12 @@ function buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,
       +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
       +'<span style="display:inline-block;width:3.5px;height:14px;background:'+(isGold?'#F0C040':'#1B4D3E')+';border-radius:2px"></span>'
       +'<span style="font-size:13px;font-weight:700;color:'+(isGold?'#B8860B':'#1B4D3E')+'">'+title+'</span></div>'
-      +'<div style="font-size:14px;color:#333;line-height:1.8;white-space:pre-line;padding-left:10px">'+txt.replace(/✔/g,'<span style="color:#1B4D3E;font-weight:700">✔</span>').replace(/✕/g,'<span style="color:#E74C3C;font-weight:700">✕</span>')+'</div>'
+      +'<div style="font-size:14px;color:#333;line-height:1.9;white-space:pre-line;padding-left:10px">'+txt.replace(/✔/g,'<span style="display:inline-block;color:#1B4D3E;font-weight:900;font-size:15px;width:16px">✔</span>').replace(/✕/g,'<span style="display:inline-block;color:#A6231E;font-weight:900;font-size:15px;width:16px">✕</span>')+'</div>'
       +'</div>';
   }
   return '<div style="padding:16px">'
-    +'<div style="background:#1B4D3E;border-radius:12px;padding:18px 16px;margin-bottom:6px;text-align:center">'
-    +'<div style="font-size:19px;font-weight:800;color:#fff;letter-spacing:0.15em">이화성장노트</div>'
-    +'<div style="font-size:10px;color:#F0C040;letter-spacing:0.3em;margin-top:5px">✦ EWHA ENGLISH ✦</div>'
+    +'<div style="background:#1B4D3E;border-radius:12px;padding:20px 16px;margin-bottom:6px;text-align:center">'
+    +'<div style="font-size:13px;color:#F0C040;letter-spacing:0.35em;font-weight:700">✦ EWHA ENGLISH ✦</div>'
     +'</div>'
     +'<div style="background:#fff;border:1px solid #E8E8E8;border-top:3px solid #F0C040;border-radius:0 0 12px 12px;padding:14px 16px;margin-bottom:16px">'
     +'<div style="display:flex;gap:24px">'
