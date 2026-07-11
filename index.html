@@ -539,11 +539,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
           <textarea class="form-input" id="rep-comment" rows="3" placeholder="선생님 총평..."></textarea>
         </div>
         <div style="padding:0 16px 14px">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
             <button class="btn-primary" onclick="saveReport()">저장</button>
             <button class="btn-secondary" onclick="exportPDF()">PDF 저장</button>
           </div>
-          <button onclick="sendReportToParent()" style="width:100%;padding:14px;background:linear-gradient(135deg,#1B4D3E,#2D6A54);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 2px 8px rgba(27,77,62,0.3)">✦ 학부모에게 리포트 전송</button>
         </div>
       </div>
     </div>
@@ -817,9 +816,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
       <div class="calendar-grid" id="p-cal-grid"></div>
       <div style="padding:8px 12px;border-top:1px solid rgba(255,255,255,0.1);display:flex;gap:12px">
-        <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#4ECBA5"></div><span style="font-size:11px;color:rgba(255,255,255,0.7)">할일</span></div>
-        <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#6aa3f5"></div><span style="font-size:11px;color:rgba(255,255,255,0.7)">숙제</span></div>
-        <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#ff8080"></div><span style="font-size:11px;color:rgba(255,255,255,0.7)">성장노트</span></div>
+        <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#1B4D3E"></div><span style="font-size:11px;color:rgba(255,255,255,0.7)">등원</span></div>
       </div>
     </div>
     <div id="p-cal-detail" style="display:none" class="card">
@@ -830,26 +827,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 등·하원 현황</span></div>
       <div class="card-body" id="p-attend"></div>
     </div>
-    <div class="section-hd">오늘의 할일</div>
-    <div class="card">
-      <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 할일 현황</span><span class="card-count" id="p-todo-cnt">-</span></div>
-      <div class="card-body" id="p-todo-list"></div>
-      <div class="progress-wrap">
-        <div class="progress-bg"><div class="progress-fill" id="p-todo-bar" style="width:0%"></div></div>
-        <div class="progress-label"><span>진행률</span><span id="p-todo-pct">0%</span></div>
-      </div>
-    </div>
-    <div class="section-hd">오늘 숙제</div>
-    <div class="card">
-      <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 숙제 현황</span><span class="card-count" id="p-hw-cnt">-</span></div>
-      <div class="card-body" id="p-hw-list"></div>
-    </div>
   </div>
-  <div id="p-report" class="p-tab content">
-    <div class="date-banner"><div class="date-main">Monthly Report</div></div>
-    <div id="p-report-area"><div style="padding:16px;color:#aaa;text-align:center">연동된 자녀가 없어요</div></div>
-  </div>
-
   <div id="p-note" class="p-tab content">
     <div class="date-banner">
       <div><div class="date-main">이화성장노트</div></div>
@@ -877,10 +855,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
   </div>
 
 
-  <div class="bottom-nav" style="grid-template-columns:repeat(6,1fr)">
+  <div class="bottom-nav" style="grid-template-columns:repeat(5,1fr)">
     <button class="nav-item" onclick="pTab('p-intro',this);loadIntroTab()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-2 3-6 4-6 9a6 6 0 0 0 12 0c0-5-4-6-6-9z"/><path d="M12 21v-6"/></svg></span><span class="nav-label">Intro</span></button>
     <button class="nav-item active" onclick="pTab('p-home',this)"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg></span><span class="nav-label">홈</span></button>
-    <button class="nav-item" onclick="pTab('p-report',this);loadParentReport()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg></span><span class="nav-label">Report</span></button>
     <button class="nav-item" onclick="pTab('p-note',this);loadParentNotes()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l1.5 4.5L18 10l-4.5 1.5L12 16l-1.5-4.5L6 10l4.5-1.5z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/></svg></span><span class="nav-label">성장노트</span></button>
     <button class="nav-item" onclick="pTab('p-inquiry',this);loadParentInquiries()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5z"/><path d="M8.5 11.5h.01M12 11.5h.01M15.5 11.5h.01"/></svg></span><span class="nav-label">문의</span></button>
     <button class="nav-item" onclick="showAddChildModal()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg></span><span class="nav-label">자녀추가</span></button>
@@ -1780,23 +1757,7 @@ async function loadChildData(idx){
   var aRes=await getSB().from('attendance').select('*').eq('student_id',student.id).eq('date',today).maybeSingle();
   var att=aRes.data;
   $('p-attend').innerHTML=att?'<div style="padding:12px 16px;font-size:13px">'+(att.check_in?'✅ 등원: '+formatKSTTime(att.check_in):'아직 등원 전')+(att.check_out?'<br>🏠 하원: '+formatKSTTime(att.check_out):'')+'</div>':'<div style="padding:12px 16px;color:#aaa;font-size:13px">아직 등원하지 않았어요</div>';
-  var tRes=await getSB().from('tasks').select('*').eq('student_id',student.id).eq('date',today);
-  var tasks=tRes.data||[];
-  var todos=tasks.filter(function(t){return t.type==='todo';});
-  var hws=tasks.filter(function(t){return t.type==='hw';});
-  var doneCount=todos.filter(function(t){return t.student_done;}).length;
-  var pct=todos.length?Math.round(doneCount/todos.length*100):0;
-  $('p-todo-cnt').textContent=doneCount+'/'+todos.length;
-  $('p-todo-bar').style.width=pct+'%';$('p-todo-pct').textContent=pct+'%';
-  $('p-todo-list').innerHTML=todos.map(function(t){
-    return '<div class="task-item'+(t.teacher_confirmed?' done':'')+'"><div class="task-check">'+(t.teacher_confirmed?'✓':(t.student_done?'⏳':''))+'</div><span class="task-text">'+t.title+(t.teacher_confirmed?' ✅':'')+'</span></div>';
-  }).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
-  $('p-hw-cnt').textContent=hws.filter(function(t){return t.student_done;}).length+'/'+hws.length;
-  $('p-hw-list').innerHTML=hws.map(function(t){
-    return '<div class="task-item'+(t.teacher_confirmed?' done':'')+'"><div class="task-check">'+(t.teacher_confirmed?'✓':(t.student_done?'⏳':''))+'</div><span class="task-text">'+t.title+(t.due_date?' <span style="font-size:11px;color:#aaa">기한:'+t.due_date+'</span>':'')+'</span></div>';
-  }).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
   renderCalendar('p');
-  loadParentReport();
   loadNotices();
 }
 async function loadParentNotes(){
@@ -2711,20 +2672,18 @@ async function renderCalendar(role){
   if(role==='t')sid=currentStudentId;
   else if(role==='s')sid=window._currentStudentRowId;
   else if(role==='p'&&parentChildren&&parentChildren.length>0)sid=parentChildren[currentChildIndex||0].id;
-  if(sid){
+  if(sid&&role==='p'){
+    var ar=await getSB().from('attendance').select('date,check_in').eq('student_id',sid).gte('date',ym+'-01').lte('date',ym+'-31');
+    (ar.data||[]).forEach(function(a){
+      if(a.check_in)dotData[a.date]={attend:true};
+    });
+  } else if(sid){
     var tr=await getSB().from('tasks').select('date,type').eq('student_id',sid).gte('date',ym+'-01').lte('date',ym+'-31');
     (tr.data||[]).forEach(function(t){
-      if(!dotData[t.date])dotData[t.date]={todo:false,hw:false,note:false};
+      if(!dotData[t.date])dotData[t.date]={todo:false,hw:false};
       if(t.type==='todo')dotData[t.date].todo=true;
       else dotData[t.date].hw=true;
     });
-    if(role==='p'){
-      var nr=await getSB().from('growth_notes').select('date').eq('student_id',sid).gte('date',ym+'-01').lte('date',ym+'-31');
-      (nr.data||[]).forEach(function(n){
-        if(!dotData[n.date])dotData[n.date]={todo:false,hw:false,note:false};
-        dotData[n.date].note=true;
-      });
-    }
   }
   for(var i=0;i<startDay;i++){
     var pd=new Date(y,m,-(startDay-i-1));
@@ -2736,11 +2695,9 @@ async function renderCalendar(role){
     var dow=thisDate.getDay();
     var dateStr=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     var dots=dotData[dateStr]||{};
-    var dotsHtml='<div style="display:flex;justify-content:center;gap:2px;margin-top:2px">'
-      +(dots.todo?'<div class="cal-dot todo"></div>':'')
-      +(dots.hw?'<div class="cal-dot hw"></div>':'')
-      +(dots.note?'<div class="cal-dot note"></div>':'')
-      +'</div>';
+    var dotsHtml=role==='p'
+      ?'<div style="display:flex;justify-content:center;gap:2px;margin-top:2px">'+(dots.attend?'<div class="cal-dot" style="background:#1B4D3E"></div>':'')+'</div>'
+      :'<div style="display:flex;justify-content:center;gap:2px;margin-top:2px">'+(dots.todo?'<div class="cal-dot todo"></div>':'')+(dots.hw?'<div class="cal-dot hw"></div>':'')+'</div>';
     var numClass='cal-num'+(dow===0?' sun':dow===6?' sat':'');
     html+='<div class="cal-day'+(isToday?' today':'')+'" onclick="calSelectDate(this.dataset.date,this.dataset.role,this)" data-date="'+dateStr+'" data-role="'+role+'">'+'<div class="'+numClass+'">'+d+'</div>'+dotsHtml+'</div>';
   }
@@ -2771,12 +2728,26 @@ async function calSelectDate(dateStr,role,el){
     if(detailBody)detailBody.innerHTML='<div style="padding:12px 16px;color:#aaa;font-size:13px">'+(role==='t'?'할일/숙제 탭에서 학생을 선택하면 기록이 보여요':'기록이 없어요')+'</div>';
     return;
   }
+  // 학부모 화면: 등하원 기록만 표시
+  if(role==='p'){
+    var ar=await getSB().from('attendance').select('*').eq('student_id',sid).eq('date',dateStr).maybeSingle();
+    var att=ar.data;
+    var html;
+    if(att&&(att.check_in||att.check_out)){
+      html='<div style="padding:16px">'
+        +(att.check_in?'<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #F5F5F5"><span style="color:#1B4D3E;font-weight:700">등원</span><span style="color:#333">'+formatKSTTime(att.check_in)+'</span></div>':'')
+        +(att.check_out?'<div style="display:flex;align-items:center;gap:8px;padding:10px 0"><span style="color:#1B4D3E;font-weight:700">하원</span><span style="color:#333">'+formatKSTTime(att.check_out)+'</span></div>':'')
+        +'</div>';
+    } else {
+      html='<div style="padding:20px;text-align:center;color:#aaa;font-size:13px">이날은 등하원 기록이 없어요</div>';
+    }
+    if(detailBody)detailBody.innerHTML=html;
+    return;
+  }
   var tr=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',dateStr);
   var tasks=tr.data||[];
   var todos=tasks.filter(function(t){return t.type==='todo';});
   var hws=tasks.filter(function(t){return t.type==='hw';});
-  var nr=await getSB().from('growth_notes').select('*').eq('student_id',sid).eq('date',dateStr);
-  var notes=nr.data||[];
   var html='';
   if(todos.length){
     html+='<div style="padding:8px 14px;background:#F8FDF9;font-size:12px;font-weight:700;color:#1B4D3E;border-bottom:1px solid #E8E8E8">📌 할일</div>';
@@ -2786,13 +2757,7 @@ async function calSelectDate(dateStr,role,el){
     html+='<div style="padding:8px 14px;background:#F0F4FF;font-size:12px;font-weight:700;color:#1a56db;border-bottom:1px solid #E8E8E8"><span class="gold-star">✦</span> 숙제</div>';
     html+=hws.map(function(t){return '<div style="padding:9px 14px;border-bottom:1px solid #F5F5F5;font-size:14px;display:flex;align-items:center;gap:8px"><span>'+(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜'))+'</span>'+t.title+'</div>';}).join('');
   }
-  // 학생/선생님 화면에서는 성장노트 달력에 안 보임
-  if(notes.length&&role==='p'){
-    html+='<div style="padding:8px 14px;background:#FFF3F3;font-size:12px;font-weight:700;color:#E74C3C;border-bottom:1px solid #E8E8E8">📝 성장노트</div>';
-    html+=notes.map(function(n){return '<div style="padding:10px 14px;font-size:13px;color:#555;line-height:1.6">'+n.content.replace(/\n/g,'<br>').slice(0,300)+'</div>';}).join('');
-  }
   if(!html)html='<div style="padding:20px;text-align:center;color:#aaa;font-size:13px">이날의 기록이 없어요</div>';
-  // 학생: 할일&과제 탭으로 이동 버튼 추가
   if(role==='s'&&(todos.length||hws.length)){
     html+='<div style="padding:10px 14px"><button onclick="goToTasksDate(this.dataset.date)" data-date="'+dateStr+'" style="width:100%;padding:10px;background:#1B4D3E;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">✦ 할일&과제 탭에서 체크하기</button></div>';
   }
