@@ -819,13 +819,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <div style="display:flex;align-items:center;gap:4px"><div style="width:6px;height:6px;border-radius:50%;background:#1B4D3E"></div><span style="font-size:11px;color:rgba(255,255,255,0.7)">등원</span></div>
       </div>
     </div>
-    <div id="p-cal-detail" style="display:none" class="card">
-      <div class="card-header"><span class="card-title" id="p-cal-detail-title">날짜 상세</span></div>
+    <div id="p-cal-detail" class="card">
+      <div class="card-header"><span class="card-title" id="p-cal-detail-title"><span class="gold-star">✦</span> 등·하원 현황</span></div>
       <div class="card-body" id="p-cal-detail-body"></div>
-    </div>
-    <div class="card">
-      <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 등·하원 현황</span></div>
-      <div class="card-body" id="p-attend"></div>
     </div>
   </div>
   <div id="p-note" class="p-tab content">
@@ -933,30 +929,31 @@ async function handleSession(session){
 function showRoleModal(){
   openMod('처음 오셨군요!',
     '<div style="padding:20px">'+
-    '<p style="color:#666;margin-bottom:16px;font-size:13px">학생: 선생님께 받은 코드(STU-XXXX)<br>학부모: 자녀의 4자리 번호를 입력해주세요</p>'+
-    '<input type="text" class="form-input" id="invite-code-input" placeholder="학생 코드 또는 4자리 번호" style="margin-bottom:8px">'+
+    '<p style="color:#666;margin-bottom:16px;font-size:13px">선생님께 받은 4자리 번호를 입력해주세요<br>(학생 번호 또는 학부모 번호)</p>'+
+    '<input type="text" class="form-input" id="invite-code-input" placeholder="4자리 번호 (예: 4821)" maxlength="4" style="margin-bottom:8px">'+
     '<button class="btn-primary" onclick="registerWithCode()">시작하기</button>'+
     '<p style="font-size:11px;color:#aaa;text-align:center;margin-top:12px">선생님 계정은 별도 등록이 필요해요</p>'+
     '</div>'
   );
 }
 async function registerWithCode(){
-  var code=$('invite-code-input').value.trim().toUpperCase();
+  var code=$('invite-code-input').value.trim();
   if(!code){toast('코드를 입력해주세요');return;}
-  if(code.startsWith('STU-')){
-    var res=await getSB().from('students').select('*').eq('student_code',code).single();
-    if(res.error||!res.data){toast('코드를 찾을 수 없어요');return;}
-    var student=res.data;
+  if(!/^\d{4}$/.test(code)){toast('4자리 번호를 입력해주세요');return;}
+  var sRes=await getSB().from('students').select('*').eq('student_code',code).maybeSingle();
+  if(sRes.data){
+    var student=sRes.data;
     var pr=await getSB().from('profiles').insert({id:currentUser.id,name:student.name,role:'student'});
     if(pr.error){toast('오류: '+pr.error.message);return;}
     await getSB().from('students').update({profile_id:currentUser.id}).eq('id',student.id);
     currentProfile={id:currentUser.id,name:student.name,role:'student'};
     closeMod();toast('✅ '+student.name+'님으로 연동됐어요!');
     enterWithProfile(currentProfile);
-  } else if(/^\d{4}$/.test(code)){
-    var res=await getSB().from('students').select('*').eq('parent_code',code).maybeSingle();
-    if(!res.data){toast('코드를 찾을 수 없어요. 번호를 다시 확인해주세요');return;}
-    var student=res.data;
+    return;
+  }
+  var pRes=await getSB().from('students').select('*').eq('parent_code',code).maybeSingle();
+  if(pRes.data){
+    var student=pRes.data;
     var existing=await getSB().from('profiles').select('*').eq('id',currentUser.id).maybeSingle();
     if(!existing.data){
       var name=(currentUser.user_metadata&&(currentUser.user_metadata.full_name||currentUser.user_metadata.name))||'학부모';
@@ -971,7 +968,9 @@ async function registerWithCode(){
     }
     closeMod();toast('✅ '+student.name+' 자녀 연동 완료!');
     enterWithProfile(currentProfile);
-  } else {toast('올바른 코드를 입력해주세요');}
+    return;
+  }
+  toast('코드를 찾을 수 없어요. 번호를 다시 확인해주세요');
 }
 function showAddChildModal(){
   openMod('자녀 추가 연동',
@@ -1134,12 +1133,18 @@ async function saveStudent(){
   var name=$('s-name-input').value.trim();
   if(!name){toast('이름을 입력해주세요');return;}
   var id=crypto.randomUUID();
-  var sc='STU-'+Math.random().toString(36).substr(2,4).toUpperCase();
+  var sc=String(Math.floor(1000+Math.random()*9000));
   var pc=String(Math.floor(1000+Math.random()*9000));
-  // 4자리 코드 중복 방지
-  for(var pcTry=0;pcTry<10;pcTry++){
-    var dupCheck=await getSB().from('students').select('id').eq('parent_code',pc).maybeSingle();
-    if(!dupCheck.data)break;
+  // 4자리 코드 중복 방지 (학생코드/학부모코드 서로 겹치지 않게)
+  for(var scTry=0;scTry<15;scTry++){
+    var dupS=await getSB().from('students').select('id').or('student_code.eq.'+sc+',parent_code.eq.'+sc);
+    if(!dupS.data||!dupS.data.length)break;
+    sc=String(Math.floor(1000+Math.random()*9000));
+  }
+  for(var pcTry=0;pcTry<15;pcTry++){
+    if(pc===sc){pc=String(Math.floor(1000+Math.random()*9000));continue;}
+    var dupP=await getSB().from('students').select('id').or('student_code.eq.'+pc+',parent_code.eq.'+pc);
+    if(!dupP.data||!dupP.data.length)break;
     pc=String(Math.floor(1000+Math.random()*9000));
   }
   var data={id:id,name:name,student_phone:$('s-phone').value.trim(),parent_phone:$('p-phone-input').value.trim(),
@@ -1754,25 +1759,10 @@ async function loadChildData(idx){
   if(!student)return;
   $('p-child').textContent=student.name+'의 학습 현황';
   var today=todayStr();
-  var aRes=await getSB().from('attendance').select('*').eq('student_id',student.id).eq('date',today).maybeSingle();
-  var att=aRes.data;
-  (function(){
-    var el=$('p-attend');
-    var ci=att&&att.check_in, co=att&&att.check_out;
-    el.innerHTML='<div style="display:flex;gap:10px;padding:14px 16px">'
-      +'<div style="flex:1;background:'+(ci?'#F8FDF9':'#FAFAFA')+';border:1.5px solid '+(ci?'#1B4D3E':'#E8E8E8')+';border-radius:10px;padding:12px;text-align:center">'
-      +'<div style="font-size:11px;font-weight:700;color:'+(ci?'#1B4D3E':'#bbb')+';letter-spacing:0.05em">등원 IN</div>'
-      +'<div style="font-size:17px;font-weight:700;color:'+(ci?'#1B4D3E':'#ccc')+';margin-top:4px">'+(ci?formatKSTTime(att.check_in):'--:--')+'</div>'
-      +'</div>'
-      +'<div style="flex:1;background:'+(co?'#F8FDF9':'#FAFAFA')+';border:1.5px solid '+(co?'#1B4D3E':'#E8E8E8')+';border-radius:10px;padding:12px;text-align:center">'
-      +'<div style="font-size:11px;font-weight:700;color:'+(co?'#1B4D3E':'#bbb')+';letter-spacing:0.05em">하원 OUT</div>'
-      +'<div style="font-size:17px;font-weight:700;color:'+(co?'#1B4D3E':'#ccc')+';margin-top:4px">'+(co?formatKSTTime(att.check_out):'--:--')+'</div>'
-      +'</div>'
-      +'</div>'
-      +(!ci?'<div style="padding:0 16px 12px;color:#aaa;font-size:12px;text-align:center">아직 등원하지 않았어요</div>':'');
-  })();
   renderCalendar('p');
   loadNotices();
+  var todayEl=document.querySelector('#p-cal-grid .cal-day.today');
+  await calSelectDate(today,'p',todayEl||{classList:{add:function(){},remove:function(){}}});
 }
 async function loadParentNotes(){
   if(!parentChildren.length){$('p-note-list').innerHTML='<div style="padding:16px;color:#aaa;text-align:center">연동된 자녀가 없어요</div>';return;}
@@ -2698,22 +2688,30 @@ async function renderCalendar(role){
   var today=new Date();today.setHours(0,0,0,0);
   var ym=y+'-'+String(m+1).padStart(2,'0');
   var dotData={};
-  var sid=null;
-  if(role==='t')sid=currentStudentId;
-  else if(role==='s')sid=window._currentStudentRowId;
-  else if(role==='p'&&parentChildren&&parentChildren.length>0)sid=parentChildren[currentChildIndex||0].id;
-  if(sid&&role==='p'){
-    var ar=await getSB().from('attendance').select('date,check_in').eq('student_id',sid).gte('date',ym+'-01').lte('date',ym+'-31');
-    (ar.data||[]).forEach(function(a){
-      if(a.check_in)dotData[a.date]={attend:true};
-    });
-  } else if(sid){
-    var tr=await getSB().from('tasks').select('date,type').eq('student_id',sid).gte('date',ym+'-01').lte('date',ym+'-31');
+  if(role==='t'){
+    var tr=await getSB().from('tasks').select('date,type').gte('date',ym+'-01').lte('date',ym+'-31');
     (tr.data||[]).forEach(function(t){
       if(!dotData[t.date])dotData[t.date]={todo:false,hw:false};
       if(t.type==='todo')dotData[t.date].todo=true;
       else dotData[t.date].hw=true;
     });
+  } else {
+    var sid=null;
+    if(role==='s')sid=window._currentStudentRowId;
+    else if(role==='p'&&parentChildren&&parentChildren.length>0)sid=parentChildren[currentChildIndex||0].id;
+    if(sid&&role==='p'){
+      var ar=await getSB().from('attendance').select('date,check_in').eq('student_id',sid).gte('date',ym+'-01').lte('date',ym+'-31');
+      (ar.data||[]).forEach(function(a){
+        if(a.check_in)dotData[a.date]={attend:true};
+      });
+    } else if(sid){
+      var tr2=await getSB().from('tasks').select('date,type').eq('student_id',sid).gte('date',ym+'-01').lte('date',ym+'-31');
+      (tr2.data||[]).forEach(function(t){
+        if(!dotData[t.date])dotData[t.date]={todo:false,hw:false};
+        if(t.type==='todo')dotData[t.date].todo=true;
+        else dotData[t.date].hw=true;
+      });
+    }
   }
   for(var i=0;i<startDay;i++){
     var pd=new Date(y,m,-(startDay-i-1));
@@ -2748,50 +2746,100 @@ async function calSelectDate(dateStr,role,el){
   if(!detail)return;
   detail.style.display='block';
   var d=new Date(dateStr);
-  if(detailTitle)detailTitle.textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일 기록';
+  if(detailTitle)detailTitle.textContent=(d.getMonth()+1)+'월 '+d.getDate()+'일'+(role==='p'?' 등·하원':role==='t'?' 학생별 기록':' 기록');
   if(detailBody)detailBody.innerHTML='<div style="padding:12px;color:#aaa">로딩 중...</div>';
-  var sid=null;
-  if(role==='t')sid=currentStudentId;
-  else if(role==='s')sid=window._currentStudentRowId;
-  else if(role==='p'&&parentChildren&&parentChildren.length>0)sid=parentChildren[currentChildIndex||0].id;
-  if(!sid){
-    if(detailBody)detailBody.innerHTML='<div style="padding:12px 16px;color:#aaa;font-size:13px">'+(role==='t'?'할일/숙제 탭에서 학생을 선택하면 기록이 보여요':'기록이 없어요')+'</div>';
-    return;
-  }
-  // 학부모 화면: 등하원 기록만 표시
-  if(role==='p'){
-    var ar=await getSB().from('attendance').select('*').eq('student_id',sid).eq('date',dateStr).maybeSingle();
-    var att=ar.data;
-    var html;
-    if(att&&(att.check_in||att.check_out)){
-      html='<div style="padding:16px">'
-        +(att.check_in?'<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #F5F5F5"><span style="color:#1B4D3E;font-weight:700">등원</span><span style="color:#333">'+formatKSTTime(att.check_in)+'</span></div>':'')
-        +(att.check_out?'<div style="display:flex;align-items:center;gap:8px;padding:10px 0"><span style="color:#1B4D3E;font-weight:700">하원</span><span style="color:#333">'+formatKSTTime(att.check_out)+'</span></div>':'')
+  // 교사 화면: 학생별 등하원 + 할일/숙제 요약 목록
+  if(role==='t'){
+    var tr=await getSB().from('tasks').select('*').eq('date',dateStr);
+    var tasks=tr.data||[];
+    var ar=await getSB().from('attendance').select('*').eq('date',dateStr);
+    var atts=ar.data||[];
+    if(!allStudents.length){if(detailBody)detailBody.innerHTML='<div style="padding:16px;color:#aaa;font-size:13px">등록된 학생이 없어요</div>';return;}
+    var html=allStudents.map(function(s){
+      var mine=tasks.filter(function(t){return t.student_id===s.id;});
+      var att=atts.find(function(a){return a.student_id===s.id;});
+      var cnt=mine.length;
+      var done=mine.filter(function(t){return t.student_done;}).length;
+      var attText=att&&att.check_in
+        ?'등원 '+formatKSTTime(att.check_in)+(att.check_out?' · 하원 '+formatKSTTime(att.check_out):'')
+        :'등원 기록 없음';
+      return '<div onclick="openTeacherCalStudentDetail(this.dataset.sid,this.dataset.date)" data-sid="'+s.id+'" data-date="'+dateStr+'" style="padding:11px 14px;border-bottom:1px solid #F5F5F5;cursor:pointer;display:flex;justify-content:space-between;align-items:center">'
+        +'<div><div style="font-size:14px;font-weight:700;color:#333">'+s.name+'</div>'
+        +'<div style="font-size:11px;color:#999;margin-top:2px">'+attText+'</div></div>'
+        +(cnt?'<span style="font-size:11px;color:#1B4D3E;font-weight:700;background:#F8FDF9;padding:3px 8px;border-radius:10px">'+done+'/'+cnt+'</span>':'')
         +'</div>';
-    } else {
-      html='<div style="padding:20px;text-align:center;color:#aaa;font-size:13px">이날은 등하원 기록이 없어요</div>';
-    }
+    }).join('');
     if(detailBody)detailBody.innerHTML=html;
     return;
   }
-  var tr=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',dateStr);
-  var tasks=tr.data||[];
-  var todos=tasks.filter(function(t){return t.type==='todo';});
-  var hws=tasks.filter(function(t){return t.type==='hw';});
-  var html='';
+  var sid=null;
+  if(role==='s')sid=window._currentStudentRowId;
+  else if(role==='p'&&parentChildren&&parentChildren.length>0)sid=parentChildren[currentChildIndex||0].id;
+  if(!sid){
+    if(detailBody)detailBody.innerHTML='<div style="padding:12px 16px;color:#aaa;font-size:13px">기록이 없어요</div>';
+    return;
+  }
+  if(role==='p'){
+    var ar2=await getSB().from('attendance').select('*').eq('student_id',sid).eq('date',dateStr).maybeSingle();
+    var att2=ar2.data;
+    var html2;
+    if(att2&&(att2.check_in||att2.check_out)){
+      html2='<div style="padding:16px">'
+        +(att2.check_in?'<div style="display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #F5F5F5"><span style="color:#1B4D3E;font-weight:700">등원</span><span style="color:#333">'+formatKSTTime(att2.check_in)+'</span></div>':'')
+        +(att2.check_out?'<div style="display:flex;align-items:center;gap:8px;padding:10px 0"><span style="color:#1B4D3E;font-weight:700">하원</span><span style="color:#333">'+formatKSTTime(att2.check_out)+'</span></div>':'')
+        +'</div>';
+    } else {
+      html2='<div style="padding:20px;text-align:center;color:#aaa;font-size:13px">이날은 등하원 기록이 없어요</div>';
+    }
+    if(detailBody)detailBody.innerHTML=html2;
+    return;
+  }
+  var tr3=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',dateStr);
+  var tasks3=tr3.data||[];
+  var todos=tasks3.filter(function(t){return t.type==='todo';});
+  var hws=tasks3.filter(function(t){return t.type==='hw';});
+  var html3='';
   if(todos.length){
-    html+='<div style="padding:8px 14px;background:#F8FDF9;font-size:12px;font-weight:700;color:#1B4D3E;border-bottom:1px solid #E8E8E8">📌 할일</div>';
-    html+=todos.map(function(t){return '<div style="padding:9px 14px;border-bottom:1px solid #F5F5F5;font-size:14px;display:flex;align-items:center;gap:8px"><span>'+(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜'))+'</span>'+t.title+'</div>';}).join('');
+    html3+='<div style="padding:8px 14px;background:#F8FDF9;font-size:12px;font-weight:700;color:#1B4D3E;border-bottom:1px solid #E8E8E8">📌 할일</div>';
+    html3+=todos.map(function(t){return '<div style="padding:9px 14px;border-bottom:1px solid #F5F5F5;font-size:14px;display:flex;align-items:center;gap:8px"><span>'+(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜'))+'</span>'+t.title+'</div>';}).join('');
   }
   if(hws.length){
-    html+='<div style="padding:8px 14px;background:#F0F4FF;font-size:12px;font-weight:700;color:#1a56db;border-bottom:1px solid #E8E8E8"><span class="gold-star">✦</span> 숙제</div>';
-    html+=hws.map(function(t){return '<div style="padding:9px 14px;border-bottom:1px solid #F5F5F5;font-size:14px;display:flex;align-items:center;gap:8px"><span>'+(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜'))+'</span>'+t.title+'</div>';}).join('');
+    html3+='<div style="padding:8px 14px;background:#F0F4FF;font-size:12px;font-weight:700;color:#1a56db;border-bottom:1px solid #E8E8E8"><span class="gold-star">✦</span> 숙제</div>';
+    html3+=hws.map(function(t){return '<div style="padding:9px 14px;border-bottom:1px solid #F5F5F5;font-size:14px;display:flex;align-items:center;gap:8px"><span>'+(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜'))+'</span>'+t.title+'</div>';}).join('');
   }
-  if(!html)html='<div style="padding:20px;text-align:center;color:#aaa;font-size:13px">이날의 기록이 없어요</div>';
+  if(!html3)html3='<div style="padding:20px;text-align:center;color:#aaa;font-size:13px">이날의 기록이 없어요</div>';
   if(role==='s'&&(todos.length||hws.length)){
-    html+='<div style="padding:10px 14px"><button onclick="goToTasksDate(this.dataset.date)" data-date="'+dateStr+'" style="width:100%;padding:10px;background:#1B4D3E;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">✦ 할일&과제 탭에서 체크하기</button></div>';
+    html3+='<div style="padding:10px 14px"><button onclick="goToTasksDate(this.dataset.date)" data-date="'+dateStr+'" style="width:100%;padding:10px;background:#1B4D3E;color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit">✦ 할일&과제 탭에서 체크하기</button></div>';
   }
-  if(detailBody)detailBody.innerHTML=html;
+  if(detailBody)detailBody.innerHTML=html3;
+}
+
+async function openTeacherCalStudentDetail(sid,dateStr){
+  var s=allStudents.find(function(x){return x.id===sid;});
+  var d=new Date(dateStr);
+  var tr=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',dateStr);
+  var tasks=tr.data||[];
+  var ar=await getSB().from('attendance').select('*').eq('student_id',sid).eq('date',dateStr).maybeSingle();
+  var att=ar.data;
+  var todos=tasks.filter(function(t){return t.type==='todo';});
+  var hws=tasks.filter(function(t){return t.type==='hw';});
+  var html='<div style="padding:16px">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+    +'<span style="font-size:16px;font-weight:700;color:#1B4D3E">'+(s?s.name:'')+'</span>'
+    +'<span style="font-size:12px;color:#999">'+(d.getMonth()+1)+'월 '+d.getDate()+'일</span>'
+    +'</div>'
+    +'<div style="font-size:12px;color:#666;margin-bottom:14px">'+(att&&att.check_in?'등원 '+formatKSTTime(att.check_in)+(att.check_out?' · 하원 '+formatKSTTime(att.check_out):''):'등원 기록 없음')+'</div>';
+  if(todos.length){
+    html+='<div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:6px">할일</div>';
+    html+=todos.map(function(t){return '<div style="padding:7px 0;font-size:14px;display:flex;gap:8px"><span>'+(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜'))+'</span>'+t.title+'</div>';}).join('');
+  }
+  if(hws.length){
+    html+='<div style="font-size:12px;font-weight:700;color:#1a56db;margin:10px 0 6px">숙제</div>';
+    html+=hws.map(function(t){return '<div style="padding:7px 0;font-size:14px;display:flex;gap:8px"><span>'+(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜'))+'</span>'+t.title+'</div>';}).join('');
+  }
+  if(!todos.length&&!hws.length)html+='<div style="padding:20px 0;text-align:center;color:#aaa;font-size:13px">이날 할일/숙제 기록이 없어요</div>';
+  html+='<button onclick="closeMod()" class="btn-primary" style="width:100%;margin-top:12px">닫기</button></div>';
+  openMod((s?s.name:'')+' 기록', html);
 }
 
 // ===== 학생 등하원 & 할일 =====
@@ -3486,13 +3534,21 @@ async function loadTeacherInquiries(){
   var res=await getSB().from('parent_inquiries').select('*, students(name)').order('created_at',{ascending:false}).limit(10);
   var items=res.data||[];
   if(!items.length){el.innerHTML='<div style="padding:12px 16px;color:#aaa;font-size:13px">문의가 없어요</div>';return;}
+  var parentIds=Array.from(new Set(items.map(function(q){return q.parent_id;}).filter(Boolean)));
+  var parentNames={};
+  if(parentIds.length){
+    var pRes=await getSB().from('profiles').select('id,name').in('id',parentIds);
+    (pRes.data||[]).forEach(function(p){parentNames[p.id]=p.name;});
+  }
   el.innerHTML=items.map(function(q){
     var d=new Date(q.created_at);
     var dateLabel=(d.getMonth()+1)+'/'+d.getDate();
     var sname=q.students?q.students.name:'';
+    var pname=parentNames[q.parent_id]||'';
+    var whoLabel=sname?sname+' 학부모':(pname?pname:'학부모');
     return '<div style="padding:12px 16px;border-bottom:1px solid #F5F5F5">'
       +'<div style="display:flex;justify-content:space-between;margin-bottom:4px">'
-      +'<span style="font-size:13px;font-weight:700;color:#1B4D3E">'+(sname?sname+' 학부모':'학부모')+'</span>'
+      +'<span style="font-size:13px;font-weight:700;color:#1B4D3E">'+whoLabel+'</span>'
       +'<span style="font-size:11px;color:#aaa">'+dateLabel+'</span></div>'
       +'<div style="font-size:13px;color:#333;margin-bottom:8px">'+q.content+'</div>'
       +(q.reply
@@ -3638,9 +3694,9 @@ function buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,
     +'<div style="font-size:13px;color:#F0C040;letter-spacing:0.35em;font-weight:700">✦ EWHA ENGLISH ✦</div>'
     +'</div>'
     +'<div style="background:#fff;border:1px solid #E8E8E8;border-top:3px solid #F0C040;border-radius:0 0 12px 12px;padding:14px 16px;margin-bottom:16px">'
-    +'<div style="display:flex;gap:24px">'
-    +'<div style="flex:1"><span style="font-size:11px;color:#999">날짜</span><div style="font-size:14px;font-weight:700;color:#1B4D3E;border-bottom:1.5px solid #E8E8E8;padding:3px 0">'+dateLabel+'</div></div>'
-    +'<div style="flex:1"><span style="font-size:11px;color:#999">이름</span><div style="font-size:14px;font-weight:700;color:#1B4D3E;border-bottom:1.5px solid #E8E8E8;padding:3px 0">'+studentName+'</div></div>'
+    +'<div style="display:flex;align-items:flex-end;gap:10px">'
+    +'<div style="flex:1.6;min-width:0"><span style="font-size:11px;color:#999">날짜</span><div style="font-size:13px;font-weight:700;color:#1B4D3E;border-bottom:1.5px solid #E8E8E8;padding:3px 0;white-space:nowrap;overflow:hidden">'+dateLabel+'</div></div>'
+    +'<div style="flex:1;min-width:0"><span style="font-size:11px;color:#999">이름</span><div style="font-size:14px;font-weight:700;color:#1B4D3E;border-bottom:1.5px solid #E8E8E8;padding:3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+studentName+'</div></div>'
     +'</div></div>'
     +noteSection('단어 TEST',vtText)
     +noteSection('오늘의 수업',todoText)
