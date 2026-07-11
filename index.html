@@ -956,8 +956,8 @@ async function handleSession(session){
 function showRoleModal(){
   openMod('처음 오셨군요!',
     '<div style="padding:20px">'+
-    '<p style="color:#666;margin-bottom:16px;font-size:13px">선생님께 받은 초대 코드를 입력해주세요</p>'+
-    '<input type="text" class="form-input" id="invite-code-input" placeholder="초대 코드 (STU-XXXX 또는 PAR-XXXX)" style="margin-bottom:8px">'+
+    '<p style="color:#666;margin-bottom:16px;font-size:13px">학생: 선생님께 받은 코드(STU-XXXX)<br>학부모: 자녀의 4자리 번호를 입력해주세요</p>'+
+    '<input type="text" class="form-input" id="invite-code-input" placeholder="학생 코드 또는 4자리 번호" style="margin-bottom:8px">'+
     '<button class="btn-primary" onclick="registerWithCode()">시작하기</button>'+
     '<p style="font-size:11px;color:#aaa;text-align:center;margin-top:12px">선생님 계정은 별도 등록이 필요해요</p>'+
     '</div>'
@@ -976,29 +976,31 @@ async function registerWithCode(){
     currentProfile={id:currentUser.id,name:student.name,role:'student'};
     closeMod();toast('✅ '+student.name+'님으로 연동됐어요!');
     enterWithProfile(currentProfile);
-  } else if(code.startsWith('PAR-')){
-    var res=await getSB().from('students').select('*').eq('parent_code',code).single();
-    if(res.error||!res.data){toast('코드를 찾을 수 없어요');return;}
+  } else if(/^\d{4}$/.test(code)){
+    var res=await getSB().from('students').select('*').eq('parent_code',code).maybeSingle();
+    if(!res.data){toast('코드를 찾을 수 없어요. 번호를 다시 확인해주세요');return;}
     var student=res.data;
-    var existing=await getSB().from('profiles').select('*').eq('id',currentUser.id).single();
+    var existing=await getSB().from('profiles').select('*').eq('id',currentUser.id).maybeSingle();
     if(!existing.data){
       var name=(currentUser.user_metadata&&(currentUser.user_metadata.full_name||currentUser.user_metadata.name))||'학부모';
       var pr=await getSB().from('profiles').insert({id:currentUser.id,name:name,role:'parent'});
       if(pr.error){toast('오류: '+pr.error.message);return;}
       currentProfile={id:currentUser.id,name:name,role:'parent'};
     } else {currentProfile=existing.data;}
-    var dup=await getSB().from('student_parent').select('*').eq('student_id',student.id).eq('parent_id',currentUser.id).single();
-    if(!dup.data)await getSB().from('student_parent').insert({student_id:student.id,parent_id:currentUser.id});
+    var dup=await getSB().from('student_parent').select('*').eq('student_id',student.id).eq('parent_id',currentUser.id).maybeSingle();
+    if(!dup.data){
+      var linkRes=await getSB().from('student_parent').insert({student_id:student.id,parent_id:currentUser.id});
+      if(linkRes.error){toast('연동 오류: '+linkRes.error.message);return;}
+    }
     closeMod();toast('✅ '+student.name+' 자녀 연동 완료!');
-    setTimeout(showAddChildModal,1200);
     enterWithProfile(currentProfile);
   } else {toast('올바른 코드를 입력해주세요');}
 }
 function showAddChildModal(){
   openMod('자녀 추가 연동',
     '<div style="padding:20px">'+
-    '<p style="color:#666;margin-bottom:16px;font-size:13px">다른 자녀 코드가 있으면 추가 입력해주세요</p>'+
-    '<input type="text" class="form-input" id="add-child-code" placeholder="PAR-XXXX" style="margin-bottom:8px">'+
+    '<p style="color:#666;margin-bottom:16px;font-size:13px">자녀의 4자리 번호를 입력해주세요</p>'+
+    '<input type="text" class="form-input" id="add-child-code" placeholder="4자리 번호 (예: 4821)" maxlength="4" style="margin-bottom:8px">'+
     '<button class="btn-primary" onclick="addChildLink()">자녀 추가</button>'+
     '<button class="btn-secondary" onclick="closeMod()" style="margin-top:8px">나중에 하기</button>'+
     '</div>'
@@ -1006,16 +1008,17 @@ function showAddChildModal(){
 }
 async function addChildLink(){
   var code=$('add-child-code').value.trim().toUpperCase();
-  if(!code){toast('코드를 입력해주세요');return;}
-  var res=await getSB().from('students').select('*').eq('parent_code',code).single();
-  if(res.error||!res.data){toast('코드를 찾을 수 없어요');return;}
+  if(!code){toast('자녀의 4자리 번호를 입력해주세요');return;}
+  var res=await getSB().from('students').select('*').eq('parent_code',code).maybeSingle();
+  if(!res.data){toast('번호를 찾을 수 없어요. 다시 확인해주세요');return;}
   var student=res.data;
-  var dup=await getSB().from('student_parent').select('*').eq('student_id',student.id).eq('parent_id',currentProfile.id).single();
+  var dup=await getSB().from('student_parent').select('*').eq('student_id',student.id).eq('parent_id',currentProfile.id).maybeSingle();
   if(dup.data){toast('이미 연동된 자녀예요');return;}
-  await getSB().from('student_parent').insert({student_id:student.id,parent_id:currentProfile.id});
+  var insRes=await getSB().from('student_parent').insert({student_id:student.id,parent_id:currentProfile.id});
+  if(insRes.error){toast('연동 오류: '+insRes.error.message);return;}
   toast('✅ '+student.name+' 추가 완료!');
   $('add-child-code').value='';
-  loadParent();
+  await loadParent();
 }
 function enterWithProfile(profile){
   document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
@@ -1155,7 +1158,13 @@ async function saveStudent(){
   if(!name){toast('이름을 입력해주세요');return;}
   var id=crypto.randomUUID();
   var sc='STU-'+Math.random().toString(36).substr(2,4).toUpperCase();
-  var pc='PAR-'+Math.random().toString(36).substr(2,4).toUpperCase();
+  var pc=String(Math.floor(1000+Math.random()*9000));
+  // 4자리 코드 중복 방지
+  for(var pcTry=0;pcTry<10;pcTry++){
+    var dupCheck=await getSB().from('students').select('id').eq('parent_code',pc).maybeSingle();
+    if(!dupCheck.data)break;
+    pc=String(Math.floor(1000+Math.random()*9000));
+  }
   var data={id:id,name:name,student_phone:$('s-phone').value.trim(),parent_phone:$('p-phone-input').value.trim(),
     school:$('s-school').value.trim(),grade:$('s-grade').value.trim(),address:$('s-addr').value.trim(),
     other_academy:$('s-academy').value.trim(),nelt_overall:$('nelt-overall').value.trim(),
@@ -1248,7 +1257,7 @@ async function deleteStudent(sid){
 function copyInvite(type,name,code){
   var msg=type==='student'
     ?'안녕하세요, 이화영어입니다 :)\n공부방에서의 배움이 가정에서도 촘촘하게 이어질 수 있도록,\n여러분을 위한 특별한 [이화영어 학습관리] 프로그램을 제작하였습니다.\n매일 스스로 목표를 달성하며 성장해 나갈 여러분을 응원합니다!\n\n* 학습관리 플랫폼: https://ewha-phi.vercel.app\n* 나의 초대 코드: '+code+'\n\n[함께할 핵심 기능]\n\n1. 등/하원 안심 알림: 학원 도착과 귀가를 더 안전하게!\n2. 오늘의 할 일 List: 스스로 계획하고 실천하는 성취의 즐거움.\n3. 숙제 확인 및 인증: 그날의 과제를 꼼꼼히 확인하고 제 시간에 제출하기.\n4. 마일리지 적립: 자신의 맡은 바를 성실히 수행한 당신에게 보상을!\n\n사용 중 궁금한 점이 생기면 언제든 선생님께 물어봐 주세요.\n매일매일 한 걸음 씩 성장할 여러분의 오늘을 응원합니다. 화이팅!♡'
-    :'안녕하세요, 이화영어입니다! :)\n항상 이화영어를 믿고 보내주시는 학부모님께 감사드립니다.\n아이들이 원내 학습을 넘어 가정에서도 자기주도적인 학습 습관을 형성할 수 있도록,\n체계적인 [이화영어 학습관리] 프로그램을 제작하였습니다.\n아래 링크를 통해 접속하시어 아이의 학습 흐름을 함께 살펴봐 주시기를 부탁드립니다.\n\n* 학습관리 플랫폼: https://ewha-phi.vercel.app\n* 학부모용 초대 코드: '+code+'\n\n[프로그램 주요 기능]\n\n1. 등/하원 안심 알림: 아이의 실시간 등하원 현황 확인.\n2. 오늘의 To-do List: 아이가 스스로 계획하고 실천한 과제 점검.\n3. 학습 피드백:\n   * [이화성장 노트]: 매 수업 아이의 학습 태도와 내용을 기록한 리포트.\n   * [Monthly Report]: 한 달간의 전체적인 학습 흐름과 성취도 분석.\n\n아이의 작은 성취가 모여 큰 결실이 될 수 있도록 가정에서도 많은 관심과 격려 부탁드립니다.\n프로그램 이용 중 문의사항이 있으시면 언제든 편하게 연락 주십시오.\n함께 성장하는 이화영어가 되겠습니다. 감사합니다.';
+    :'안녕하세요, 이화영어입니다! :)\n항상 이화영어를 믿고 보내주시는 학부모님께 감사드립니다.\n아이들이 원내 학습을 넘어 가정에서도 자기주도적인 학습 습관을 형성할 수 있도록,\n체계적인 [이화영어 학습관리] 프로그램을 제작하였습니다.\n아래 링크를 통해 접속하시어 아이의 학습 흐름을 함께 살펴봐 주시기를 부탁드립니다.\n\n* 학습관리 플랫폼: https://ewha-phi.vercel.app\n* 자녀 번호(4자리): '+code+'\n\n[프로그램 주요 기능]\n\n1. 등/하원 안심 알림: 아이의 실시간 등하원 현황 확인.\n2. 오늘의 To-do List: 아이가 스스로 계획하고 실천한 과제 점검.\n3. 학습 피드백:\n   * [이화성장 노트]: 매 수업 아이의 학습 태도와 내용을 기록한 리포트.\n   * [Monthly Report]: 한 달간의 전체적인 학습 흐름과 성취도 분석.\n\n아이의 작은 성취가 모여 큰 결실이 될 수 있도록 가정에서도 많은 관심과 격려 부탁드립니다.\n프로그램 이용 중 문의사항이 있으시면 언제든 편하게 연락 주십시오.\n함께 성장하는 이화영어가 되겠습니다. 감사합니다.';
   navigator.clipboard.writeText(msg).then(function(){toast('📋 복사 완료! 카카오톡에 붙여넣기 해주세요');}).catch(function(){
     var ta=document.createElement('textarea');ta.value=msg;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
     toast('📋 복사 완료!');
