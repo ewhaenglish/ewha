@@ -1238,7 +1238,7 @@ async function deleteStudent(sid){
 function copyInvite(type,name,code){
   var msg=type==='student'
     ?'안녕하세요, 이화영어입니다 :)\n공부방에서의 배움이 가정에서도 촘촘하게 이어질 수 있도록,\n여러분을 위한 특별한 [이화영어 학습관리] 프로그램을 제작하였습니다.\n매일 스스로 목표를 달성하며 성장해 나갈 여러분을 응원합니다!\n\n* 학습관리 플랫폼: https://ewha-phi.vercel.app\n* 나의 초대 코드: '+code+'\n\n[함께할 핵심 기능]\n\n1. 등/하원 안심 알림: 학원 도착과 귀가를 더 안전하게!\n2. 오늘의 할 일 List: 스스로 계획하고 실천하는 성취의 즐거움.\n3. 숙제 확인 및 인증: 그날의 과제를 꼼꼼히 확인하고 제 시간에 제출하기.\n4. 마일리지 적립: 자신의 맡은 바를 성실히 수행한 당신에게 보상을!\n\n사용 중 궁금한 점이 생기면 언제든 선생님께 물어봐 주세요.\n매일매일 한 걸음 씩 성장할 여러분의 오늘을 응원합니다. 화이팅!♡'
-    :'안녕하세요, 이화영어입니다! :)\n항상 이화영어를 믿고 보내주시는 학부모님께 감사드립니다.\n아이들이 원내 학습을 넘어 가정에서도 자기주도적인 학습 습관을 형성할 수 있도록,\n체계적인 [이화영어 학습관리] 프로그램을 제작하였습니다.\n아래 링크를 통해 접속하시어 아이의 학습 흐름을 함께 살펴봐 주시기를 부탁드립니다.\n\n* 학습관리 플랫폼: https://ewha-phi.vercel.app\n* 자녀 번호(4자리): '+code+'\n\n[프로그램 주요 기능]\n\n1. 등/하원 안심 알림: 아이의 실시간 등하원 현황 확인.\n2. 오늘의 To-do List: 아이가 스스로 계획하고 실천한 과제 점검.\n3. 학습 피드백:\n   * [이화성장 노트]: 매 수업 아이의 학습 태도와 내용을 기록한 리포트.\n   * [Monthly Report]: 한 달간의 전체적인 학습 흐름과 성취도 분석.\n\n아이의 작은 성취가 모여 큰 결실이 될 수 있도록 가정에서도 많은 관심과 격려 부탁드립니다.\n프로그램 이용 중 문의사항이 있으시면 언제든 편하게 연락 주십시오.\n함께 성장하는 이화영어가 되겠습니다. 감사합니다.';
+    :'안녕하세요, 이화영어입니다! :)\n항상 이화영어를 믿고 보내주시는 학부모님께 감사드립니다.\n아이들이 원내 학습을 넘어 가정에서도 자기주도적인 학습 습관을 형성할 수 있도록,\n체계적인 [이화영어 학습관리] 프로그램을 제작하였습니다.\n아래 링크를 통해 접속하시어 아이의 학습 흐름을 함께 살펴봐 주시기를 부탁드립니다.\n(링크를 누르면 자동으로 사파리/크롬으로 열려요)\n\n* 학습관리 플랫폼: https://ewha-phi.vercel.app\n* 자녀 번호(4자리): '+code+'\n\n[프로그램 주요 기능]\n\n1. 등/하원 안심 알림: 아이의 실시간 등하원 현황 확인.\n2. 오늘의 To-do List: 아이가 스스로 계획하고 실천한 과제 점검을\n   [이화성장 노트]에서 교사 피드백과 함께 확인.\n3. 이화성장노트에 댓글과 이모티콘으로 선생님과 소통.\n\n아이의 작은 성취가 모여 큰 결실이 될 수 있도록 가정에서도 많은 관심과 격려 부탁드립니다.\n프로그램 이용 중 문의사항이 있으시면 언제든 편하게 연락 주십시오.\n함께 성장하는 이화영어가 되겠습니다. 감사합니다.';
   navigator.clipboard.writeText(msg).then(function(){toast('📋 복사 완료! 카카오톡에 붙여넣기 해주세요');}).catch(function(){
     var ta=document.createElement('textarea');ta.value=msg;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
     toast('📋 복사 완료!');
@@ -1276,7 +1276,7 @@ async function renderTasks(){
     var badge=t.student_done&&!t.teacher_confirmed?'<span class="pill pill-pending" style="margin-left:6px">확인 대기</span>':'';
     var confirmBtn=t.student_done&&!t.teacher_confirmed
       ?'<button class="btn-sm" style="flex-shrink:0" onclick="confirmTask(\''+t.id+'\');event.stopPropagation()">Confirm ✅</button>':'';
-    var editBtn='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px" onclick="editTask(\''+t.id+'\',\''+t.title.replace(/'/g,"\\'")+'\',' +(t.type==='hw'?'\'hw\'':'\'todo\'')+');event.stopPropagation()">✏️</button>';
+    var editBtn='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px" onclick="editTask(\''+t.id+'\',\''+t.title.replace(/'/g,"\'")+'\',' +(t.type==='hw'?'\'hw\'':'\'todo\'')+');event.stopPropagation()">✏️</button>';
     var delBtn='<button class="btn-danger" style="flex-shrink:0;margin-left:4px" onclick="deleteTask(\''+t.id+'\');event.stopPropagation()">🗑</button>';
     return '<div class="task-item '+statusClass+'" style="'+(t.student_done&&!t.teacher_confirmed?'background:#FFFBF0':'')+'">'
       +'<div class="task-check" style="'+checkStyle+'">'+checkIcon+'</div>'
@@ -1386,15 +1386,17 @@ async function saveNote(){
   var todoText=todos.map(function(t){return (t.student_done?'✔':'✕')+' '+t.title;}).join('\n')||'없음';
   var hwText=hws.map(function(t){return (t.student_done?'✔':'✕')+' '+t.title;}).join('\n')||'없음';
   var noteContent='📅 Date: '+dateLabel+'\n\n[단어 TEST]\n'+vtText+'\n\n[오늘의 수업]\n'+todoText+'\n\n[오늘의 과제]\n'+hwText+(goalContent?'\n\n[이번 주 각오]\n'+goalContent:'')+'\n\n[피드백]\n'+feedback;
-    var r=await getSB().from('growth_notes').insert({student_id:sid,content:noteContent,date:today,ai_generated:false});
+    var r=await getSB().from('growth_notes').insert({student_id:sid,content:noteContent,date:today,ai_generated:false}).select().single();
   if(r.error){toast('오류: '+r.error.message);return;}
+  var savedNoteId=r.data?r.data.id:null;
   toast('✅ 성장노트 저장 완료!');
   $('note-feedback').value='';
   loadRecentNotes();
   // 저장된 전체 내용 모달로 보여주기
   var studentName=(allStudents.find(function(x){return x.id===sid;})||{}).name||'학생';
-  var previewHtml=buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,feedback);
+  var previewHtml=buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,feedback,savedNoteId);
   openMod('이화성장노트', previewHtml);
+  if(savedNoteId)loadNoteComments(savedNoteId);
 }
 async function loadRecentNotes(){
   var dateFilter=getOffsetDate(noteDateOffset);
@@ -1786,7 +1788,8 @@ async function loadParentNotes(){
   var hws=extractSection('오늘의 과제');
   var goal=extractSection('이번 주 각오');
   var feedback=extractSection('피드백');
-  $('p-note-list').innerHTML=buildNoteHtml(student.name,dateLabel,vocab,todos,hws,goal,feedback).replace('<button onclick="closeMod()" class="btn-primary" style="width:100%;margin-top:4px">확인</button>','');
+  $('p-note-list').innerHTML=buildNoteHtml(student.name,dateLabel,vocab,todos,hws,goal,feedback,n.id).replace('<button onclick="closeMod()" class="btn-primary" style="width:100%;margin-top:4px">확인</button>','');
+  loadNoteComments(n.id);
 }
 
 // ===== PDF 저장 =====
@@ -3246,7 +3249,8 @@ function openNoteDetail(noteId){
     var hws=extractSection('오늘의 과제');
     var goal=extractSection('이번 주 각오');
     var feedback=extractSection('피드백');
-    openMod('이화성장노트', buildNoteHtml(studentName,dateLabel,vocab,todos,hws,goal,feedback));
+    openMod('이화성장노트', buildNoteHtml(studentName,dateLabel,vocab,todos,hws,goal,feedback,noteId));
+    loadNoteComments(noteId);
   });
 }
 
@@ -3681,7 +3685,7 @@ async function loadTeacherHwPhotos(){
 }
 
 // ===== 이화성장노트 통일 디자인 =====
-function buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,feedback){
+function buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,feedback,noteId){
   function noteSection(title,txt,isGold){
     if(!txt)return '';
     return '<div style="margin-bottom:14px'+(isGold?';background:#FFFDF5;border:1.5px solid #F0C040;border-radius:10px;padding:12px 14px':'')+'">'
@@ -3705,7 +3709,20 @@ function buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,
     +noteSection('오늘의 과제',hwText)
     +noteSection('이번 주 각오',goalContent)
     +noteSection('선생님 한마디',feedback,true)
-    +'<button onclick="closeMod()" class="btn-primary" style="width:100%;margin-top:4px">확인</button>'
+    +(noteId?buildNoteReactionArea(noteId):'')
+    +(noteId?'<div id="note-comments-'+noteId+'" style="margin-top:6px"></div>':'')
+    +'</div>';
+}
+
+function buildNoteReactionArea(noteId){
+  var emojis=[['😊','좋아요'],['👍','최고'],['❤️','사랑'],['😢','속상']];
+  return '<div style="display:flex;gap:8px;padding:10px 0;margin-bottom:6px;border-top:1px solid #F0F0F0;border-bottom:1px solid #F0F0F0">'
+    +emojis.map(function(e){
+      return '<button onclick="toggleNoteReaction(this.dataset.nid,this.dataset.emoji)" data-nid="'+noteId+'" data-emoji="'+e[0]+'" class="note-reaction-btn" style="flex:1;padding:8px 4px;background:#FAFAFA;border:1.5px solid #E8E8E8;border-radius:10px;cursor:pointer;font-size:18px;text-align:center;position:relative">'
+        +e[0]+'<div style="font-size:9px;color:#999;margin-top:2px">'+e[1]+'</div>'
+        +'<span class="note-reaction-count" data-nid="'+noteId+'" data-emoji="'+e[0]+'" style="position:absolute;top:-6px;right:-6px;background:#1B4D3E;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;display:none;align-items:center;justify-content:center;padding:0 3px"></span>'
+        +'</button>';
+    }).join('')
     +'</div>';
 }
 
@@ -3808,6 +3825,133 @@ async function saveParentNickname(){
   if(el)el.textContent=newName;
   toast('✅ 표시 이름이 변경됐어요!');
   closeMod();
+}
+
+// ===== 성장노트 이모티콘 반응 =====
+async function loadNoteReactions(noteId){
+  var res=await getSB().from('note_reactions').select('*').eq('note_id',noteId);
+  var reactions=res.data||[];
+  var counts={};
+  reactions.forEach(function(r){counts[r.emoji]=(counts[r.emoji]||0)+1;});
+  var myReactions=reactions.filter(function(r){return r.author_id===currentUser.id;}).map(function(r){return r.emoji;});
+  document.querySelectorAll('.note-reaction-btn[data-nid="'+noteId+'"]').forEach(function(btn){
+    var emoji=btn.dataset.emoji;
+    var isMine=myReactions.indexOf(emoji)>=0;
+    btn.style.background=isMine?'#F8FDF9':'#FAFAFA';
+    btn.style.borderColor=isMine?'#1B4D3E':'#E8E8E8';
+  });
+  document.querySelectorAll('.note-reaction-count[data-nid="'+noteId+'"]').forEach(function(el){
+    var c=counts[el.dataset.emoji]||0;
+    el.textContent=c;
+    el.style.display=c>0?'flex':'none';
+  });
+}
+
+async function toggleNoteReaction(noteId,emoji){
+  var existing=await getSB().from('note_reactions').select('id').eq('note_id',noteId).eq('author_id',currentUser.id).eq('emoji',emoji).maybeSingle();
+  if(existing.data){
+    await getSB().from('note_reactions').delete().eq('id',existing.data.id);
+  } else {
+    await getSB().from('note_reactions').insert({note_id:noteId,author_id:currentUser.id,emoji:emoji});
+    // 상대방에게 알림
+    var noteRes=await getSB().from('growth_notes').select('student_id').eq('id',noteId).single();
+    if(noteRes.data){
+      if(currentProfile.role==='parent'){
+        var tr=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
+        if(tr.data&&tr.data.length>0)await sendNotification(tr.data[0].id,emoji+' 학부모님이 성장노트에 반응을 남겼어요','reaction');
+      } else if(currentProfile.role==='teacher'){
+        var pr=await getSB().from('student_parent').select('parent_id').eq('student_id',noteRes.data.student_id);
+        (pr.data||[]).forEach(function(p){sendNotification(p.parent_id,emoji+' 선생님이 성장노트에 반응을 남겼어요','reaction');});
+      }
+    }
+  }
+  loadNoteReactions(noteId);
+}
+
+// ===== 성장노트 댓글/대댓글 =====
+async function loadNoteComments(noteId){
+  var el=document.getElementById('note-comments-'+noteId);
+  if(!el)return;
+  var res=await getSB().from('note_comments').select('*').eq('note_id',noteId).order('created_at',{ascending:true});
+  var comments=res.data||[];
+  var top=comments.filter(function(c){return !c.parent_comment_id;});
+  var replies=comments.filter(function(c){return c.parent_comment_id;});
+  function roleLabel(role){return role==='teacher'?'선생님':role==='parent'?'학부모':'학생';}
+  function renderComment(c,isReply){
+    var mine=c.author_id===currentUser.id;
+    return '<div style="padding:'+(isReply?'8px 0 8px 24px':'10px 0')+';'+(isReply?'border-left:2px solid #F0C040;margin-left:8px;padding-left:12px':'')+'">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start">'
+      +'<div style="flex:1"><span style="font-size:12px;font-weight:700;color:'+(c.author_role==='teacher'?'#1B4D3E':'#666')+'">'+roleLabel(c.author_role)+'</span>'
+      +'<div style="font-size:13px;color:#333;margin-top:2px;line-height:1.6">'+c.content+'</div></div>'
+      +(mine?'<button onclick="deleteNoteComment(\''+c.id+'\',\''+noteId+'\')" style="background:none;border:none;color:#ccc;font-size:11px;cursor:pointer;padding:2px 4px">✕</button>':'')
+      +'</div>'
+      +(!isReply?'<button onclick="showReplyInput(\''+c.id+'\',\''+noteId+'\')" style="background:none;border:none;color:#1B4D3E;font-size:11px;cursor:pointer;padding:2px 0;margin-top:2px">답글 달기</button>':'')
+      +'<div id="reply-input-'+c.id+'"></div>'
+      +'</div>';
+  }
+  var html='<div style="border-top:1px solid #F0F0F0;padding-top:10px">'
+    +top.map(function(c){
+      var myReplies=replies.filter(function(r){return r.parent_comment_id===c.id;});
+      return renderComment(c,false)+myReplies.map(function(r){return renderComment(r,true);}).join('');
+    }).join('')
+    +'<div style="display:flex;gap:6px;margin-top:10px">'
+    +'<input type="text" id="new-comment-'+noteId+'" placeholder="댓글을 남겨보세요..." style="flex:1;padding:9px 12px;border:1.5px solid #E8E8E8;border-radius:20px;font-size:13px;font-family:inherit">'
+    +'<button onclick="submitNoteComment(\''+noteId+'\')" style="padding:9px 16px;background:#1B4D3E;color:#fff;border:none;border-radius:20px;font-size:13px;cursor:pointer;font-family:inherit">등록</button>'
+    +'</div></div>';
+  el.innerHTML=html;
+  loadNoteReactions(noteId);
+}
+
+function showReplyInput(commentId,noteId){
+  var el=document.getElementById('reply-input-'+commentId);
+  if(!el)return;
+  if(el.innerHTML){el.innerHTML='';return;}
+  el.innerHTML='<div style="display:flex;gap:6px;margin-top:6px;margin-left:24px">'
+    +'<input type="text" id="reply-text-'+commentId+'" placeholder="답글 입력..." style="flex:1;padding:8px 12px;border:1.5px solid #E8E8E8;border-radius:20px;font-size:12px;font-family:inherit">'
+    +'<button onclick="submitNoteReply(\''+commentId+'\',\''+noteId+'\')" style="padding:8px 14px;background:#1B4D3E;color:#fff;border:none;border-radius:20px;font-size:12px;cursor:pointer;font-family:inherit">등록</button>'
+    +'</div>';
+}
+
+async function submitNoteComment(noteId){
+  var input=document.getElementById('new-comment-'+noteId);
+  if(!input||!input.value.trim())return;
+  var res=await getSB().from('note_comments').insert({
+    note_id:noteId,author_id:currentUser.id,author_role:currentProfile.role,content:input.value.trim()
+  });
+  if(res.error){toast('오류: '+res.error.message);return;}
+  input.value='';
+  loadNoteComments(noteId);
+  notifyNoteCommentTarget(noteId);
+}
+
+async function submitNoteReply(parentCommentId,noteId){
+  var input=document.getElementById('reply-text-'+parentCommentId);
+  if(!input||!input.value.trim())return;
+  var res=await getSB().from('note_comments').insert({
+    note_id:noteId,author_id:currentUser.id,author_role:currentProfile.role,
+    content:input.value.trim(),parent_comment_id:parentCommentId
+  });
+  if(res.error){toast('오류: '+res.error.message);return;}
+  loadNoteComments(noteId);
+  notifyNoteCommentTarget(noteId);
+}
+
+async function deleteNoteComment(commentId,noteId){
+  if(!confirm('댓글을 삭제할까요?'))return;
+  await getSB().from('note_comments').delete().eq('id',commentId);
+  loadNoteComments(noteId);
+}
+
+async function notifyNoteCommentTarget(noteId){
+  var noteRes=await getSB().from('growth_notes').select('student_id').eq('id',noteId).single();
+  if(!noteRes.data)return;
+  if(currentProfile.role==='parent'){
+    var tr=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
+    if(tr.data&&tr.data.length>0)await sendNotification(tr.data[0].id,'💬 학부모님이 성장노트에 댓글을 남겼어요','notecomment');
+  } else if(currentProfile.role==='teacher'){
+    var pr=await getSB().from('student_parent').select('parent_id').eq('student_id',noteRes.data.student_id);
+    (pr.data||[]).forEach(function(p){sendNotification(p.parent_id,'💬 선생님이 성장노트에 답글을 남겼어요','notecomment');});
+  }
 }
 
 // ===== 앱 시작 =====
