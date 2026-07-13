@@ -1274,17 +1274,39 @@ async function renderTasks(){
     var checkIcon=t.teacher_confirmed?'✓':(t.student_done?'⏳':'');
     var checkStyle=t.student_done&&!t.teacher_confirmed?'border-color:#FFC107;color:#FFC107':'';
     var badge=t.student_done&&!t.teacher_confirmed?'<span class="pill pill-pending" style="margin-left:6px">확인 대기</span>':'';
-    var confirmBtn=t.student_done&&!t.teacher_confirmed
-      ?'<button class="btn-sm" style="flex-shrink:0" onclick="confirmTask(\''+t.id+'\');event.stopPropagation()">Confirm ✅</button>':'';
-    var editBtn='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px" onclick="editTask(\''+t.id+'\',\''+t.title.replace(/'/g,"\'")+'\',' +(t.type==='hw'?'\'hw\'':'\'todo\'')+');event.stopPropagation()">✏️</button>';
+    var actionBtn='';
+    if(t.teacher_confirmed){
+      actionBtn='<button class="btn-sm-outline" style="flex-shrink:0" onclick="teacherUnmarkTask(\''+t.id+'\');event.stopPropagation()">취소</button>';
+    } else if(t.student_done){
+      actionBtn='<button class="btn-sm" style="flex-shrink:0" onclick="confirmTask(\''+t.id+'\');event.stopPropagation()">Confirm ✅</button>';
+    } else {
+      actionBtn='<button class="btn-sm" style="flex-shrink:0;background:#1B4D3E" onclick="teacherMarkDone(\''+t.id+'\');event.stopPropagation()">완료 처리</button>';
+    }
+    var editBtn='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px" onclick="editTask(\''+t.id+'\',\''+t.title.replace(/'/g,"\\'")+'\',' +(t.type==='hw'?"'hw'":"'todo'")+');event.stopPropagation()">✏️</button>';
     var delBtn='<button class="btn-danger" style="flex-shrink:0;margin-left:4px" onclick="deleteTask(\''+t.id+'\');event.stopPropagation()">🗑</button>';
     return '<div class="task-item '+statusClass+'" style="'+(t.student_done&&!t.teacher_confirmed?'background:#FFFBF0':'')+'">'
       +'<div class="task-check" style="'+checkStyle+'">'+checkIcon+'</div>'
       +'<span class="task-text">'+t.title+(t.due_date?'<br><span style="font-size:11px;color:#aaa">기한: '+t.due_date+'</span>':'')+badge+'</span>'
-      +'<div class="task-actions">'+confirmBtn+editBtn+delBtn+'</div></div>';
+      +'<div class="task-actions">'+actionBtn+editBtn+delBtn+'</div></div>';
   }
   $('todo-list').innerHTML=todos.map(taskHtml).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
   $('hw-list').innerHTML=hws.map(taskHtml).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
+}
+
+async function teacherMarkDone(taskId){
+  var res=await getSB().from('tasks').update({student_done:true,teacher_confirmed:true}).eq('id',taskId);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('✅ 완료 처리했어요');
+  renderTasks();
+  checkHwCompletionNotify(currentStudentId);
+}
+
+async function teacherUnmarkTask(taskId){
+  if(!confirm('완료 처리를 취소할까요?'))return;
+  var res=await getSB().from('tasks').update({student_done:false,teacher_confirmed:false}).eq('id',taskId);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('취소됐어요');
+  renderTasks();
 }
 
 async function addTask(type){
