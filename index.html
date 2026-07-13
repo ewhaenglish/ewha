@@ -1254,19 +1254,18 @@ async function loadTaskForStudent(){
   loadRecurringTasks();renderCalendar('t');
 }
 async function renderQuickPhrases(){
-  var res=await getSB().from('quick_phrases').select('*').order('sort_order',{ascending:true});
+  var res=await getSB().from('quick_phrases').select('*').order('created_at',{ascending:true});
   var all=res.data;
   if(!all||!all.length){
-    // 최초 실행: 기존 기본 문구들을 DB에 시드
-    var seeds=QUICK_TODO.map(function(p,i){return {type:'todo',phrase:p,sort_order:i};})
-      .concat(QUICK_HW.map(function(p,i){return {type:'hw',phrase:p,sort_order:i};}));
+    var seeds=QUICK_TODO.map(function(p){return {type:'todo',text:p};})
+      .concat(QUICK_HW.map(function(p){return {type:'hw',text:p};}));
     await getSB().from('quick_phrases').insert(seeds);
-    var res2=await getSB().from('quick_phrases').select('*').order('sort_order',{ascending:true});
+    var res2=await getSB().from('quick_phrases').select('*').order('created_at',{ascending:true});
     all=res2.data||[];
   }
   function chip(p){
     return '<span style="display:inline-flex;align-items:center;background:#F0F4EE;border-radius:20px;margin:3px 4px 3px 0">'
-      +'<button class="quick-phrase" style="background:none;border:none;padding:6px 4px 6px 12px" data-type="'+p.type+'" data-text="'+escapeHtml(p.phrase)+'" onclick="insertQuick(this.dataset.type,this.dataset.text)">'+escapeHtml(p.phrase)+'</button>'
+      +'<button class="quick-phrase" style="background:none;border:none;padding:6px 4px 6px 12px" data-type="'+p.type+'" data-text="'+escapeHtml(p.text)+'" onclick="insertQuick(this.dataset.type,this.dataset.text)">'+escapeHtml(p.text)+'</button>'
       +'<button style="background:none;border:none;color:#c0392b;font-size:12px;padding:4px 10px 4px 2px;cursor:pointer" data-id="'+p.id+'" onclick="deleteQuickPhrase(this.dataset.id)">✕</button>'
       +'</span>';
   }
@@ -1281,7 +1280,7 @@ async function renderQuickPhrases(){
 async function addQuickPhrase(type){
   var text=prompt(type==='todo'?'자주 쓰는 할일 문구를 입력해주세요':'자주 쓰는 숙제 문구를 입력해주세요');
   if(!text||!text.trim())return;
-  var res=await getSB().from('quick_phrases').insert({type:type,phrase:text.trim(),sort_order:999});
+  var res=await getSB().from('quick_phrases').insert({type:type,text:text.trim()});
   if(res.error){toast('오류: '+res.error.message);return;}
   toast('✅ 문구가 추가됐어요');
   renderQuickPhrases();
@@ -1944,6 +1943,9 @@ async function loadParentNotes(){
   var feedback=extractSection('피드백');
   $('p-note-list').innerHTML=buildNoteHtml(student.name,dateLabel,vocab,todos,hws,goal,feedback,n.id,prevHw,prevDateLabel).replace('<button onclick="closeMod()" class="btn-primary" style="width:100%;margin-top:4px">확인</button>','');
   loadNoteComments(n.id);
+  if(!n.parent_read_at){
+    getSB().from('growth_notes').update({parent_read_at:new Date().toISOString()}).eq('id',n.id).then(function(){});
+  }
 }
 
 // ===== PDF 저장 =====
@@ -2653,7 +2655,12 @@ function renderNoteCardWithCheck(n){
     +'<span style="font-size:14px;font-weight:700;color:#1B4D3E">'+studentName+'</span>'
     +'<span style="font-size:11px;color:#aaa">'+dateLabel+'</span>'
     +'</div>'
-    +'<div style="font-size:12px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+preview+'...</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center">'
+    +'<div style="font-size:12px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1">'+preview+'...</div>'
+    +(n.parent_read_at
+      ?'<span style="font-size:10px;color:#1B4D3E;font-weight:700;background:#F0F7F3;padding:2px 7px;border-radius:8px;margin-left:6px;flex-shrink:0">읽음</span>'
+      :'<span style="font-size:10px;color:#c0392b;font-weight:700;background:#FDF0EE;padding:2px 7px;border-radius:8px;margin-left:6px;flex-shrink:0">안읽음</span>')
+    +'</div>'
     +'</div>'
     +'</div>';
 }
@@ -3406,8 +3413,21 @@ function openNoteDetail(noteId){
     var prevDateLabel=prevMatch?prevMatch[1]:'';
     var goal=extractSection('이번 주 각오');
     var feedback=extractSection('피드백');
-    openMod('이화성장노트', buildNoteHtml(studentName,dateLabel,vocab,todos,hws,goal,feedback,noteId,prevHw,prevDateLabel));
+    var readInfo=null;
+    if(currentProfile&&currentProfile.role==='teacher'){
+      if(n.parent_read_at){
+        var rd=new Date(n.parent_read_at);
+        var kst=new Date(rd.getTime()+9*60*60*1000);
+        readInfo='👀 학부모 열람: '+(kst.getUTCMonth()+1)+'/'+kst.getUTCDate()+' '+String(kst.getUTCHours()).padStart(2,'0')+':'+String(kst.getUTCMinutes()).padStart(2,'0');
+      } else {
+        readInfo='아직 학부모가 읽지 않았어요';
+      }
+    }
+    openMod('이화성장노트', buildNoteHtml(studentName,dateLabel,vocab,todos,hws,goal,feedback,noteId,prevHw,prevDateLabel,readInfo));
     loadNoteComments(noteId);
+    if(currentProfile&&currentProfile.role==='parent'&&!n.parent_read_at){
+      getSB().from('growth_notes').update({parent_read_at:new Date().toISOString()}).eq('id',noteId).then(function(){});
+    }
   });
 }
 
@@ -3842,7 +3862,7 @@ async function loadTeacherHwPhotos(){
 }
 
 // ===== 이화성장노트 통일 디자인 =====
-function buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,feedback,noteId,prevHwText,prevDateLabel){
+function buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,feedback,noteId,prevHwText,prevDateLabel,readInfo){
   function noteSection(title,txt,isGold){
     if(!txt)return '';
     return '<div style="margin-bottom:14px'+(isGold?';background:#FFFDF5;border:1.5px solid #F0C040;border-radius:10px;padding:12px 14px':'')+'">'
@@ -3861,6 +3881,7 @@ function buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,
     +'<div style="flex:1.6;min-width:0"><span style="font-size:11px;color:#999">날짜</span><div style="font-size:13px;font-weight:700;color:#1B4D3E;border-bottom:1.5px solid #E8E8E8;padding:3px 0;white-space:nowrap;overflow:hidden">'+dateLabel+'</div></div>'
     +'<div style="flex:1;min-width:0"><span style="font-size:11px;color:#999">이름</span><div style="font-size:14px;font-weight:700;color:#1B4D3E;border-bottom:1.5px solid #E8E8E8;padding:3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+studentName+'</div></div>'
     +'</div></div>'
+    +(readInfo?'<div style="text-align:right;font-size:11px;color:#999;margin:-10px 2px 12px">'+readInfo+'</div>':'')
     +noteSection('단어 TEST',vtText)
     +noteSection('오늘의 수업',todoText)
     +noteSection(prevDateLabel?'지난 숙제 확인 ('+prevDateLabel+')':'지난 숙제 확인',prevHwText)
