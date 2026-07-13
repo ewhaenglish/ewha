@@ -1238,7 +1238,7 @@ async function deleteStudent(sid){
 function copyInvite(type,name,code){
   var msg=type==='student'
     ?'안녕하세요, 이화영어입니다 :)\n공부방에서의 배움이 가정에서도 촘촘하게 이어질 수 있도록,\n여러분을 위한 특별한 [이화영어 학습관리] 프로그램을 제작하였습니다.\n매일 스스로 목표를 달성하며 성장해 나갈 여러분을 응원합니다!\n\n* 학습관리 플랫폼: https://ewha-phi.vercel.app\n* 나의 초대 코드: '+code+'\n\n[함께할 핵심 기능]\n\n1. 등/하원 안심 알림: 학원 도착과 귀가를 더 안전하게!\n2. 오늘의 할 일 List: 스스로 계획하고 실천하는 성취의 즐거움.\n3. 숙제 확인 및 인증: 그날의 과제를 꼼꼼히 확인하고 제 시간에 제출하기.\n4. 마일리지 적립: 자신의 맡은 바를 성실히 수행한 당신에게 보상을!\n\n사용 중 궁금한 점이 생기면 언제든 선생님께 물어봐 주세요.\n매일매일 한 걸음 씩 성장할 여러분의 오늘을 응원합니다. 화이팅!♡'
-    :'안녕하세요, 이화영어입니다! :)\n항상 이화영어를 믿고 보내주시는 학부모님께 감사드립니다.\n\n아이들이 원내 학습을 넘어 가정에서도 자기주도적인 학습 습관을 형성할 수 있도록, 체계적인 [이화영어 학습관리] 프로그램을 제작하였습니다.\n\n아래 링크를 통해 접속하시어 아이의 학습 흐름을 함께 살펴봐 주시기를 부탁드립니다.\n\n📱 학습관리 플랫폼\nhttps://ewha-phi.vercel.app\n\n🔑 자녀 번호(4자리)\n'+code+'\n\n━━━━━━━━━━━━━━\n[프로그램 주요 기능]\n━━━━━━━━━━━━━━\n\n① 등/하원 안심 알림\n아이의 실시간 등하원 현황 확인\n\n② 오늘의 To-do List\n아이가 부여받은 그날의 학습 내용 및 과제 점검을\n[이화성장노트]에서 교사 피드백과 함께 확인\n\n━━━━━━━━━━━━━━\n\n아이의 작은 성취가 모여 큰 결실이 될 수 있도록\n가정에서도 많은 관심과 격려 부탁드립니다.\n\n프로그램 이용 중 문의사항이 있으시면\n언제든 편하게 연락 주십시오.\n\n함께 성장하는 이화영어가 되겠습니다.\n감사합니다 :)';
+    :'안녕하세요, 이화영어입니다! :)\n항상 이화영어를 믿고 보내주시는 학부모님께 감사드립니다.\n\n아이들이 원내 학습을 넘어 가정에서도 자기주도적인 학습 습관을 형성할 수 있도록, 체계적인 [이화영어 학습관리] 프로그램을 제작하였습니다.\n\n아래 링크를 통해 접속하시어 아이의 학습 흐름을 함께 살펴봐 주시기를 부탁드립니다.\n\n📱 학습관리 플랫폼\nhttps://ewha-phi.vercel.app\n\n🔑 자녀 번호(4자리)\n'+code+'\n\n━━━━━━━━━━━━━━\n[프로그램 주요 기능]\n━━━━━━━━━━━━━━\n\n① 등/하원 안심 알림\n아이의 실시간 등하원 현황 확인\n\n② [이화성장노트] 안내\n아이가 부여받은 그날의 학습 내용 및 과제 점검을\n[이화성장노트]에서 교사 피드백과 함께 확인\n\n━━━━━━━━━━━━━━\n\n아이의 작은 성취가 모여 큰 결실이 될 수 있도록\n가정에서도 많은 관심과 격려 부탁드립니다.\n\n프로그램 이용 중 문의사항이 있으시면\n언제든 편하게 연락 주십시오.\n\n함께 성장하는 이화영어가 되겠습니다.\n감사합니다 :)';
   navigator.clipboard.writeText(msg).then(function(){toast('📋 복사 완료! 카카오톡에 붙여넣기 해주세요');}).catch(function(){
     var ta=document.createElement('textarea');ta.value=msg;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
     toast('📋 복사 완료!');
@@ -1386,9 +1386,13 @@ async function saveNote(){
   var todoText=todos.map(function(t){return (t.student_done?'✔':'✕')+' '+t.title;}).join('\n')||'없음';
   var hwText=hws.map(function(t){return (t.student_done?'✔':'✕')+' '+t.title;}).join('\n')||'없음';
   var noteContent='📅 Date: '+dateLabel+'\n\n[단어 TEST]\n'+vtText+'\n\n[오늘의 수업]\n'+todoText+'\n\n[오늘의 과제]\n'+hwText+(goalContent?'\n\n[이번 주 각오]\n'+goalContent:'')+'\n\n[피드백]\n'+feedback;
-    var r=await getSB().from('growth_notes').insert({student_id:sid,content:noteContent,date:today,ai_generated:false}).select().single();
+    var r=await getSB().from('growth_notes').insert({student_id:sid,content:noteContent,date:today,ai_generated:false});
   if(r.error){toast('오류: '+r.error.message);return;}
-  var savedNoteId=r.data?r.data.id:null;
+  var savedNoteId=null;
+  try{
+    var re2=await getSB().from('growth_notes').select('id').eq('student_id',sid).eq('date',today).order('created_at',{ascending:false}).limit(1).maybeSingle();
+    if(re2.data)savedNoteId=re2.data.id;
+  }catch(e){}
   toast('✅ 성장노트 저장 완료!');
   $('note-feedback').value='';
   loadRecentNotes();
@@ -3848,15 +3852,15 @@ async function loadNoteReactions(noteId){
 }
 
 async function toggleNoteReaction(noteId,emoji){
-  var existing=await getSB().from('note_reactions').select('id').eq('note_id',noteId).eq('user_id',currentUser.id).eq('emoji',emoji).maybeSingle();
+  var existing=await getSB().from('note_reactions').select('id').eq('note_id',noteId).eq('user_id',currentUser.id).eq('emoji',emoji);
   if(existing.error){toast('오류: '+existing.error.message);return;}
-  if(existing.data){
-    var delRes=await getSB().from('note_reactions').delete().eq('id',existing.data.id);
+  if(existing.data&&existing.data.length>0){
+    var ids=existing.data.map(function(r){return r.id;});
+    var delRes=await getSB().from('note_reactions').delete().in('id',ids);
     if(delRes.error){toast('오류: '+delRes.error.message);return;}
   } else {
     var insRes=await getSB().from('note_reactions').insert({note_id:noteId,user_id:currentUser.id,emoji:emoji});
     if(insRes.error){toast('오류: '+insRes.error.message);return;}
-    // 상대방에게 알림
     var noteRes=await getSB().from('growth_notes').select('student_id').eq('id',noteId).single();
     if(noteRes.data){
       if(currentProfile.role==='parent'){
