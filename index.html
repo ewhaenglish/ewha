@@ -1238,7 +1238,7 @@ async function deleteStudent(sid){
 function copyInvite(type,name,code){
   var msg=type==='student'
     ?'안녕하세요, 이화영어입니다 :)\n공부방에서의 배움이 가정에서도 촘촘하게 이어질 수 있도록,\n여러분을 위한 특별한 [이화영어 학습관리] 프로그램을 제작하였습니다.\n매일 스스로 목표를 달성하며 성장해 나갈 여러분을 응원합니다!\n\n* 학습관리 플랫폼: https://ewha-phi.vercel.app\n* 나의 초대 코드: '+code+'\n\n[함께할 핵심 기능]\n\n1. 등/하원 안심 알림: 학원 도착과 귀가를 더 안전하게!\n2. 오늘의 할 일 List: 스스로 계획하고 실천하는 성취의 즐거움.\n3. 숙제 확인 및 인증: 그날의 과제를 꼼꼼히 확인하고 제 시간에 제출하기.\n4. 마일리지 적립: 자신의 맡은 바를 성실히 수행한 당신에게 보상을!\n\n사용 중 궁금한 점이 생기면 언제든 선생님께 물어봐 주세요.\n매일매일 한 걸음 씩 성장할 여러분의 오늘을 응원합니다. 화이팅!♡'
-    :'안녕하세요, 이화영어입니다! :)\n항상 이화영어를 믿고 보내주시는 학부모님께 감사드립니다.\n\n아이들이 원내 학습을 넘어 가정에서도 자기주도적인 학습 습관을 형성할 수 있도록, 체계적인 [이화영어 학습관리] 프로그램을 제작하였습니다.\n\n아래 링크를 통해 접속하시어 아이의 학습 흐름을 함께 살펴봐 주시기를 부탁드립니다.\n\n📱 학습관리 플랫폼\nhttps://ewha-phi.vercel.app\n\n🔑 자녀 번호(4자리)\n'+code+'\n\n━━━━━━━━━━━━━━\n[프로그램 주요 기능]\n━━━━━━━━━━━━━━\n\n① 등/하원 안심 알림\n아이의 실시간 등하원 현황 확인\n\n② [이화성장노트] 안내\n아이가 부여받은 그날의 학습 내용 및 과제 점검을\n[이화성장노트]에서 교사 피드백과 함께 확인\n\n━━━━━━━━━━━━━━\n\n아이의 작은 성취가 모여 큰 결실이 될 수 있도록\n가정에서도 많은 관심과 격려 부탁드립니다.\n\n프로그램 이용 중 문의사항이 있으시면\n언제든 편하게 연락 주십시오.\n\n함께 성장하는 이화영어가 되겠습니다.\n감사합니다 :)';
+    :'안녕하세요, 이화영어입니다! :)\n항상 믿고 보내주시는 학부모님께 감사드립니다.\n아이들이 원내 학습을 넘어 가정에서도 자기주도적인 학습 습관을 형성할 수 있도록, 체계적인 [이화영어 학습관리] 프로그램을 제작하였습니다.\n아래 링크를 통해 접속하시어 아이의 학습 흐름을 함께 살펴봐 주시기를 부탁드립니다.\n* 인터넷 링크로 플랫폼이 열린 후 설정에서 \"홈화면에 바로가기 설치하기\"를 해주시면 앱처럼 사용하실 수 있습니다.\n📱 학습관리 플랫폼\nhttps://ewha-phi.vercel.app\n🔑 자녀 번호(4자리)\n'+code+'\n━━━━━━━━━━━━━━\n[프로그램 주요 기능]\n━━━━━━━━━━━━━━\n① 등/하원 안심 알림\n아이의 실시간 등하원 현황 확인\n② [이화성장노트] 안내\n아이가 부여받은 그날의 학습 내용 및 과제 점검을\n[이화성장노트]에서 교사 피드백과 함께 확인\n━━━━━━━━━━━━━━\n아이의 작은 성취가 모여 큰 결실이 될 수 있도록\n가정에서도 많은 관심과 격려 부탁드립니다.\n함께 성장하는 이화영어가 되겠습니다.\n감사합니다 :)';
   navigator.clipboard.writeText(msg).then(function(){toast('📋 복사 완료! 카카오톡에 붙여넣기 해주세요');}).catch(function(){
     var ta=document.createElement('textarea');ta.value=msg;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
     toast('📋 복사 완료!');
@@ -1253,9 +1253,46 @@ async function loadTaskForStudent(){
   await renderTasks();renderQuickPhrases();loadVocabTest();loadTeacherHwPhotos();
   loadRecurringTasks();renderCalendar('t');
 }
-function renderQuickPhrases(){
-  $('todo-quick').innerHTML=QUICK_TODO.map(function(p){return '<button class="quick-phrase" onclick="insertQuick(\'todo\',\''+p+'\')">'+p+'</button>';}).join('');
-  $('hw-quick').innerHTML=QUICK_HW.map(function(p){return '<button class="quick-phrase" onclick="insertQuick(\'hw\',\''+p+'\')">'+p+'</button>';}).join('');
+async function renderQuickPhrases(){
+  var res=await getSB().from('quick_phrases').select('*').order('sort_order',{ascending:true});
+  var all=res.data;
+  if(!all||!all.length){
+    // 최초 실행: 기존 기본 문구들을 DB에 시드
+    var seeds=QUICK_TODO.map(function(p,i){return {type:'todo',phrase:p,sort_order:i};})
+      .concat(QUICK_HW.map(function(p,i){return {type:'hw',phrase:p,sort_order:i};}));
+    await getSB().from('quick_phrases').insert(seeds);
+    var res2=await getSB().from('quick_phrases').select('*').order('sort_order',{ascending:true});
+    all=res2.data||[];
+  }
+  function chip(p){
+    return '<span style="display:inline-flex;align-items:center;background:#F0F4EE;border-radius:20px;margin:3px 4px 3px 0">'
+      +'<button class="quick-phrase" style="background:none;border:none;padding:6px 4px 6px 12px" data-type="'+p.type+'" data-text="'+escapeHtml(p.phrase)+'" onclick="insertQuick(this.dataset.type,this.dataset.text)">'+escapeHtml(p.phrase)+'</button>'
+      +'<button style="background:none;border:none;color:#c0392b;font-size:12px;padding:4px 10px 4px 2px;cursor:pointer" data-id="'+p.id+'" onclick="deleteQuickPhrase(this.dataset.id)">✕</button>'
+      +'</span>';
+  }
+  var todoPhrases=all.filter(function(p){return p.type==='todo';});
+  var hwPhrases=all.filter(function(p){return p.type==='hw';});
+  var addTodoBtn='<button onclick="addQuickPhrase(\'todo\')" style="padding:6px 12px;border-radius:20px;border:1.5px dashed #1B4D3E;background:#fff;color:#1B4D3E;font-size:12px;cursor:pointer;margin:3px 0">+ 문구 추가</button>';
+  var addHwBtn='<button onclick="addQuickPhrase(\'hw\')" style="padding:6px 12px;border-radius:20px;border:1.5px dashed #1B4D3E;background:#fff;color:#1B4D3E;font-size:12px;cursor:pointer;margin:3px 0">+ 문구 추가</button>';
+  $('todo-quick').innerHTML=todoPhrases.map(chip).join('')+addTodoBtn;
+  $('hw-quick').innerHTML=hwPhrases.map(chip).join('')+addHwBtn;
+}
+
+async function addQuickPhrase(type){
+  var text=prompt(type==='todo'?'자주 쓰는 할일 문구를 입력해주세요':'자주 쓰는 숙제 문구를 입력해주세요');
+  if(!text||!text.trim())return;
+  var res=await getSB().from('quick_phrases').insert({type:type,phrase:text.trim(),sort_order:999});
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('✅ 문구가 추가됐어요');
+  renderQuickPhrases();
+}
+
+async function deleteQuickPhrase(id){
+  if(!confirm('이 문구를 삭제할까요?'))return;
+  var res=await getSB().from('quick_phrases').delete().eq('id',id);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('삭제됐어요');
+  renderQuickPhrases();
 }
 function insertQuick(type,text){$(type==='todo'?'todo-input':'hw-input').value=text;}
 
