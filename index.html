@@ -1052,13 +1052,24 @@ async function renderTeacherHome(){
   var today=todayStr();
   var res=await getSB().from('tasks').select('*').eq('date',today).eq('student_done',true).eq('teacher_confirmed',false);
   var pending=res.data||[];
+  var attRes=await getSB().from('attendance').select('*').eq('date',today);
+  var attList=attRes.data||[];
   list.innerHTML=allStudents.map(function(s){
     var cnt=pending.filter(function(t){return t.student_id===s.id;}).length;
     var badge=cnt?'<span class="pill pill-pending" style="margin-left:6px">확인 대기 '+cnt+'</span>':'';
+    var att=attList.find(function(a){return a.student_id===s.id;});
+    var attHtml;
+    if(att&&att.check_in){
+      attHtml='<span style="color:#1B4D3E;font-weight:700">등원 '+formatKSTTime(att.check_in)+'</span>'
+        +(att.check_out?' <span style="color:#888">· 하원 '+formatKSTTime(att.check_out)+'</span>':' <span style="color:#F0A030">· 하원 전</span>');
+    } else {
+      attHtml='<span style="color:#ccc">미등원</span>';
+    }
     return '<div class="student-row" onclick="goToConfirm(\''+s.id+'\')">'
       +'<div class="avatar">'+s.name.charAt(0)+'</div>'
       +'<div style="flex:1"><div style="font-size:15px;font-weight:700">'+s.name+badge+'</div>'
-      +'<div style="font-size:11px;color:#aaa;margin-top:2px">'+(s.school||'')+(s.grade?' '+s.grade:'')+'</div></div>'
+      +'<div style="font-size:11px;color:#aaa;margin-top:2px">'+(s.school||'')+(s.grade?' '+s.grade:'')+'</div>'
+      +'<div style="font-size:12px;margin-top:3px">'+attHtml+'</div></div>'
       +'</div>';
   }).join('');
 }
@@ -2208,6 +2219,9 @@ function setupRealtime(profile){
           popupNotif(s.name+' 등원했어요!','🏫');
           checkNotifications();
         }
+      })
+      .on('postgres_changes',{event:'UPDATE',schema:'public',table:'attendance'},function(payload){
+        renderTeacherHome();
       })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'tasks'},function(payload){
         if(payload.new.student_done&&!payload.new.teacher_confirmed){
