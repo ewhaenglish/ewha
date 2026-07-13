@@ -3833,7 +3833,7 @@ async function loadNoteReactions(noteId){
   var reactions=res.data||[];
   var counts={};
   reactions.forEach(function(r){counts[r.emoji]=(counts[r.emoji]||0)+1;});
-  var myReactions=reactions.filter(function(r){return r.author_id===currentUser.id;}).map(function(r){return r.emoji;});
+  var myReactions=reactions.filter(function(r){return r.user_id===currentUser.id;}).map(function(r){return r.emoji;});
   document.querySelectorAll('.note-reaction-btn[data-nid="'+noteId+'"]').forEach(function(btn){
     var emoji=btn.dataset.emoji;
     var isMine=myReactions.indexOf(emoji)>=0;
@@ -3848,13 +3848,13 @@ async function loadNoteReactions(noteId){
 }
 
 async function toggleNoteReaction(noteId,emoji){
-  var existing=await getSB().from('note_reactions').select('id').eq('note_id',noteId).eq('author_id',currentUser.id).eq('emoji',emoji).maybeSingle();
+  var existing=await getSB().from('note_reactions').select('id').eq('note_id',noteId).eq('user_id',currentUser.id).eq('emoji',emoji).maybeSingle();
   if(existing.error){toast('오류: '+existing.error.message);return;}
   if(existing.data){
     var delRes=await getSB().from('note_reactions').delete().eq('id',existing.data.id);
     if(delRes.error){toast('오류: '+delRes.error.message);return;}
   } else {
-    var insRes=await getSB().from('note_reactions').insert({note_id:noteId,author_id:currentUser.id,emoji:emoji});
+    var insRes=await getSB().from('note_reactions').insert({note_id:noteId,user_id:currentUser.id,emoji:emoji});
     if(insRes.error){toast('오류: '+insRes.error.message);return;}
     // 상대방에게 알림
     var noteRes=await getSB().from('growth_notes').select('student_id').eq('id',noteId).single();
