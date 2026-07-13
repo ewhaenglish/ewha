@@ -1282,7 +1282,7 @@ async function renderTasks(){
     } else {
       actionBtn='<button class="btn-sm" style="flex-shrink:0;background:#1B4D3E" onclick="teacherMarkDone(\''+t.id+'\');event.stopPropagation()">완료 처리</button>';
     }
-    var editBtn='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px" onclick="editTask(\''+t.id+'\',\''+t.title.replace(/'/g,"\\'")+'\',' +(t.type==='hw'?"'hw'":"'todo'")+');event.stopPropagation()">✏️</button>';
+    var editBtn='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px" data-id="'+t.id+'" data-type="'+t.type+'" data-title="'+escapeHtml(t.title)+'" onclick="editTaskFromBtn(this);event.stopPropagation()">✏️</button>';
     var delBtn='<button class="btn-danger" style="flex-shrink:0;margin-left:4px" onclick="deleteTask(\''+t.id+'\');event.stopPropagation()">🗑</button>';
     return '<div class="task-item '+statusClass+'" style="'+(t.student_done&&!t.teacher_confirmed?'background:#FFFBF0':'')+'">'
       +'<div class="task-check" style="'+checkStyle+'">'+checkIcon+'</div>'
@@ -1321,15 +1321,23 @@ async function addTask(type){
   await renderTasks();
 }
 
+function editTaskFromBtn(btn){
+  editTask(btn.dataset.id,btn.dataset.title,btn.dataset.type);
+}
+
 function editTask(id,title,type){
   openMod('할일 수정',
     '<div class="form-group" style="padding-top:16px">'+
     '<label class="form-label">내용</label>'+
-    '<input type="text" class="form-input" id="edit-task-input" value="'+title+'">'+
+    '<input type="text" class="form-input" id="edit-task-input" value="'+escapeHtml(title)+'">'+
     '</div>'+
     (type==='hw'?'<div class="form-group"><label class="form-label">제출 기한</label><input type="date" class="form-input" id="edit-task-due"></div>':'')+
-    '<div class="p16"><button class="btn-primary" onclick="updateTask(\''+id+'\',\''+type+'\')">수정 완료</button></div>'
+    '<div class="p16"><button class="btn-primary" id="update-task-btn" data-id="'+id+'" data-type="'+type+'">수정 완료</button></div>'
   );
+  setTimeout(function(){
+    var b=document.getElementById('update-task-btn');
+    if(b)b.onclick=function(){updateTask(b.dataset.id,b.dataset.type);};
+  },50);
 }
 async function updateTask(id,type){
   var title=$('edit-task-input').value.trim();
@@ -3982,6 +3990,11 @@ async function notifyNoteCommentTarget(noteId){
     var pr=await getSB().from('student_parent').select('parent_id').eq('student_id',noteRes.data.student_id);
     (pr.data||[]).forEach(function(p){sendNotification(p.parent_id,'💬 선생님이 성장노트에 답글을 남겼어요','notecomment');});
   }
+}
+
+function escapeHtml(str){
+  if(str==null)return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 // ===== 앱 시작 =====
