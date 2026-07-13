@@ -1264,16 +1264,22 @@ async function renderTasks(){
   var today=getOffsetDate(taskDateOffset);
   var res=await getSB().from('tasks').select('*').eq('student_id',currentStudentId).eq('date',today);
   var tasks=res.data||[];
-  var todos=tasks.filter(function(t){return t.type==='todo';});
-  var hws=tasks.filter(function(t){return t.type==='hw';});
+  var sorter=function(a,b){
+    var ao=a.sort_order||0, bo=b.sort_order||0;
+    if(ao!==bo)return ao-bo;
+    return (a.created_at||'').localeCompare(b.created_at||'');
+  };
+  var todos=tasks.filter(function(t){return t.type==='todo';}).sort(sorter);
+  var hws=tasks.filter(function(t){return t.type==='hw';}).sort(sorter);
   $('todo-count').textContent=todos.filter(function(t){return t.teacher_confirmed;}).length+'/'+todos.length;
   $('hw-count').textContent=hws.filter(function(t){return t.teacher_confirmed;}).length+'/'+hws.length;
 
-  function taskHtml(t){
+  function taskHtml(t,idx,list){
     var statusClass=t.teacher_confirmed?'done':'';
     var checkIcon=t.teacher_confirmed?'✓':(t.student_done?'⏳':'');
     var checkStyle=t.student_done&&!t.teacher_confirmed?'border-color:#FFC107;color:#FFC107':'';
     var badge=t.student_done&&!t.teacher_confirmed?'<span class="pill pill-pending" style="margin-left:6px">확인 대기</span>':'';
+    var movedBadge=t.moved_to_hw?'<span class="pill" style="margin-left:6px;background:#F0F4FF;color:#1a56db">숙제로 넘김</span>':'';
     var actionBtn='';
     if(t.teacher_confirmed){
       actionBtn='<button class="btn-sm-outline" style="flex-shrink:0" onclick="teacherUnmarkTask(\''+t.id+'\');event.stopPropagation()">취소</button>';
@@ -1284,13 +1290,67 @@ async function renderTasks(){
     }
     var editBtn='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px" data-id="'+t.id+'" data-type="'+t.type+'" data-title="'+escapeHtml(t.title)+'" onclick="editTaskFromBtn(this);event.stopPropagation()">✏️</button>';
     var delBtn='<button class="btn-danger" style="flex-shrink:0;margin-left:4px" onclick="deleteTask(\''+t.id+'\');event.stopPropagation()">🗑</button>';
-    return '<div class="task-item '+statusClass+'" style="'+(t.student_done&&!t.teacher_confirmed?'background:#FFFBF0':'')+'">'
+    var moveBtn=(t.type==='todo'&&!t.teacher_confirmed&&!t.moved_to_hw)
+      ?'<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px;color:#1a56db;border-color:#1a56db" data-id="'+t.id+'" data-title="'+escapeHtml(t.title)+'" onclick="moveTaskToHomework(this.dataset.id,this.dataset.title);event.stopPropagation()">→숙제</button>'
+      :'';
+    var upBtn='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px;padding:4px 8px" data-id="'+t.id+'" data-type="'+t.type+'" '+(idx===0?'disabled style="opacity:0.3"':'')+' onclick="reorderTask(this.dataset.id,this.dataset.type,-1);event.stopPropagation()">▲</button>';
+    var downBtn='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:2px;padding:4px 8px" data-id="'+t.id+'" data-type="'+t.type+'" '+(idx===list.length-1?'disabled style="opacity:0.3"':'')+' onclick="reorderTask(this.dataset.id,this.dataset.type,1);event.stopPropagation()">▼</button>';
+    var canMove=(t.type==='todo'&&!t.teacher_confirmed&&!t.moved_to_hw);
+    return '<div class="task-item '+statusClass+'" data-id="'+t.id+'" data-title="'+escapeHtml(t.title)+'"'+(canMove?' onclick="moveTaskFromRow(this)" style="cursor:pointer"':'')+' data-style="'+(t.student_done&&!t.teacher_confirmed?'1':'0')+'">'
       +'<div class="task-check" style="'+checkStyle+'">'+checkIcon+'</div>'
-      +'<span class="task-text">'+t.title+(t.due_date?'<br><span style="font-size:11px;color:#aaa">기한: '+t.due_date+'</span>':'')+badge+'</span>'
-      +'<div class="task-actions">'+actionBtn+editBtn+delBtn+'</div></div>';
+      +'<span class="task-text">'+t.title+(t.due_date?'<br><span style="font-size:11px;color:#aaa">기한: '+t.due_date+'</span>':'')+badge+movedBadge+'</span>'
+      +'<div class="task-actions" style="display:flex;align-items:center;flex-wrap:wrap">'+upBtn+downBtn+actionBtn+moveBtn+editBtn+delBtn+'</div></div>';
   }
-  $('todo-list').innerHTML=todos.map(taskHtml).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
-  $('hw-list').innerHTML=hws.map(taskHtml).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
+  var todoHtml=todos.map(function(t,i){return taskHtml(t,i,todos);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
+  var hwHtml=hws.map(function(t,i){return taskHtml(t,i,hws);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
+  $('todo-list').innerHTML=todoHtml;
+  $('hw-list').innerHTML=hwHtml;
+  document.querySelectorAll('#todo-list .task-item[data-style="1"], #hw-list .task-item[data-style="1"]').forEach(function(el){
+    el.style.background='#FFFBF0';
+  });
+}
+
+function moveTaskFromRow(el){
+  moveTaskToHomework(el.dataset.id,el.dataset.title);
+}
+
+async function moveTaskToHomework(taskId,title){
+  if(!confirm('"'+title+'" 항목을 숙제로 넘길까요?\n(할일 목록엔 미완료로 남고, 숙제에도 새로 추가돼요)'))return;
+  var today=getOffsetDate(taskDateOffset);
+  var res=await getSB().from('tasks').insert({
+    student_id:currentStudentId,type:'hw',title:title,date:today,
+    student_done:false,teacher_confirmed:false
+  });
+  if(res.error){toast('오류: '+res.error.message);return;}
+  var upd=await getSB().from('tasks').update({moved_to_hw:true}).eq('id',taskId);
+  if(upd.error){}
+  toast('✅ 숙제로 넘겼어요!');
+  renderTasks();
+}
+
+async function reorderTask(taskId,type,dir){
+  var today=getOffsetDate(taskDateOffset);
+  var res=await getSB().from('tasks').select('*').eq('student_id',currentStudentId).eq('date',today).eq('type',type);
+  var list=(res.data||[]).sort(function(a,b){
+    var ao=a.sort_order||0, bo=b.sort_order||0;
+    if(ao!==bo)return ao-bo;
+    return (a.created_at||'').localeCompare(b.created_at||'');
+  });
+  var idx=list.findIndex(function(t){return t.id===taskId;});
+  var targetIdx=idx+dir;
+  if(idx<0||targetIdx<0||targetIdx>=list.length)return;
+  var needsInit=list.every(function(t){return !t.sort_order;});
+  if(needsInit){
+    for(var i=0;i<list.length;i++){
+      await getSB().from('tasks').update({sort_order:i+1}).eq('id',list[i].id);
+      list[i].sort_order=i+1;
+    }
+  }
+  var a=list[idx], b=list[targetIdx];
+  var aOrder=a.sort_order, bOrder=b.sort_order;
+  await getSB().from('tasks').update({sort_order:bOrder}).eq('id',a.id);
+  await getSB().from('tasks').update({sort_order:aOrder}).eq('id',b.id);
+  renderTasks();
 }
 
 async function teacherMarkDone(taskId){
@@ -1408,15 +1468,36 @@ async function saveNote(){
   var ms2=monday2.getFullYear()+'-'+String(monday2.getMonth()+1).padStart(2,'0')+'-'+String(monday2.getDate()).padStart(2,'0');
   var gr2=await getSB().from('weekly_goals').select('content').eq('student_id',sid).eq('week_start',ms2).maybeSingle();
   var goalContent=gr2.data?gr2.data.content:'';
-  var dateLabel=(function(){var d=new Date(today);var days=['일','월','화','수','목','금','토'];return d.getFullYear()+'. '+String(d.getMonth()+1).padStart(2,'0')+'. '+String(d.getDate()).padStart(2,'0')+' ('+days[d.getDay()]+')';})();
+  function fmtDateLabel(dateStr){
+    var d=new Date(dateStr);var days=['일','월','화','수','목','금','토'];
+    return d.getFullYear()+'. '+String(d.getMonth()+1).padStart(2,'0')+'. '+String(d.getDate()).padStart(2,'0')+' ('+days[d.getDay()]+')';
+  }
+  var dateLabel=fmtDateLabel(today);
   var vr3=await getSB().from('vocab_tests').select('*').eq('student_id',sid).eq('date',today).maybeSingle();
   var vtText=vr3.data?((vr3.data.score!=null&&vr3.data.total?vr3.data.score+'/'+vr3.data.total+'점 ':'')+'('+(vr3.data.result==='pass'?'통과 ✔':vr3.data.result==='retest'?'재시 ✕':'미응시')+')'):'기록없음';
   var todos=tasks.filter(function(t){return t.type==='todo';});
-  var hws=tasks.filter(function(t){return t.type==='hw';});
+  var hwsToday=tasks.filter(function(t){return t.type==='hw';});
   var todoText=todos.map(function(t){return (t.student_done?'✔':'✕')+' '+t.title;}).join('\n')||'없음';
-  var hwText=hws.map(function(t){return (t.student_done?'✔':'✕')+' '+t.title;}).join('\n')||'없음';
-  var noteContent='📅 Date: '+dateLabel+'\n\n[단어 TEST]\n'+vtText+'\n\n[오늘의 수업]\n'+todoText+'\n\n[오늘의 과제]\n'+hwText+(goalContent?'\n\n[이번 주 각오]\n'+goalContent:'')+'\n\n[피드백]\n'+feedback;
-    var r=await getSB().from('growth_notes').insert({student_id:sid,content:noteContent,date:today,ai_generated:false});
+  // 오늘 새로 나간 숙제 - 아직 마감 전이므로 체크 표시 없이 목록만
+  var hwTodayText=hwsToday.map(function(t){return '• '+t.title;}).join('\n')||'없음';
+  // 지난 수업 시간에 나간 숙제 - 오늘 이전 날짜 중 가장 최근에 숙제가 있던 날을 찾아 완료여부 표시
+  var prevHwText='';
+  var prevDateLabel='';
+  var prevRes=await getSB().from('tasks').select('date').eq('student_id',sid).eq('type','hw').lt('date',today).order('date',{ascending:false}).limit(1);
+  if(prevRes.data&&prevRes.data.length){
+    var prevDate=prevRes.data[0].date;
+    prevDateLabel=fmtDateLabel(prevDate);
+    var prevTasksRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('type','hw').eq('date',prevDate);
+    var prevHws=prevTasksRes.data||[];
+    prevHwText=prevHws.map(function(t){return (t.student_done?'✔':'✕')+' '+t.title;}).join('\n')||'없음';
+  }
+  var noteContent='📅 Date: '+dateLabel+'\n\n[단어 TEST]\n'+vtText
+    +'\n\n[오늘의 수업]\n'+todoText
+    +(prevDateLabel?'\n\n[지난 숙제 확인 - '+prevDateLabel+']\n'+prevHwText:'')
+    +'\n\n[오늘의 과제(다음 시간까지)]\n'+hwTodayText
+    +(goalContent?'\n\n[이번 주 각오]\n'+goalContent:'')
+    +'\n\n[피드백]\n'+feedback;
+  var r=await getSB().from('growth_notes').insert({student_id:sid,content:noteContent,date:today,ai_generated:false});
   if(r.error){toast('오류: '+r.error.message);return;}
   var savedNoteId=null;
   try{
@@ -1426,9 +1507,8 @@ async function saveNote(){
   toast('✅ 성장노트 저장 완료!');
   $('note-feedback').value='';
   loadRecentNotes();
-  // 저장된 전체 내용 모달로 보여주기
   var studentName=(allStudents.find(function(x){return x.id===sid;})||{}).name||'학생';
-  var previewHtml=buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,feedback,savedNoteId);
+  var previewHtml=buildNoteHtml(studentName,dateLabel,vtText,todoText,hwTodayText,goalContent,feedback,savedNoteId,prevHwText,prevDateLabel);
   openMod('이화성장노트', previewHtml);
   if(savedNoteId)loadNoteComments(savedNoteId);
 }
@@ -1814,15 +1894,18 @@ async function loadParentNotes(){
   var dateLabel=d.getFullYear()+'. '+String(d.getMonth()+1).padStart(2,'0')+'. '+String(d.getDate()).padStart(2,'0')+' ('+days[d.getDay()]+')';
   var c=n.content||'';
   function extractSection(label){
-    var re=new RegExp('\\['+label+'\\]\\n([\\s\\S]*?)(?=\\n\\[|$)');
+    var re=new RegExp('\\['+label+'[^\\]]*\\]\\n([\\s\\S]*?)(?=\\n\\[|$)');
     var m=c.match(re);return m?m[1].trim():'';
   }
   var vocab=extractSection('단어 TEST');
   var todos=extractSection('오늘의 수업');
   var hws=extractSection('오늘의 과제');
+  var prevHw=extractSection('지난 숙제 확인');
+  var prevMatch=c.match(/\[지난 숙제 확인 - ([^\]]+)\]/);
+  var prevDateLabel=prevMatch?prevMatch[1]:'';
   var goal=extractSection('이번 주 각오');
   var feedback=extractSection('피드백');
-  $('p-note-list').innerHTML=buildNoteHtml(student.name,dateLabel,vocab,todos,hws,goal,feedback,n.id).replace('<button onclick="closeMod()" class="btn-primary" style="width:100%;margin-top:4px">확인</button>','');
+  $('p-note-list').innerHTML=buildNoteHtml(student.name,dateLabel,vocab,todos,hws,goal,feedback,n.id,prevHw,prevDateLabel).replace('<button onclick="closeMod()" class="btn-primary" style="width:100%;margin-top:4px">확인</button>','');
   loadNoteComments(n.id);
 }
 
@@ -3275,15 +3358,18 @@ function openNoteDetail(noteId){
     var dateLabel=d.getFullYear()+'. '+String(d.getMonth()+1).padStart(2,'0')+'. '+String(d.getDate()).padStart(2,'0')+' ('+days[d.getDay()]+')';
     var c=n.content||'';
     function extractSection(label){
-      var re=new RegExp('\\['+label+'\\]\\n([\\s\\S]*?)(?=\\n\\[|$)');
+      var re=new RegExp('\\['+label+'[^\\]]*\\]\\n([\\s\\S]*?)(?=\\n\\[|$)');
       var m=c.match(re);return m?m[1].trim():'';
     }
     var vocab=extractSection('단어 TEST');
     var todos=extractSection('오늘의 수업');
     var hws=extractSection('오늘의 과제');
+    var prevHw=extractSection('지난 숙제 확인');
+    var prevMatch=c.match(/\[지난 숙제 확인 - ([^\]]+)\]/);
+    var prevDateLabel=prevMatch?prevMatch[1]:'';
     var goal=extractSection('이번 주 각오');
     var feedback=extractSection('피드백');
-    openMod('이화성장노트', buildNoteHtml(studentName,dateLabel,vocab,todos,hws,goal,feedback,noteId));
+    openMod('이화성장노트', buildNoteHtml(studentName,dateLabel,vocab,todos,hws,goal,feedback,noteId,prevHw,prevDateLabel));
     loadNoteComments(noteId);
   });
 }
@@ -3719,7 +3805,7 @@ async function loadTeacherHwPhotos(){
 }
 
 // ===== 이화성장노트 통일 디자인 =====
-function buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,feedback,noteId){
+function buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,feedback,noteId,prevHwText,prevDateLabel){
   function noteSection(title,txt,isGold){
     if(!txt)return '';
     return '<div style="margin-bottom:14px'+(isGold?';background:#FFFDF5;border:1.5px solid #F0C040;border-radius:10px;padding:12px 14px':'')+'">'
@@ -3740,7 +3826,8 @@ function buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,
     +'</div></div>'
     +noteSection('단어 TEST',vtText)
     +noteSection('오늘의 수업',todoText)
-    +noteSection('오늘의 과제',hwText)
+    +noteSection(prevDateLabel?'지난 숙제 확인 ('+prevDateLabel+')':'지난 숙제 확인',prevHwText)
+    +noteSection('오늘의 과제 (다음 시간까지)',hwText)
     +noteSection('이번 주 각오',goalContent)
     +noteSection('선생님 한마디',feedback,true)
     +(noteId?buildNoteReactionArea(noteId):'')
