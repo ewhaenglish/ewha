@@ -886,7 +886,10 @@ function changeTaskDate(dir){
     else if(taskDateOffset===1)label.textContent='내일';
     else{var d=new Date();d.setDate(d.getDate()+taskDateOffset);label.textContent=(d.getMonth()+1)+'월'+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';}
   }
-  if(currentStudentId){renderTasks();loadVocabTest();loadTeacherHwPhotos();}
+  if(currentStudentId){
+    autoCarryOverPrevHw(currentStudentId,getOffsetDate(taskDateOffset)).then(function(){renderTasks();});
+    loadVocabTest();loadTeacherHwPhotos();
+  }
 }
 
 var QUICK_TODO=['단어 TEST','지난시간 단어오답 복습','문제풀기','구두 TEST','문법','독해','듣기'];
@@ -1261,6 +1264,7 @@ async function loadTaskForStudent(){
   var sid=$('task-student-sel').value;
   if(!sid){$('task-area').classList.add('hidden');return;}
   $('task-area').classList.remove('hidden');currentStudentId=sid;
+  await autoCarryOverPrevHw(sid,getOffsetDate(taskDateOffset));
   await renderTasks();renderQuickPhrases();loadVocabTest();loadTeacherHwPhotos();
   loadRecurringTasks();renderCalendar('t');
 }
@@ -1327,6 +1331,7 @@ async function renderTasks(){
     var checkStyle=t.student_done&&!t.teacher_confirmed?'border-color:#FFC107;color:#FFC107':'';
     var badge=t.student_done&&!t.teacher_confirmed?'<span class="pill pill-pending" style="margin-left:6px">확인 대기</span>':'';
     var movedBadge=t.moved_to_hw?'<span class="pill" style="margin-left:6px;background:#F0F4FF;color:#1a56db">숙제로 넘김</span>':'';
+    var carryBadge=t.carried_from?'<span class="pill" style="margin-left:6px;background:#FFF8E7;color:#B8860B">🔁 지난 숙제</span>':'';
     var actionBtn='';
     if(t.teacher_confirmed){
       actionBtn='<button class="btn-sm-outline" style="flex-shrink:0" onclick="teacherUnmarkTask(\''+t.id+'\');event.stopPropagation()">취소</button>';
@@ -1345,7 +1350,7 @@ async function renderTasks(){
     var canMove=(t.type==='todo'&&!t.teacher_confirmed&&!t.moved_to_hw);
     return '<div class="task-item '+statusClass+'" data-id="'+t.id+'" data-title="'+escapeHtml(t.title)+'"'+(canMove?' onclick="moveTaskFromRow(this)" style="cursor:pointer"':'')+' data-style="'+(t.student_done&&!t.teacher_confirmed?'1':'0')+'">'
       +'<div class="task-check" style="'+checkStyle+'">'+checkIcon+'</div>'
-      +'<span class="task-text">'+t.title+(t.due_date?'<br><span style="font-size:11px;color:#aaa">기한: '+t.due_date+'</span>':'')+badge+movedBadge+'</span>'
+      +'<span class="task-text">'+t.title+(t.due_date?'<br><span style="font-size:11px;color:#aaa">기한: '+t.due_date+'</span>':'')+badge+movedBadge+carryBadge+'</span>'
       +'<div class="task-actions" style="display:flex;align-items:center;flex-wrap:wrap">'+upBtn+downBtn+actionBtn+moveBtn+editBtn+delBtn+'</div></div>';
   }
   var todoHtml=todos.map(function(t,i){return taskHtml(t,i,todos);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
@@ -4154,6 +4159,22 @@ async function notifyNoteCommentTarget(noteId){
 function escapeHtml(str){
   if(str==null)return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+async function autoCarryOverPrevHw(sid,dateStr){
+  // 이미 이월 처리된 항목이 있으면 중복 방지를 위해 건너뜀
+  var existing=await getSB().from('tasks').select('id').eq('student_id',sid).eq('date',dateStr).eq('type','todo').not('carried_from','is',null).limit(1);
+  if(existing.data&&existing.data.length)return;
+  var prevRes=await getSB().from('tasks').select('date').eq('student_id',sid).eq('type','hw').lt('date',dateStr).order('date',{ascending:false}).limit(1);
+  if(!prevRes.data||!prevRes.data.length)return;
+  var prevDate=prevRes.data[0].date;
+  var prevHwRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('type','hw').eq('date',prevDate);
+  var prevHws=prevHwRes.data||[];
+  if(!prevHws.length)return;
+  var inserts=prevHws.map(function(t){
+    return {student_id:sid,type:'todo',date:dateStr,title:'[지난 숙제 확인] '+t.title,carried_from:t.id,student_done:false,teacher_confirmed:false};
+  });
+  await getSB().from('tasks').insert(inserts);
 }
 
 // ===== 앱 시작 =====
