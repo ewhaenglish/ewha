@@ -392,6 +392,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
           <button class="btn-sm" onclick="confirmVocabTest()" style="margin-left:4px;background:#F0C040;color:#333">✅ Confirm</button>
         </div>
       </div>
+      <div class="card" id="prev-hw-card" style="margin-bottom:12px;display:none;border:1.5px solid #F0C040">
+        <div class="card-header" style="background:#FFFDF5">
+          <span class="card-title">🔁 지난시간 숙제 확인</span>
+          <span class="card-count" id="prev-hw-date-label" style="color:#B8860B"></span>
+        </div>
+        <div class="card-body" id="prev-hw-list"></div>
+      </div>
       <div class="card">
         <div class="card-header"><span class="card-title">오늘의 할일</span><span class="card-count" id="todo-count"></span></div>
         <div class="card-body" id="todo-list"></div>
@@ -402,7 +409,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         </div>
       </div>
       <div class="card">
-        <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 숙제</span><span class="card-count" id="hw-count"></span></div>
+        <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 오늘의 과제 (다음 시간까지)</span><span class="card-count" id="hw-count"></span></div>
         <div class="card-body" id="hw-list"></div>
         <div id="t-hw-photos-section" style="display:none;padding:10px 16px;border-top:1px solid #F5F5F5">
           <div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:8px"><span style="color:#F0C040">✦</span> 학생이 제출한 숙제 사진</div>
@@ -896,10 +903,7 @@ function changeTaskDate(dir){
     else if(taskDateOffset===1)label.textContent='내일';
     else{var d=new Date();d.setDate(d.getDate()+taskDateOffset);label.textContent=(d.getMonth()+1)+'월'+d.getDate()+'일('+['일','월','화','수','목','금','토'][d.getDay()]+')';}
   }
-  if(currentStudentId){
-    autoCarryOverPrevHw(currentStudentId,getOffsetDate(taskDateOffset)).then(function(){renderTasks();});
-    loadVocabTest();loadTeacherHwPhotos();
-  }
+  if(currentStudentId){renderTasks();loadVocabTest();loadTeacherHwPhotos();}
 }
 
 var QUICK_TODO=['단어 TEST','지난시간 단어오답 복습','문제풀기','구두 TEST','문법','독해','듣기'];
@@ -1292,7 +1296,6 @@ async function loadTaskForStudent(){
   var sid=$('task-student-sel').value;
   if(!sid){$('task-area').classList.add('hidden');return;}
   $('task-area').classList.remove('hidden');currentStudentId=sid;
-  await autoCarryOverPrevHw(sid,getOffsetDate(taskDateOffset));
   await renderTasks();renderQuickPhrases();loadVocabTest();loadTeacherHwPhotos();
   loadRecurringTasks();renderCalendar('t');
 }
@@ -1370,6 +1373,54 @@ async function deleteQuickPhrase(id){
 }
 function insertQuick(type,text){$(type==='todo'?'todo-input':'hw-input').value=text;}
 
+function taskHtmlGlobal(t,opts){
+  opts=opts||{};
+  var statusClass=t.teacher_confirmed?'done':'';
+  var checkIcon=t.teacher_confirmed?'✓':(t.student_done?'⏳':'');
+  var checkStyle=t.student_done&&!t.teacher_confirmed?'border-color:#FFC107;color:#FFC107':'';
+  var badge=t.student_done&&!t.teacher_confirmed?'<span class="pill pill-pending" style="margin-left:6px">확인 대기</span>':'';
+  var movedBadge=t.moved_to_hw?'<span class="pill" style="margin-left:6px;background:#F0F4FF;color:#1a56db">숙제로 넘김</span>':'';
+  var actionBtn='';
+  if(t.teacher_confirmed){
+    actionBtn='<button class="btn-sm-outline" style="flex-shrink:0" onclick="teacherUnmarkTask(\''+t.id+'\');event.stopPropagation()">취소</button>';
+  } else if(t.student_done){
+    actionBtn='<button class="btn-sm" style="flex-shrink:0" onclick="confirmTask(\''+t.id+'\');event.stopPropagation()">Confirm ✅</button>';
+  } else {
+    actionBtn='<button class="btn-sm" style="flex-shrink:0;background:#1B4D3E" onclick="teacherMarkDone(\''+t.id+'\');event.stopPropagation()">완료 처리</button>';
+  }
+  var editBtn='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px" data-id="'+t.id+'" data-type="'+t.type+'" data-title="'+escapeHtml(t.title)+'" onclick="editTaskFromBtn(this);event.stopPropagation()">✏️</button>';
+  var delBtn='<button class="btn-danger" style="flex-shrink:0;margin-left:4px" onclick="deleteTask(\''+t.id+'\');event.stopPropagation()">🗑</button>';
+  var moveBtn=(!opts.noMove&&t.type==='todo'&&!t.teacher_confirmed&&!t.moved_to_hw)
+    ?'<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px;color:#1a56db;border-color:#1a56db" data-id="'+t.id+'" data-title="'+escapeHtml(t.title)+'" onclick="moveTaskToHomework(this.dataset.id,this.dataset.title);event.stopPropagation()">→숙제</button>'
+    :'';
+  var canMove=(!opts.noMove&&t.type==='todo'&&!t.teacher_confirmed&&!t.moved_to_hw);
+  var dragHandle=opts.noDrag?'':'<span class="drag-handle" style="cursor:grab;color:#ccc;font-size:18px;padding:0 8px 0 0;flex-shrink:0;touch-action:none;user-select:none">⠿</span>';
+  var checkbox=opts.noCheckbox?'':'<input type="checkbox" class="task-select-check" data-id="'+t.id+'" style="width:17px;height:17px;margin-right:8px;flex-shrink:0;accent-color:#1B4D3E" onclick="event.stopPropagation()">';
+  return '<div class="task-item '+statusClass+'" data-id="'+t.id+'" data-title="'+escapeHtml(t.title)+'"'+(canMove?' onclick="moveTaskFromRow(this)" style="cursor:pointer"':'')+' data-style="'+(t.student_done&&!t.teacher_confirmed?'1':'0')+'">'
+    +dragHandle
+    +checkbox
+    +'<div class="task-check" style="'+checkStyle+'">'+checkIcon+'</div>'
+    +'<span class="task-text">'+t.title+(t.due_date?'<br><span style="font-size:11px;color:#aaa">기한: '+t.due_date+'</span>':'')+badge+movedBadge+'</span>'
+    +'<div class="task-actions" style="display:flex;align-items:center;flex-wrap:wrap">'+actionBtn+moveBtn+editBtn+delBtn+'</div></div>';
+}
+
+async function loadPrevHwSection(sid,todayDateStr){
+  var card=document.getElementById('prev-hw-card');
+  var list=document.getElementById('prev-hw-list');
+  var label=document.getElementById('prev-hw-date-label');
+  if(!card||!list)return;
+  var prevRes=await getSB().from('tasks').select('date').eq('student_id',sid).eq('type','hw').lt('date',todayDateStr).order('date',{ascending:false}).limit(1);
+  if(!prevRes.data||!prevRes.data.length){card.style.display='none';return;}
+  var prevDate=prevRes.data[0].date;
+  var d=new Date(prevDate);var days=['일','월','화','수','목','금','토'];
+  if(label)label.textContent=(d.getMonth()+1)+'/'+d.getDate()+'('+days[d.getDay()]+') 부여';
+  var tRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('type','hw').eq('date',prevDate).order('created_at',{ascending:true});
+  var items=tRes.data||[];
+  if(!items.length){card.style.display='none';return;}
+  card.style.display='block';
+  list.innerHTML=items.map(function(t){return taskHtmlGlobal(t,{noDrag:true,noCheckbox:true,noMove:true});}).join('');
+}
+
 async function renderTasks(){
   if(!currentStudentId)return;
   var today=getOffsetDate(taskDateOffset);
@@ -1384,37 +1435,6 @@ async function renderTasks(){
   var hws=tasks.filter(function(t){return t.type==='hw';}).sort(sorter);
   $('todo-count').textContent=todos.filter(function(t){return t.teacher_confirmed;}).length+'/'+todos.length;
   $('hw-count').textContent=hws.filter(function(t){return t.teacher_confirmed;}).length+'/'+hws.length;
-
-  function taskHtml(t){
-    var statusClass=t.teacher_confirmed?'done':'';
-    var checkIcon=t.teacher_confirmed?'✓':(t.student_done?'⏳':'');
-    var checkStyle=t.student_done&&!t.teacher_confirmed?'border-color:#FFC107;color:#FFC107':'';
-    var badge=t.student_done&&!t.teacher_confirmed?'<span class="pill pill-pending" style="margin-left:6px">확인 대기</span>':'';
-    var movedBadge=t.moved_to_hw?'<span class="pill" style="margin-left:6px;background:#F0F4FF;color:#1a56db">숙제로 넘김</span>':'';
-    var carryBadge=t.carried_from?'<span class="pill" style="margin-left:6px;background:#FFF8E7;color:#B8860B">🔁 지난 숙제</span>':'';
-    var actionBtn='';
-    if(t.teacher_confirmed){
-      actionBtn='<button class="btn-sm-outline" style="flex-shrink:0" onclick="teacherUnmarkTask(\''+t.id+'\');event.stopPropagation()">취소</button>';
-    } else if(t.student_done){
-      actionBtn='<button class="btn-sm" style="flex-shrink:0" onclick="confirmTask(\''+t.id+'\');event.stopPropagation()">Confirm ✅</button>';
-    } else {
-      actionBtn='<button class="btn-sm" style="flex-shrink:0;background:#1B4D3E" onclick="teacherMarkDone(\''+t.id+'\');event.stopPropagation()">완료 처리</button>';
-    }
-    var editBtn='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px" data-id="'+t.id+'" data-type="'+t.type+'" data-title="'+escapeHtml(t.title)+'" onclick="editTaskFromBtn(this);event.stopPropagation()">✏️</button>';
-    var delBtn='<button class="btn-danger" style="flex-shrink:0;margin-left:4px" onclick="deleteTask(\''+t.id+'\');event.stopPropagation()">🗑</button>';
-    var moveBtn=(t.type==='todo'&&!t.teacher_confirmed&&!t.moved_to_hw)
-      ?'<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px;color:#1a56db;border-color:#1a56db" data-id="'+t.id+'" data-title="'+escapeHtml(t.title)+'" onclick="moveTaskToHomework(this.dataset.id,this.dataset.title);event.stopPropagation()">→숙제</button>'
-      :'';
-    var canMove=(t.type==='todo'&&!t.teacher_confirmed&&!t.moved_to_hw);
-    var dragHandle='<span class="drag-handle" style="cursor:grab;color:#ccc;font-size:18px;padding:0 8px 0 0;flex-shrink:0;touch-action:none;user-select:none">⠿</span>';
-    var checkbox='<input type="checkbox" class="task-select-check" data-id="'+t.id+'" style="width:17px;height:17px;margin-right:8px;flex-shrink:0;accent-color:#1B4D3E" onclick="event.stopPropagation()">';
-    return '<div class="task-item '+statusClass+'" data-id="'+t.id+'" data-title="'+escapeHtml(t.title)+'"'+(canMove?' onclick="moveTaskFromRow(this)" style="cursor:pointer"':'')+' data-style="'+(t.student_done&&!t.teacher_confirmed?'1':'0')+'">'
-      +dragHandle
-      +checkbox
-      +'<div class="task-check" style="'+checkStyle+'">'+checkIcon+'</div>'
-      +'<span class="task-text">'+t.title+(t.due_date?'<br><span style="font-size:11px;color:#aaa">기한: '+t.due_date+'</span>':'')+badge+movedBadge+carryBadge+'</span>'
-      +'<div class="task-actions" style="display:flex;align-items:center;flex-wrap:wrap">'+actionBtn+moveBtn+editBtn+delBtn+'</div></div>';
-  }
   var todoToolbar='<div style="display:flex;gap:6px;padding:8px 16px;border-bottom:1px solid #F5F5F5">'
     +'<button class="btn-sm-outline" onclick="bulkDeleteTasks(\'todo-list\')">🗑 선택 삭제</button>'
     +'<button class="btn-sm-outline" onclick="bulkMoveDateTasks(\'todo-list\')">📅 선택 날짜이동</button>'
@@ -1423,8 +1443,8 @@ async function renderTasks(){
     +'<button class="btn-sm-outline" onclick="bulkDeleteTasks(\'hw-list\')">🗑 선택 삭제</button>'
     +'<button class="btn-sm-outline" onclick="bulkMoveDateTasks(\'hw-list\')">📅 선택 날짜이동</button>'
     +'</div>';
-  var todoItemsHtml=todos.map(taskHtml).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
-  var hwItemsHtml=hws.map(taskHtml).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
+  var todoItemsHtml=todos.map(function(t){return taskHtmlGlobal(t);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
+  var hwItemsHtml=hws.map(function(t){return taskHtmlGlobal(t);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
   $('todo-list').innerHTML=(todos.length?todoToolbar:'')+'<div id="todo-sortable-wrap">'+todoItemsHtml+'</div>';
   $('hw-list').innerHTML=(hws.length?hwToolbar:'')+'<div id="hw-sortable-wrap">'+hwItemsHtml+'</div>';
   document.querySelectorAll('#todo-list .task-item[data-style="1"], #hw-list .task-item[data-style="1"]').forEach(function(el){
@@ -1432,6 +1452,7 @@ async function renderTasks(){
   });
   initTaskSortable('todo-sortable-wrap','todo');
   initTaskSortable('hw-sortable-wrap','hw');
+  loadPrevHwSection(currentStudentId,today);
 }
 
 var _taskSortableInstances={};
