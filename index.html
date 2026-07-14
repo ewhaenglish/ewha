@@ -1416,9 +1416,13 @@ async function bulkDeleteTasks(listId){
   if(!checks.length){toast('삭제할 항목을 선택해주세요');return;}
   if(!confirm(checks.length+'개 항목을 삭제할까요?'))return;
   var ids=Array.from(checks).map(function(c){return c.dataset.id;});
-  var res=await getSB().from('tasks').delete().in('id',ids);
-  if(res.error){toast('오류: '+res.error.message);return;}
-  toast('✅ '+ids.length+'개 삭제 완료!');
+  var failed=0;
+  for(var i=0;i<ids.length;i++){
+    var res=await getSB().from('tasks').delete().eq('id',ids[i]);
+    if(res.error)failed++;
+  }
+  if(failed>0){toast(failed+'개 삭제 실패, '+(ids.length-failed)+'개 성공');}
+  else{toast('✅ '+ids.length+'개 삭제 완료!');}
   renderTasks();
 }
 
@@ -1548,7 +1552,9 @@ async function updateTask(id,type){
 }
 async function deleteTask(id){
   if(!confirm('삭제할까요?'))return;
-  await getSB().from('tasks').delete().eq('id',id);
+  var res=await getSB().from('tasks').delete().eq('id',id);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('삭제됐어요');
   await renderTasks();
 }
 async function confirmTask(id){
