@@ -27,6 +27,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;background:#F5F5F5;color:#333;min-height:100vh;font-size:15px}
@@ -83,7 +84,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
 .form-select{width:100%;padding:11px 12px;border:1px solid #E8E8E8;border-radius:8px;font-size:14px;font-family:inherit;outline:none;background:#fff}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .form-section-title{font-size:13px;font-weight:700;color:#1B4D3E;padding:14px 16px 4px;border-top:1px solid #F5F5F5;margin-top:4px}
-.task-item{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid #F5F5F5}
+.task-item{display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid #F5F5F5;background:#fff}
+.task-drag-ghost{opacity:0.4;background:#F0F4EE!important}
+.sortable-chosen{box-shadow:0 4px 12px rgba(0,0,0,0.15)}
 .task-item:last-child{border-bottom:none}
 .task-check{width:22px;height:22px;border-radius:50%;border:2px solid #E8E8E8;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#fff;font-size:12px;font-weight:700;cursor:pointer}
 .task-item.done .task-check{background:#1B4D3E;border-color:#1B4D3E;color:#fff}
@@ -1019,6 +1022,24 @@ function enterWithProfile(profile){
   toast(profile.name+'님, 환영해요 👋');
   setupRealtime(profile);
   checkNotifications();
+  if(profile.role!=='teacher')checkNewNoticePopup(profile);
+}
+
+async function checkNewNoticePopup(profile){
+  var nRes=await getSB().from('notices').select('*').order('created_at',{ascending:false}).limit(1).maybeSingle();
+  if(!nRes.data)return;
+  var latest=nRes.data;
+  if(profile.last_seen_notice_id===latest.id)return;
+  setTimeout(function(){
+    openMod('📢 새 공지사항',
+      '<div style="padding:20px">'
+      +'<div style="font-size:16px;font-weight:700;color:#1B4D3E;margin-bottom:10px">'+latest.title+'</div>'
+      +'<div style="font-size:14px;color:#333;line-height:1.7;white-space:pre-line">'+latest.content+'</div>'
+      +'<button class="btn-primary" style="width:100%;margin-top:16px" onclick="closeMod()">확인</button>'
+      +'</div>'
+    );
+  },800);
+  await getSB().from('profiles').update({last_seen_notice_id:latest.id}).eq('id',profile.id);
 }
 
 // ===== 탭 =====
@@ -1364,7 +1385,7 @@ async function renderTasks(){
   $('todo-count').textContent=todos.filter(function(t){return t.teacher_confirmed;}).length+'/'+todos.length;
   $('hw-count').textContent=hws.filter(function(t){return t.teacher_confirmed;}).length+'/'+hws.length;
 
-  function taskHtml(t,idx,list){
+  function taskHtml(t){
     var statusClass=t.teacher_confirmed?'done':'';
     var checkIcon=t.teacher_confirmed?'✓':(t.student_done?'⏳':'');
     var checkStyle=t.student_done&&!t.teacher_confirmed?'border-color:#FFC107;color:#FFC107':'';
@@ -1384,15 +1405,15 @@ async function renderTasks(){
     var moveBtn=(t.type==='todo'&&!t.teacher_confirmed&&!t.moved_to_hw)
       ?'<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px;color:#1a56db;border-color:#1a56db" data-id="'+t.id+'" data-title="'+escapeHtml(t.title)+'" onclick="moveTaskToHomework(this.dataset.id,this.dataset.title);event.stopPropagation()">→숙제</button>'
       :'';
-    var upBtn='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px;padding:4px 8px" data-id="'+t.id+'" data-type="'+t.type+'" '+(idx===0?'disabled style="opacity:0.3"':'')+' onclick="reorderTask(this.dataset.id,this.dataset.type,-1);event.stopPropagation()">▲</button>';
-    var downBtn='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:2px;padding:4px 8px" data-id="'+t.id+'" data-type="'+t.type+'" '+(idx===list.length-1?'disabled style="opacity:0.3"':'')+' onclick="reorderTask(this.dataset.id,this.dataset.type,1);event.stopPropagation()">▼</button>';
     var canMove=(t.type==='todo'&&!t.teacher_confirmed&&!t.moved_to_hw);
+    var dragHandle='<span class="drag-handle" style="cursor:grab;color:#ccc;font-size:18px;padding:0 8px 0 0;flex-shrink:0;touch-action:none;user-select:none">⠿</span>';
     var checkbox='<input type="checkbox" class="task-select-check" data-id="'+t.id+'" style="width:17px;height:17px;margin-right:8px;flex-shrink:0;accent-color:#1B4D3E" onclick="event.stopPropagation()">';
     return '<div class="task-item '+statusClass+'" data-id="'+t.id+'" data-title="'+escapeHtml(t.title)+'"'+(canMove?' onclick="moveTaskFromRow(this)" style="cursor:pointer"':'')+' data-style="'+(t.student_done&&!t.teacher_confirmed?'1':'0')+'">'
+      +dragHandle
       +checkbox
       +'<div class="task-check" style="'+checkStyle+'">'+checkIcon+'</div>'
       +'<span class="task-text">'+t.title+(t.due_date?'<br><span style="font-size:11px;color:#aaa">기한: '+t.due_date+'</span>':'')+badge+movedBadge+carryBadge+'</span>'
-      +'<div class="task-actions" style="display:flex;align-items:center;flex-wrap:wrap">'+upBtn+downBtn+actionBtn+moveBtn+editBtn+delBtn+'</div></div>';
+      +'<div class="task-actions" style="display:flex;align-items:center;flex-wrap:wrap">'+actionBtn+moveBtn+editBtn+delBtn+'</div></div>';
   }
   var todoToolbar='<div style="display:flex;gap:6px;padding:8px 16px;border-bottom:1px solid #F5F5F5">'
     +'<button class="btn-sm-outline" onclick="bulkDeleteTasks(\'todo-list\')">🗑 선택 삭제</button>'
@@ -1402,13 +1423,39 @@ async function renderTasks(){
     +'<button class="btn-sm-outline" onclick="bulkDeleteTasks(\'hw-list\')">🗑 선택 삭제</button>'
     +'<button class="btn-sm-outline" onclick="bulkMoveDateTasks(\'hw-list\')">📅 선택 날짜이동</button>'
     +'</div>';
-  var todoHtml=todos.map(function(t,i){return taskHtml(t,i,todos);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
-  var hwHtml=hws.map(function(t,i){return taskHtml(t,i,hws);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
-  $('todo-list').innerHTML=(todos.length?todoToolbar:'')+todoHtml;
-  $('hw-list').innerHTML=(hws.length?hwToolbar:'')+hwHtml;
+  var todoItemsHtml=todos.map(taskHtml).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
+  var hwItemsHtml=hws.map(taskHtml).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">숙제가 없어요</div>';
+  $('todo-list').innerHTML=(todos.length?todoToolbar:'')+'<div id="todo-sortable-wrap">'+todoItemsHtml+'</div>';
+  $('hw-list').innerHTML=(hws.length?hwToolbar:'')+'<div id="hw-sortable-wrap">'+hwItemsHtml+'</div>';
   document.querySelectorAll('#todo-list .task-item[data-style="1"], #hw-list .task-item[data-style="1"]').forEach(function(el){
     el.style.background='#FFFBF0';
   });
+  initTaskSortable('todo-sortable-wrap','todo');
+  initTaskSortable('hw-sortable-wrap','hw');
+}
+
+var _taskSortableInstances={};
+function initTaskSortable(wrapId,type){
+  var el=document.getElementById(wrapId);
+  if(!el)return;
+  if(_taskSortableInstances[wrapId]){_taskSortableInstances[wrapId].destroy();}
+  if(typeof Sortable==='undefined')return;
+  _taskSortableInstances[wrapId]=Sortable.create(el,{
+    handle:'.drag-handle',
+    animation:150,
+    draggable:'.task-item',
+    ghostClass:'task-drag-ghost',
+    onEnd:function(){
+      var ids=Array.from(el.querySelectorAll('.task-item')).map(function(d){return d.dataset.id;});
+      persistTaskOrder(ids);
+    }
+  });
+}
+
+async function persistTaskOrder(ids){
+  for(var i=0;i<ids.length;i++){
+    await getSB().from('tasks').update({sort_order:i+1}).eq('id',ids[i]);
+  }
 }
 
 async function bulkDeleteTasks(listId){
@@ -4254,19 +4301,23 @@ function escapeHtml(str){
 }
 
 async function autoCarryOverPrevHw(sid,dateStr){
-  // 이미 이월 처리된 항목이 있으면 중복 방지를 위해 건너뜀
-  var existing=await getSB().from('tasks').select('id').eq('student_id',sid).eq('date',dateStr).eq('type','todo').not('carried_from','is',null).limit(1);
-  if(existing.data&&existing.data.length)return;
+  var logRes=await getSB().from('hw_carryover_log').select('student_id').eq('student_id',sid).eq('target_date',dateStr).maybeSingle();
+  if(logRes.data)return;
   var prevRes=await getSB().from('tasks').select('date').eq('student_id',sid).eq('type','hw').lt('date',dateStr).order('date',{ascending:false}).limit(1);
-  if(!prevRes.data||!prevRes.data.length)return;
+  if(!prevRes.data||!prevRes.data.length){
+    await getSB().from('hw_carryover_log').insert({student_id:sid,target_date:dateStr});
+    return;
+  }
   var prevDate=prevRes.data[0].date;
   var prevHwRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('type','hw').eq('date',prevDate);
   var prevHws=prevHwRes.data||[];
-  if(!prevHws.length)return;
-  var inserts=prevHws.map(function(t){
-    return {student_id:sid,type:'todo',date:dateStr,title:'[지난 숙제 확인] '+t.title,carried_from:t.id,student_done:false,teacher_confirmed:false};
-  });
-  await getSB().from('tasks').insert(inserts);
+  if(prevHws.length){
+    var inserts=prevHws.map(function(t){
+      return {student_id:sid,type:'todo',date:dateStr,title:'[지난 숙제 확인] '+t.title,carried_from:t.id,student_done:false,teacher_confirmed:false};
+    });
+    await getSB().from('tasks').insert(inserts);
+  }
+  await getSB().from('hw_carryover_log').insert({student_id:sid,target_date:dateStr,source_date:prevDate});
 }
 
 // ===== 앱 시작 =====
