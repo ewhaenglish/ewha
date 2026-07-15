@@ -1589,24 +1589,46 @@ function bulkMoveDateTasks(listId){
   var checks=document.querySelectorAll('#'+listId+' .task-select-check:checked');
   if(!checks.length){toast('이동할 항목을 선택해주세요');return;}
   var ids=Array.from(checks).map(function(c){return c.dataset.id;});
+  var currentType=listId==='todo-list'?'todo':'hw';
   var html='<div style="padding:20px">'
-    +'<p style="color:#666;margin-bottom:14px;font-size:13px">'+ids.length+'개 항목을 옮길 날짜를 선택해주세요</p>'
-    +'<input type="date" class="form-input" id="bulk-move-date" style="margin-bottom:10px">'
-    +'<button class="btn-primary" id="bulk-move-btn">날짜 이동</button>'
+    +'<p style="color:#666;margin-bottom:14px;font-size:13px">'+ids.length+'개 항목을 옮길 날짜와 종류를 선택해주세요</p>'
+    +'<label class="form-label">날짜</label>'
+    +'<input type="date" class="form-input" id="bulk-move-date" style="margin-bottom:14px">'
+    +'<label class="form-label">종류</label>'
+    +'<div style="display:flex;gap:8px;margin-bottom:16px">'
+    +'<button type="button" class="bulk-type-btn" data-type="todo" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid '+(currentType==='todo'?'#1B4D3E':'#E8E8E8')+';background:'+(currentType==='todo'?'#1B4D3E':'#fff')+';color:'+(currentType==='todo'?'#fff':'#333')+';font-weight:700;cursor:pointer;font-family:inherit">📌 할일</button>'
+    +'<button type="button" class="bulk-type-btn" data-type="hw" style="flex:1;padding:12px;border-radius:10px;border:1.5px solid '+(currentType==='hw'?'#1B4D3E':'#E8E8E8')+';background:'+(currentType==='hw'?'#1B4D3E':'#fff')+';color:'+(currentType==='hw'?'#fff':'#333')+';font-weight:700;cursor:pointer;font-family:inherit">✦ 과제</button>'
+    +'</div>'
+    +'<button class="btn-primary" id="bulk-move-btn">이동</button>'
     +'</div>';
-  openMod('날짜 이동', html);
+  openMod('날짜/종류 이동', html);
   setTimeout(function(){
+    var selectedType=currentType;
+    document.querySelectorAll('.bulk-type-btn').forEach(function(btn){
+      btn.onclick=function(){
+        selectedType=btn.dataset.type;
+        document.querySelectorAll('.bulk-type-btn').forEach(function(b){
+          var isSel=b.dataset.type===selectedType;
+          b.style.borderColor=isSel?'#1B4D3E':'#E8E8E8';
+          b.style.background=isSel?'#1B4D3E':'#fff';
+          b.style.color=isSel?'#fff':'#333';
+        });
+      };
+    });
     var b=document.getElementById('bulk-move-btn');
-    if(b)b.onclick=function(){confirmBulkMoveDate(ids);};
+    if(b)b.onclick=function(){confirmBulkMoveDate(ids,function(){return selectedType;});};
   },50);
 }
 
-async function confirmBulkMoveDate(ids){
+async function confirmBulkMoveDate(ids,getType){
   var dateInput=document.getElementById('bulk-move-date');
   if(!dateInput||!dateInput.value){toast('날짜를 선택해주세요');return;}
-  var res=await getSB().from('tasks').update({date:dateInput.value}).in('id',ids);
+  var updateData={date:dateInput.value};
+  if(typeof getType==='function')updateData.type=getType();
+  var res=await getSB().from('tasks').update(updateData).in('id',ids);
   if(res.error){toast('오류: '+res.error.message);return;}
-  toast('✅ '+ids.length+'개 항목을 '+dateInput.value+'(으)로 옮겼어요!');
+  var typeLabel=updateData.type==='hw'?'과제':updateData.type==='todo'?'할일':'';
+  toast('✅ '+ids.length+'개 항목을 '+dateInput.value+(typeLabel?' '+typeLabel+'로':'')+' 옮겼어요!');
   closeMod();
   renderTasks();
 }
@@ -1950,7 +1972,7 @@ async function submitDailyMsg(){
   if(s.data){
     var teacherRes=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
     if(teacherRes.data&&teacherRes.data.length>0){
-      await sendNotification(teacherRes.data[0].id,'✍️ '+s.data.name+' 학생이 오늘의 반성 한 줄을 작성했어요!','daily');
+      await sendNotification(teacherRes.data[0].id,'✍️ '+s.data.name+' 학생이 오늘의 반성 한 줄을 작성했어요!','daily',false);
     }
   }
   toast('✅ 제출 완료! +5점');
@@ -2483,9 +2505,10 @@ async function openNotifPanel(){
     }).join(''):'<div style="padding:24px;text-align:center;color:#aaa">알림이 없어요</div>')+'</div>'
   );
 }
-async function sendNotification(targetId,message,type){
+async function sendNotification(targetId,message,type,sendPush){
   if(!targetId)return;
   try{await getSB().from('notifications').insert({target_id:targetId,message:message,type:type||'general'});}catch(e){}
+  if(sendPush===false)return;
   try{
     fetch('/api/send-push',{
       method:'POST',
@@ -3363,7 +3386,7 @@ async function notifyHwUnfinishedOnCheckout(sid){
   var s=allStudents?allStudents.find(function(x){return x.id===sid;}):null;
   var sname=s?s.name:'학생';
   var tr=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
-  if(tr.data&&tr.data.length>0)await sendNotification(tr.data[0].id,'✕ '+sname+' 학생이 과제를 다 못 마치고 하원했어요 ('+undone.length+'개 미완료)','hwundone');
+  if(tr.data&&tr.data.length>0)await sendNotification(tr.data[0].id,'✕ '+sname+' 학생이 과제를 다 못 마치고 하원했어요 ('+undone.length+'개 미완료)','hwundone',false);
   var pr=await getSB().from('student_parent').select('parent_id').eq('student_id',sid);
   var parents=pr.data||[];
   for(var i=0;i<parents.length;i++){
@@ -3411,7 +3434,7 @@ async function checkHwCompletionNotify(sid){
   var s=allStudents?allStudents.find(function(x){return x.id===sid;}):null;
   var sname=s?s.name:'학생';
   var tr=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
-  if(tr.data&&tr.data.length>0)await sendNotification(tr.data[0].id,'✔ '+sname+' 학생이 오늘 과제를 100% 완료했어요!','hwdone');
+  if(tr.data&&tr.data.length>0)await sendNotification(tr.data[0].id,'✔ '+sname+' 학생이 오늘 과제를 100% 완료했어요!','hwdone',false);
   var pr=await getSB().from('student_parent').select('parent_id').eq('student_id',sid);
   var parents=pr.data||[];
   for(var i=0;i<parents.length;i++){
@@ -3602,7 +3625,7 @@ async function submitTasksVocabTest(){
   var sv=await getSB().from('students').select('profile_id,name').eq('id',window._currentStudentRowId).single();
   if(sv.data){
     var tr2=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
-    if(tr2.data&&tr2.data.length>0)await sendNotification(tr2.data[0].id,'📝 '+sv.data.name+' 학생이 단어 TEST를 제출했어요! 확인해주세요','vocab');
+    if(tr2.data&&tr2.data.length>0)await sendNotification(tr2.data[0].id,'📝 '+sv.data.name+' 학생이 단어 TEST를 제출했어요! 확인해주세요','vocab',false);
   }
   toast('✅ 단어 TEST 제출 완료!');
   loadStudentTasks();
@@ -3895,7 +3918,7 @@ async function uploadHwPhoto(){
     loadHwPhotos();
     var s=await getSB().from('students').select('name').eq('id',sid).single();
     var tr=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
-    if(tr.data&&tr.data.length>0&&s.data)await sendNotification(tr.data[0].id,'📸 '+s.data.name+' 학생이 과제 사진 '+successCount+'장을 제출했어요!','hwphoto');
+    if(tr.data&&tr.data.length>0&&s.data)await sendNotification(tr.data[0].id,'📸 '+s.data.name+' 학생이 과제 사진 '+successCount+'장을 제출했어요!','hwphoto',false);
   }
 }
 
