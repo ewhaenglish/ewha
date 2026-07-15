@@ -1093,20 +1093,59 @@ async function renderTeacherHome(){
     var cnt=pending.filter(function(t){return t.student_id===s.id;}).length;
     var badge=cnt?'<span class="pill pill-pending" style="margin-left:6px">확인 대기 '+cnt+'</span>':'';
     var att=attList.find(function(a){return a.student_id===s.id;});
-    var attHtml;
+    var attHtml, attBtns;
     if(att&&att.check_in){
       attHtml='<span style="color:#1B4D3E;font-weight:700">등원 '+formatKSTTime(att.check_in)+'</span>'
         +(att.check_out?' <span style="color:#888">· 하원 '+formatKSTTime(att.check_out)+'</span>':' <span style="color:#F0A030">· 하원 전</span>');
+      attBtns=att.check_out
+        ?'<button class="btn-sm-outline" data-sid="'+s.id+'" onclick="teacherCheckOut(this.dataset.sid);event.stopPropagation()">하원취소</button>'
+        :'<button class="btn-sm" style="background:#1B4D3E" data-sid="'+s.id+'" onclick="teacherCheckOut(this.dataset.sid);event.stopPropagation()">하원</button>'
+        +' <button class="btn-sm-outline" data-sid="'+s.id+'" onclick="teacherCheckIn(this.dataset.sid);event.stopPropagation()">등원취소</button>';
     } else {
       attHtml='<span style="color:#ccc">미등원</span>';
+      attBtns='<button class="btn-sm" style="background:#1B4D3E" data-sid="'+s.id+'" onclick="teacherCheckIn(this.dataset.sid);event.stopPropagation()">등원</button>';
     }
     return '<div class="student-row" onclick="goToConfirm(\''+s.id+'\')">'
       +'<div class="avatar">'+s.name.charAt(0)+'</div>'
       +'<div style="flex:1"><div style="font-size:15px;font-weight:700">'+s.name+badge+'</div>'
       +'<div style="font-size:11px;color:#aaa;margin-top:2px">'+(s.school||'')+(s.grade?' '+s.grade:'')+'</div>'
       +'<div style="font-size:12px;margin-top:3px">'+attHtml+'</div></div>'
+      +'<div style="flex-shrink:0;display:flex;gap:4px" onclick="event.stopPropagation()">'+attBtns+'</div>'
       +'</div>';
   }).join('');
+}
+
+async function teacherCheckIn(sid){
+  var dup=await getSB().from('attendance').select('id').eq('student_id',sid).eq('date',todayStr()).maybeSingle();
+  if(dup.data){
+    if(!confirm('등원을 취소할까요?'))return;
+    var delRes=await getSB().from('attendance').delete().eq('student_id',sid).eq('date',todayStr());
+    if(delRes.error){toast('오류: '+delRes.error.message);return;}
+    var mRes=await getSB().from('mileage').select('id').eq('student_id',sid).eq('reason','출석').order('created_at',{ascending:false}).limit(1);
+    if(mRes.data&&mRes.data.length>0)await getSB().from('mileage').delete().eq('id',mRes.data[0].id);
+    toast('등원 취소됐어요');
+    renderTeacherHome();
+    return;
+  }
+  var res=await getSB().from('attendance').insert({student_id:sid,date:todayStr(),check_in:new Date().toISOString()});
+  if(res.error){toast('오류: '+res.error.message);return;}
+  await getSB().from('mileage').insert({student_id:sid,amount:5,reason:'출석'});
+  toast('✅ 등원 처리했어요! +5점');
+  renderTeacherHome();
+}
+
+async function teacherCheckOut(sid){
+  var att=await getSB().from('attendance').select('*').eq('student_id',sid).eq('date',todayStr()).maybeSingle();
+  if(att.data&&att.data.check_out){
+    if(!confirm('하원을 취소할까요?'))return;
+    await getSB().from('attendance').update({check_out:null}).eq('student_id',sid).eq('date',todayStr());
+    toast('하원 취소됐어요');renderTeacherHome();return;
+  }
+  var res=await getSB().from('attendance').update({check_out:new Date().toISOString()}).eq('student_id',sid).eq('date',todayStr());
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('🏠 하원 처리했어요!');
+  renderTeacherHome();
+  notifyHwUnfinishedOnCheckout(sid);
 }
 function populateStudentSelects(){
   var opts='<option value="">학생을 선택하세요</option>'+allStudents.map(function(s){return '<option value="'+s.id+'">'+s.name+'</option>';}).join('');
