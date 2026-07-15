@@ -1023,6 +1023,7 @@ function enterWithProfile(profile){
   else if(profile.role==='student'){$('s-name').textContent=profile.name;loadStudent();}
   else if(profile.role==='parent'){$('p-name').textContent=profile.name;loadParent();}
   showInstallBanner();
+  registerServiceWorker().then(function(){setTimeout(showPushEnableBanner,2000);});
   toast(profile.name+'님, 환영해요 👋');
   setupRealtime(profile);
   checkNotifications();
@@ -1075,6 +1076,7 @@ async function loadTeacher(){
   loadHwReminder();
   loadNotices();
   checkNotifications();
+  startClassEndAlertPolling();
 }
 async function loadStudentsData(){
   var res=await getSB().from('students').select('*').order('name');
@@ -1094,7 +1096,10 @@ async function renderTeacherHome(){
     var badge=cnt?'<span class="pill pill-pending" style="margin-left:6px">확인 대기 '+cnt+'</span>':'';
     var att=attList.find(function(a){return a.student_id===s.id;});
     var attHtml, attBtns;
-    if(att&&att.check_in){
+    if(att&&att.is_absent){
+      attHtml='<span style="color:#E24B4A;font-weight:700">결석</span>';
+      attBtns='<button class="btn-sm-outline" data-sid="'+s.id+'" onclick="teacherMarkAbsent(this.dataset.sid);event.stopPropagation()">결석 취소</button>';
+    } else if(att&&att.check_in){
       attHtml='<span style="color:#1B4D3E;font-weight:700">등원 '+formatKSTTime(att.check_in)+'</span>'
         +(att.check_out?' <span style="color:#888">· 하원 '+formatKSTTime(att.check_out)+'</span>':' <span style="color:#F0A030">· 하원 전</span>');
       attBtns=att.check_out
@@ -1103,7 +1108,8 @@ async function renderTeacherHome(){
         +' <button class="btn-sm-outline" data-sid="'+s.id+'" onclick="teacherCheckIn(this.dataset.sid);event.stopPropagation()">등원취소</button>';
     } else {
       attHtml='<span style="color:#ccc">미등원</span>';
-      attBtns='<button class="btn-sm" style="background:#1B4D3E" data-sid="'+s.id+'" onclick="teacherCheckIn(this.dataset.sid);event.stopPropagation()">등원</button>';
+      attBtns='<button class="btn-sm" style="background:#1B4D3E" data-sid="'+s.id+'" onclick="teacherCheckIn(this.dataset.sid);event.stopPropagation()">등원</button>'
+        +' <button class="btn-sm-outline" style="color:#E24B4A;border-color:#E24B4A" data-sid="'+s.id+'" onclick="teacherMarkAbsent(this.dataset.sid);event.stopPropagation()">결석</button>';
     }
     return '<div class="student-row" onclick="goToConfirm(\''+s.id+'\')">'
       +'<div class="avatar">'+s.name.charAt(0)+'</div>'
@@ -1147,6 +1153,50 @@ async function teacherCheckOut(sid){
   renderTeacherHome();
   notifyHwUnfinishedOnCheckout(sid);
 }
+
+async function teacherMarkAbsent(sid){
+  var att=await getSB().from('attendance').select('*').eq('student_id',sid).eq('date',todayStr()).maybeSingle();
+  if(att.data&&att.data.is_absent){
+    if(!confirm('결석 처리를 취소할까요?'))return;
+    await getSB().from('attendance').update({is_absent:false}).eq('student_id',sid).eq('date',todayStr());
+    toast('결석 취소됐어요');renderTeacherHome();return;
+  }
+  if(!confirm('결석 처리할까요?'))return;
+  if(att.data){
+    var res=await getSB().from('attendance').update({is_absent:true}).eq('student_id',sid).eq('date',todayStr());
+    if(res.error){toast('오류: '+res.error.message);return;}
+  } else {
+    var res2=await getSB().from('attendance').insert({student_id:sid,date:todayStr(),is_absent:true});
+    if(res2.error){toast('오류: '+res2.error.message);return;}
+  }
+  toast('결석 처리했어요');
+  renderTeacherHome();
+}
+
+var _classEndCheckInterval=null;
+function startClassEndAlertPolling(){
+  if(_classEndCheckInterval)clearInterval(_classEndCheckInterval);
+  checkClassEndingSoon();
+  _classEndCheckInterval=setInterval(checkClassEndingSoon,60000);
+}
+async function checkClassEndingSoon(){
+  if(!currentProfile||currentProfile.role!=='teacher')return;
+  var today=todayStr();
+  var res=await getSB().from('attendance').select('*').eq('date',today).is('check_out',null).eq('time_alert_sent',false);
+  var list=res.data||[];
+  var now=Date.now();
+  for(var i=0;i<list.length;i++){
+    var a=list[i];
+    if(!a.check_in||a.is_absent)continue;
+    var elapsedMin=(now-new Date(a.check_in).getTime())/60000;
+    if(elapsedMin>=150){
+      var s=allStudents.find(function(x){return x.id===a.student_id;});
+      popupNotif((s?s.name:'학생')+' 수업 종료 임박 (등원 후 150분 경과)','⏰');
+      await getSB().from('attendance').update({time_alert_sent:true}).eq('id',a.id);
+    }
+  }
+}
+
 function populateStudentSelects(){
   var opts='<option value="">학생을 선택하세요</option>'+allStudents.map(function(s){return '<option value="'+s.id+'">'+s.name+'</option>';}).join('');
   ['task-student-sel','note-student-sel','report-student-sel'].forEach(function(id){if($(id))$(id).innerHTML=opts;});
@@ -1712,9 +1762,31 @@ async function loadNotePreview(){
 async function saveNote(){
   var sid=$('note-student-sel').value;
   if(!sid){toast('학생을 선택해주세요');return;}
+  var today=getOffsetDate(noteDateOffset);
+  function fmtDateLabel0(dateStr){
+    var d=new Date(dateStr);var days=['일','월','화','수','목','금','토'];
+    return d.getFullYear()+'. '+String(d.getMonth()+1).padStart(2,'0')+'. '+String(d.getDate()).padStart(2,'0')+' ('+days[d.getDay()]+')';
+  }
+  var attCheck=await getSB().from('attendance').select('is_absent').eq('student_id',sid).eq('date',today).maybeSingle();
+  if(attCheck.data&&attCheck.data.is_absent){
+    var dLabel0=fmtDateLabel0(today);
+    var noteContentAbsent='📅 Date: '+dLabel0+'\n\n[결석]';
+    var rAbsent=await getSB().from('growth_notes').insert({student_id:sid,content:noteContentAbsent,date:today,ai_generated:false});
+    if(rAbsent.error){toast('오류: '+rAbsent.error.message);return;}
+    var savedIdAbsent=null;
+    try{
+      var reAbsent=await getSB().from('growth_notes').select('id').eq('student_id',sid).eq('date',today).order('created_at',{ascending:false}).limit(1).maybeSingle();
+      if(reAbsent.data)savedIdAbsent=reAbsent.data.id;
+    }catch(e){}
+    toast('✅ 결석으로 성장노트 저장 완료!');
+    loadRecentNotes();
+    var studentNameAbsent=(allStudents.find(function(x){return x.id===sid;})||{}).name||'학생';
+    openMod('이화성장노트', buildNoteHtml(studentNameAbsent,dLabel0,'','','','','',savedIdAbsent,'','',true));
+    if(savedIdAbsent)loadNoteComments(savedIdAbsent);
+    return;
+  }
   var feedback=$('note-feedback').value.trim();
   if(!feedback){toast('피드백을 입력해주세요');return;}
-  var today=getOffsetDate(noteDateOffset);
   var res=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',today);
   var tasks=res.data||[];
   var d2=new Date();var monday2=new Date(d2);monday2.setDate(d2.getDate()-d2.getDay()+1);
@@ -2149,19 +2221,20 @@ async function loadParentNotes(){
   var days=['일','월','화','수','목','금','토'];
   var dateLabel=d.getFullYear()+'. '+String(d.getMonth()+1).padStart(2,'0')+'. '+String(d.getDate()).padStart(2,'0')+' ('+days[d.getDay()]+')';
   var c=n.content||'';
+  var isAbsent=/\[결석\]/.test(c);
   function extractSection(label){
     var re=new RegExp('\\['+label+'[^\\]]*\\]\\n([\\s\\S]*?)(?=\\n\\[|$)');
     var m=c.match(re);return m?m[1].trim():'';
   }
   var vocab=extractSection('단어 TEST');
-  var todos=extractSection('오늘의 수업');
+  var todos=extractSection('오늘의 할 일');
   var hws=extractSection('오늘의 과제');
-  var prevHw=extractSection('지난 과제 확인');
-  var prevMatch=c.match(/\[지난 과제 확인 - ([^\]]+)\]/);
+  var prevHw=extractSection('지난 시간 과제');
+  var prevMatch=c.match(/\[지난 시간 과제 - ([^\]]+)\]/);
   var prevDateLabel=prevMatch?prevMatch[1]:'';
   var goal=extractSection('이번 주 각오');
   var feedback=extractSection('피드백');
-  $('p-note-list').innerHTML=buildNoteHtml(student.name,dateLabel,vocab,todos,hws,goal,feedback,n.id,prevHw,prevDateLabel).replace('<button onclick="closeMod()" class="btn-primary" style="width:100%;margin-top:4px">확인</button>','');
+  $('p-note-list').innerHTML=buildNoteHtml(student.name,dateLabel,vocab,todos,hws,goal,feedback,n.id,prevHw,prevDateLabel,isAbsent?true:null,isAbsent).replace('<button onclick="closeMod()" class="btn-primary" style="width:100%;margin-top:4px">확인</button>','');
   loadNoteComments(n.id);
   if(!n.parent_read_at){
     getSB().from('growth_notes').update({parent_read_at:new Date().toISOString()}).eq('id',n.id).then(function(){});
@@ -2413,6 +2486,13 @@ async function openNotifPanel(){
 async function sendNotification(targetId,message,type){
   if(!targetId)return;
   try{await getSB().from('notifications').insert({target_id:targetId,message:message,type:type||'general'});}catch(e){}
+  try{
+    fetch('/api/send-push',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({targetId:targetId,title:'이화영어',body:message,url:'/'})
+    }).catch(function(){});
+  }catch(e){}
 }
 
 // ===== Realtime =====
@@ -3626,15 +3706,16 @@ function openNoteDetail(noteId){
     var days=['일','월','화','수','목','금','토'];
     var dateLabel=d.getFullYear()+'. '+String(d.getMonth()+1).padStart(2,'0')+'. '+String(d.getDate()).padStart(2,'0')+' ('+days[d.getDay()]+')';
     var c=n.content||'';
+    var isAbsent=/\[결석\]/.test(c);
     function extractSection(label){
       var re=new RegExp('\\['+label+'[^\\]]*\\]\\n([\\s\\S]*?)(?=\\n\\[|$)');
       var m=c.match(re);return m?m[1].trim():'';
     }
     var vocab=extractSection('단어 TEST');
-    var todos=extractSection('오늘의 수업');
+    var todos=extractSection('오늘의 할 일');
     var hws=extractSection('오늘의 과제');
-    var prevHw=extractSection('지난 과제 확인');
-    var prevMatch=c.match(/\[지난 과제 확인 - ([^\]]+)\]/);
+    var prevHw=extractSection('지난 시간 과제');
+    var prevMatch=c.match(/\[지난 시간 과제 - ([^\]]+)\]/);
     var prevDateLabel=prevMatch?prevMatch[1]:'';
     var goal=extractSection('이번 주 각오');
     var feedback=extractSection('피드백');
@@ -3648,7 +3729,7 @@ function openNoteDetail(noteId){
         readInfo='아직 학부모가 읽지 않았어요';
       }
     }
-    openMod('이화성장노트', buildNoteHtml(studentName,dateLabel,vocab,todos,hws,goal,feedback,noteId,prevHw,prevDateLabel,readInfo));
+    openMod('이화성장노트', buildNoteHtml(studentName,dateLabel,vocab,todos,hws,goal,feedback,noteId,prevHw,prevDateLabel,isAbsent?true:readInfo,isAbsent));
     loadNoteComments(noteId);
     if(currentProfile&&currentProfile.role==='parent'&&!n.parent_read_at){
       getSB().from('growth_notes').update({parent_read_at:new Date().toISOString()}).eq('id',noteId).then(function(){});
@@ -4087,7 +4168,9 @@ async function loadTeacherHwPhotos(){
 }
 
 // ===== 이화성장노트 통일 디자인 =====
-function buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,feedback,noteId,prevHwText,prevDateLabel,readInfo){
+function buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,feedback,noteId,prevHwText,prevDateLabel,readInfoOrAbsent,maybeAbsent){
+  var isAbsent=maybeAbsent===true||readInfoOrAbsent===true;
+  var readInfo=(readInfoOrAbsent===true)?null:readInfoOrAbsent;
   function noteSection(title,txt,isGold){
     if(!txt)return '';
     return '<div style="margin-bottom:14px'+(isGold?';background:#FFFDF5;border:1.5px solid #F0C040;border-radius:10px;padding:12px 14px':'')+'">'
@@ -4107,12 +4190,14 @@ function buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,
     +'<div style="flex:1;min-width:0"><span style="font-size:11px;color:#999">이름</span><div style="font-size:14px;font-weight:700;color:#1B4D3E;border-bottom:1.5px solid #E8E8E8;padding:3px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+studentName+'</div></div>'
     +'</div></div>'
     +(readInfo?'<div style="text-align:right;font-size:11px;color:#999;margin:-10px 2px 12px">'+readInfo+'</div>':'')
-    +noteSection('단어 TEST',vtText)
-    +noteSection(prevDateLabel?'지난 시간 과제 ('+prevDateLabel+')':'지난 시간 과제',prevHwText)
-    +noteSection('오늘의 할 일',todoText)
-    +noteSection('오늘의 과제 (다음 시간까지)',hwText)
-    +noteSection('이번 주 각오',goalContent)
-    +noteSection('선생님 한마디',feedback,true)
+    +(isAbsent
+      ?'<div style="text-align:center;padding:28px 12px"><div style="font-size:20px;font-weight:700;color:#E24B4A;margin-bottom:6px">결석</div><div style="font-size:12px;color:#999">이 날은 수업이 진행되지 않았어요</div></div>'
+      :noteSection('단어 TEST',vtText)
+        +noteSection(prevDateLabel?'지난 시간 과제 ('+prevDateLabel+')':'지난 시간 과제',prevHwText)
+        +noteSection('오늘의 할 일',todoText)
+        +noteSection('오늘의 과제 (다음 시간까지)',hwText)
+        +noteSection('이번 주 각오',goalContent)
+        +noteSection('선생님 한마디',feedback,true))
     +(noteId?buildNoteReactionArea(noteId):'')
     +(noteId?'<div id="note-comments-'+noteId+'" style="margin-top:6px"></div>':'')
     +'</div>';
@@ -4385,6 +4470,121 @@ async function autoCarryOverPrevHw(sid,dateStr){
     await getSB().from('tasks').insert(inserts);
   }
   await getSB().from('hw_carryover_log').insert({student_id:sid,target_date:dateStr,source_date:prevDate});
+}
+
+// ===== 웹 푸시 알림 =====
+var VAPID_PUBLIC_KEY = 'BOWEoE5WC_0-DYiH0YHck8TTS_iTl-lQFdQFMru6GOFPpnZgxnIJjQthaRtZ2wEgFtHc7urw2sGpZdeOwps3f_k';
+
+function urlBase64ToUint8Array(base64String){
+  var padding='='.repeat((4-base64String.length%4)%4);
+  var base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');
+  var rawData=window.atob(base64);
+  var outputArray=new Uint8Array(rawData.length);
+  for(var i=0;i<rawData.length;++i)outputArray[i]=rawData.charCodeAt(i);
+  return outputArray;
+}
+
+async function registerServiceWorker(){
+  if(!('serviceWorker' in navigator))return null;
+  try{
+    var reg=await navigator.serviceWorker.register('/sw.js');
+    return reg;
+  }catch(e){return null;}
+}
+
+function isPushSupported(){
+  return 'serviceWorker' in navigator && 'PushManager' in window;
+}
+
+function isIOSStandalone(){
+  var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+  if(!isIOS)return true; // iOS가 아니면 조건 통과
+  return window.navigator.standalone===true;
+}
+
+async function enablePushNotifications(){
+  if(!isPushSupported()){toast('이 브라우저는 알림을 지원하지 않아요');return;}
+  var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+  if(isIOS && window.navigator.standalone!==true){
+    toast('먼저 홈 화면에 추가한 뒤, 그 아이콘으로 열어서 다시 눌러주세요');
+    return;
+  }
+  var perm=await Notification.requestPermission();
+  if(perm!=='granted'){toast('알림 권한이 필요해요');return;}
+  var reg=await registerServiceWorker();
+  if(!reg){toast('알림 등록에 실패했어요');return;}
+  try{
+    var sub=await reg.pushManager.subscribe({
+      userVisibleOnly:true,
+      applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+    });
+    await getSB().from('push_subscriptions').upsert({
+      user_id:currentUser.id,
+      subscription:sub.toJSON()
+    },{onConflict:'user_id,endpoint'});
+    toast('🔔 알림이 켜졌어요!');
+    updatePushButtonState(true);
+  }catch(e){
+    toast('알림 설정 중 오류가 발생했어요');
+  }
+}
+
+async function updatePushButtonState(isOn){
+  document.querySelectorAll('.push-enable-btn').forEach(function(btn){
+    if(isOn){
+      btn.textContent='🔔 알림 켜짐';
+      btn.style.background='#1B4D3E';btn.style.color='#fff';
+    } else {
+      btn.textContent='🔔 알림 켜기';
+      btn.style.background='#fff';btn.style.color='#1B4D3E';
+    }
+  });
+}
+
+async function checkPushStatus(){
+  if(!isPushSupported()||!currentUser)return;
+  try{
+    var reg=await navigator.serviceWorker.getRegistration();
+    if(!reg){updatePushButtonState(false);return;}
+    var sub=await reg.pushManager.getSubscription();
+    updatePushButtonState(!!sub);
+  }catch(e){updatePushButtonState(false);}
+}
+
+function showPushEnableBanner(){
+  if(!isPushSupported())return;
+  if(Notification.permission==='denied')return;
+  if(localStorage.getItem('pushBannerClosed')==='1')return;
+  var isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent);
+  if(isIOS && window.navigator.standalone!==true)return; // iOS는 홈화면 설치 후에만 의미있음
+  navigator.serviceWorker.getRegistration().then(function(reg){
+    if(reg){
+      reg.pushManager.getSubscription().then(function(sub){
+        if(sub)return; // 이미 구독중
+        renderPushBanner();
+      });
+    } else {
+      renderPushBanner();
+    }
+  });
+}
+
+function renderPushBanner(){
+  if(document.getElementById('push-banner'))return;
+  var banner=document.createElement('div');
+  banner.id='push-banner';
+  banner.style.cssText='position:fixed;bottom:70px;left:12px;right:12px;background:#1B4D3E;color:#fff;border-radius:14px;padding:14px 16px;z-index:9998;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:flex;align-items:center;gap:12px';
+  banner.innerHTML='<span style="font-size:26px">🔔</span>'
+    +'<div style="flex:1;font-size:13px;line-height:1.5">알림을 켜면 등하원·성장노트·문의 답변을<br>휴대폰으로 바로 받을 수 있어요!</div>'
+    +'<button onclick="enablePushNotifications();closePushBanner()" style="background:#F0C040;color:#1B4D3E;border:none;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0">켜기</button>'
+    +'<button onclick="closePushBanner()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:24px;height:24px;border-radius:50%;font-size:12px;cursor:pointer;flex-shrink:0">✕</button>';
+  document.body.appendChild(banner);
+}
+
+function closePushBanner(){
+  var b=document.getElementById('push-banner');
+  if(b)b.remove();
+  localStorage.setItem('pushBannerClosed','1');
 }
 
 // ===== 앱 시작 =====
