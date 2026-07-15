@@ -1827,7 +1827,7 @@ async function saveNote(){
   var vtText=vr3.data?((vr3.data.score!=null&&vr3.data.total?vr3.data.score+'/'+vr3.data.total+'점 ':'')+'('+(vr3.data.result==='pass'?'통과 ✔':vr3.data.result==='retest'?'재시 ✕':'미응시')+')'):'기록없음';
   var todos=tasks.filter(function(t){return t.type==='todo';});
   var hwsToday=tasks.filter(function(t){return t.type==='hw';});
-  var todoText=todos.map(function(t){return (t.student_done?'✔':'✕')+' '+t.title+timeSuffix(t);}).join('\n')||'없음';
+  var todoText=todos.map(function(t){return (t.student_done?'✔':'✕')+' '+t.title;}).join('\n')||'없음';
   // 오늘 새로 나간 과제 - 아직 마감 전이므로 체크 표시 없이 목록만
   var hwTodayText=hwsToday.map(function(t){return '• '+t.title;}).join('\n')||'없음';
   // 지난 수업 시간에 나간 과제 - 오늘 이전 날짜 중 가장 최근에 과제가 있던 날을 찾아 완료여부+시각 표시
@@ -1839,7 +1839,7 @@ async function saveNote(){
     prevDateLabel=fmtDateLabel(prevDate);
     var prevTasksRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('type','hw').eq('date',prevDate);
     var prevHws=prevTasksRes.data||[];
-    prevHwText=prevHws.map(function(t){return (t.student_done?'✔':'✕')+' '+t.title+timeSuffix(t);}).join('\n')||'없음';
+    prevHwText=prevHws.map(function(t){return (t.student_done?'✔':'✕')+' '+t.title;}).join('\n')||'없음';
   }
   var noteContent='📅 Date: '+dateLabel+'\n\n[단어 TEST]\n'+vtText
     +(prevDateLabel?'\n\n[지난 시간 과제 - '+prevDateLabel+']\n'+prevHwText:'')
