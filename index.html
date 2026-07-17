@@ -1983,7 +1983,7 @@ async function submitDailyMsg(){
   if(s.data){
     var teacherRes=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
     if(teacherRes.data&&teacherRes.data.length>0){
-      await sendNotification(teacherRes.data[0].id,'✍️ '+s.data.name+' 학생이 오늘의 반성 한 줄을 작성했어요!','daily',false);
+      await sendNotification(teacherRes.data[0].id,'✍️ '+s.data.name+' 학생이 오늘의 반성 한 줄을 작성했어요!','daily');
     }
   }
   toast('✅ 제출 완료! +5점');
@@ -3402,7 +3402,7 @@ async function notifyHwUnfinishedOnCheckout(sid){
   var s=allStudents?allStudents.find(function(x){return x.id===sid;}):null;
   var sname=s?s.name:'학생';
   var tr=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
-  if(tr.data&&tr.data.length>0)await sendNotification(tr.data[0].id,'✕ '+sname+' 학생이 과제를 다 못 마치고 하원했어요 ('+undone.length+'개 미완료)','hwundone',false);
+  if(tr.data&&tr.data.length>0)await sendNotification(tr.data[0].id,'✕ '+sname+' 학생이 과제를 다 못 마치고 하원했어요 ('+undone.length+'개 미완료)','hwundone');
   var pr=await getSB().from('student_parent').select('parent_id').eq('student_id',sid);
   var parents=pr.data||[];
   for(var i=0;i<parents.length;i++){
@@ -3434,6 +3434,7 @@ async function studentToggle(id,isDone,studentId){
     await loadStudent();
   }
   checkHwCompletionNotify(studentId);
+  notifySingleHwCheck(id,newDone);
 }
 
 var _hwNotifySent={};
@@ -3450,7 +3451,7 @@ async function checkHwCompletionNotify(sid){
   var s=allStudents?allStudents.find(function(x){return x.id===sid;}):null;
   var sname=s?s.name:'학생';
   var tr=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
-  if(tr.data&&tr.data.length>0)await sendNotification(tr.data[0].id,'✔ '+sname+' 학생이 오늘 과제를 100% 완료했어요!','hwdone',false);
+  if(tr.data&&tr.data.length>0)await sendNotification(tr.data[0].id,'✔ '+sname+' 학생이 오늘 과제를 100% 완료했어요!','hwdone');
   var pr=await getSB().from('student_parent').select('parent_id').eq('student_id',sid);
   var parents=pr.data||[];
   for(var i=0;i<parents.length;i++){
@@ -3615,6 +3616,7 @@ async function stToggle(id,isDone,studentId){
   await getSB().from('tasks').update({student_done:newDone,student_done_at:newDone?new Date().toISOString():null}).eq('id',id);
   loadStudentTasks();
   checkHwCompletionNotify(studentId);
+  notifySingleHwCheck(id,newDone);
 }
 
 function setTasksVocabResult(r){
@@ -3641,7 +3643,7 @@ async function submitTasksVocabTest(){
   var sv=await getSB().from('students').select('profile_id,name').eq('id',window._currentStudentRowId).single();
   if(sv.data){
     var tr2=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
-    if(tr2.data&&tr2.data.length>0)await sendNotification(tr2.data[0].id,'📝 '+sv.data.name+' 학생이 단어 TEST를 제출했어요! 확인해주세요','vocab',false);
+    if(tr2.data&&tr2.data.length>0)await sendNotification(tr2.data[0].id,'📝 '+sv.data.name+' 학생이 단어 TEST를 제출했어요! 확인해주세요','vocab');
   }
   toast('✅ 단어 TEST 제출 완료!');
   loadStudentTasks();
@@ -3934,7 +3936,7 @@ async function uploadHwPhoto(){
     loadHwPhotos();
     var s=await getSB().from('students').select('name').eq('id',sid).single();
     var tr=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
-    if(tr.data&&tr.data.length>0&&s.data)await sendNotification(tr.data[0].id,'📸 '+s.data.name+' 학생이 과제 사진 '+successCount+'장을 제출했어요!','hwphoto',false);
+    if(tr.data&&tr.data.length>0&&s.data)await sendNotification(tr.data[0].id,'📸 '+s.data.name+' 학생이 과제 사진 '+successCount+'장을 제출했어요!','hwphoto');
   }
 }
 
@@ -4652,6 +4654,19 @@ async function resolveNeedsCheck(taskId){
   toast('✅ 점검 완료 처리했어요');
   renderTasks();
   loadPrevHwSection(currentStudentId,getOffsetDate(taskDateOffset));
+}
+
+async function notifySingleHwCheck(taskId,newDone){
+  if(!newDone)return; // 체크 해제할 땐 알림 안 보냄
+  var tRes=await getSB().from('tasks').select('type,title,student_id').eq('id',taskId).maybeSingle();
+  if(!tRes.data||tRes.data.type!=='hw')return; // 과제만
+  var sid=tRes.data.student_id;
+  var s=allStudents?allStudents.find(function(x){return x.id===sid;}):null;
+  var sname=s?s.name:'학생';
+  var tr=await getSB().from('profiles').select('id').eq('role','teacher').limit(1);
+  if(tr.data&&tr.data.length>0){
+    await sendNotification(tr.data[0].id,'✔ '+sname+' 학생이 "'+tRes.data.title+'" 과제를 완료했어요','hwitem');
+  }
 }
 
 // ===== 앱 시작 =====
