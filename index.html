@@ -403,6 +403,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <div class="card-header"><span class="card-title">오늘의 할일</span><span class="card-count" id="todo-count"></span></div>
         <div class="card-body" id="todo-list"></div>
         <div class="quick-phrases" id="todo-quick"></div>
+        <label style="display:flex;align-items:center;gap:6px;padding:6px 0;font-size:12px;color:#c0392b;cursor:pointer">
+          <input type="checkbox" id="todo-needs-check" style="width:15px;height:15px;accent-color:#c0392b">
+          🔴 교사 점검 필요
+        </label>
         <div class="add-row">
           <input type="text" class="add-input" id="todo-input" placeholder="할일 입력...">
           <button class="add-btn" onclick="addTask('todo')">추가</button>
@@ -423,6 +427,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
           <input type="date" class="form-input" id="hw-multi-due" style="margin-bottom:6px">
           <button class="btn-primary" style="width:100%;margin-top:4px" onclick="addSelectedHwPhrases()">선택한 문구 일괄 추가</button>
         </div>
+        <label style="display:flex;align-items:center;gap:6px;padding:6px 0;font-size:12px;color:#c0392b;cursor:pointer">
+          <input type="checkbox" id="hw-needs-check" style="width:15px;height:15px;accent-color:#c0392b">
+          🔴 교사 점검 필요
+        </label>
         <div class="add-row">
           <input type="text" class="add-input" id="hw-input" placeholder="과제 입력...">
           <button class="add-btn" onclick="addTask('hw')">추가</button>
@@ -1471,6 +1479,9 @@ function taskHtmlGlobal(t,opts){
   var badge=t.student_done&&!t.teacher_confirmed?'<span class="pill pill-pending" style="margin-left:6px">확인 대기'+timeInfo+'</span>':'';
   var confirmedTimeInfo=(t.teacher_confirmed&&t.student_done_at)?'<span style="font-size:10px;color:#999;margin-left:6px">학생 '+formatKSTTime(t.student_done_at)+''+(t.confirmed_at?' · 확인 '+formatKSTTime(t.confirmed_at):'')+'</span>':'';
   var movedBadge=t.moved_to_hw?'<span class="pill" style="margin-left:6px;background:#F0F4FF;color:#1a56db">과제로 넘김</span>':'';
+  var checkBadge=t.needs_check?'<span class="pill" style="margin-left:6px;background:#FDECEA;color:#c0392b;font-weight:700">🔴 점검 필요</span>':'';
+  var titleStyle=t.needs_check?'color:#c0392b;font-weight:700':'';
+  var rowBorder=t.needs_check?'border-left:4px solid #c0392b;padding-left:8px;background:#FFFAFA':'';
   var actionBtn='';
   if(t.teacher_confirmed){
     actionBtn='<button class="btn-sm-outline" style="flex-shrink:0" onclick="teacherUnmarkTask(\''+t.id+'\');event.stopPropagation()">취소</button>';
@@ -1479,7 +1490,7 @@ function taskHtmlGlobal(t,opts){
   } else {
     actionBtn='<button class="btn-sm" style="flex-shrink:0;background:#1B4D3E" onclick="teacherMarkDone(\''+t.id+'\');event.stopPropagation()">완료 처리</button>';
   }
-  var editBtn='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px" data-id="'+t.id+'" data-type="'+t.type+'" data-title="'+escapeHtml(t.title)+'" onclick="editTaskFromBtn(this);event.stopPropagation()">✏️</button>';
+  var editBtn='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px" data-id="'+t.id+'" data-type="'+t.type+'" data-title="'+escapeHtml(t.title)+'" data-needs-check="'+(t.needs_check?'1':'0')+'" onclick="editTaskFromBtn(this);event.stopPropagation()">✏️</button>';
   var delBtn='<button class="btn-danger" style="flex-shrink:0;margin-left:4px" onclick="deleteTask(\''+t.id+'\');event.stopPropagation()">🗑</button>';
   var moveBtn=(!opts.noMove&&t.type==='todo'&&!t.teacher_confirmed&&!t.moved_to_hw)
     ?'<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px;color:#1a56db;border-color:#1a56db" data-id="'+t.id+'" data-title="'+escapeHtml(t.title)+'" onclick="moveTaskToHomework(this.dataset.id,this.dataset.title);event.stopPropagation()">→과제</button>'
@@ -1487,11 +1498,11 @@ function taskHtmlGlobal(t,opts){
   var canMove=(!opts.noMove&&t.type==='todo'&&!t.teacher_confirmed&&!t.moved_to_hw);
   var dragHandle=opts.noDrag?'':'<span class="drag-handle" style="cursor:grab;color:#ccc;font-size:18px;padding:0 8px 0 0;flex-shrink:0;touch-action:none;user-select:none">⠿</span>';
   var checkbox=opts.noCheckbox?'':'<input type="checkbox" class="task-select-check" data-id="'+t.id+'" style="width:17px;height:17px;margin-right:8px;flex-shrink:0;accent-color:#1B4D3E" onclick="event.stopPropagation()">';
-  return '<div class="task-item '+statusClass+'" data-id="'+t.id+'" data-title="'+escapeHtml(t.title)+'"'+(canMove?' onclick="moveTaskFromRow(this)" style="cursor:pointer"':'')+' data-style="'+(t.student_done&&!t.teacher_confirmed?'1':'0')+'">'
+  return '<div class="task-item '+statusClass+'" data-id="'+t.id+'" data-title="'+escapeHtml(t.title)+'"'+(canMove?' onclick="moveTaskFromRow(this)" style="cursor:pointer;'+rowBorder+'"':(rowBorder?' style="'+rowBorder+'"':''))+' data-style="'+(t.student_done&&!t.teacher_confirmed?'1':'0')+'" data-needs-check="'+(t.needs_check?'1':'0')+'">'
     +dragHandle
     +checkbox
     +'<div class="task-check" style="'+checkStyle+'">'+checkIcon+'</div>'
-    +'<span class="task-text">'+t.title+(t.due_date?'<br><span style="font-size:11px;color:#aaa">기한: '+t.due_date+'</span>':'')+badge+confirmedTimeInfo+movedBadge+'</span>'
+    +'<span class="task-text" style="'+titleStyle+'">'+t.title+(t.due_date?'<br><span style="font-size:11px;color:#aaa">기한: '+t.due_date+'</span>':'')+badge+confirmedTimeInfo+movedBadge+checkBadge+'</span>'
     +'<div class="task-actions" style="display:flex;align-items:center;flex-wrap:wrap">'+actionBtn+moveBtn+editBtn+delBtn+'</div></div>';
 }
 
@@ -1539,7 +1550,7 @@ async function renderTasks(){
   $('todo-list').innerHTML=(todos.length?todoToolbar:'')+'<div id="todo-sortable-wrap">'+todoItemsHtml+'</div>';
   $('hw-list').innerHTML=(hws.length?hwToolbar:'')+'<div id="hw-sortable-wrap">'+hwItemsHtml+'</div>';
   document.querySelectorAll('#todo-list .task-item[data-style="1"], #hw-list .task-item[data-style="1"]').forEach(function(el){
-    el.style.background='#FFFBF0';
+    if(el.dataset.needsCheck!=='1')el.style.background='#FFFBF0';
   });
   initTaskSortable('todo-sortable-wrap','todo');
   initTaskSortable('hw-sortable-wrap','hw');
@@ -1696,25 +1707,30 @@ async function addTask(type){
   var input=$(type==='todo'?'todo-input':'hw-input');
   var title=input.value.trim();
   if(!title||!currentStudentId){toast('내용을 입력해주세요');return;}
-  var data={student_id:currentStudentId,title:title,type:type,date:getOffsetDate(taskDateOffset),is_done:false,student_done:false,teacher_confirmed:false};
+  var checkEl=$(type==='todo'?'todo-needs-check':'hw-needs-check');
+  var data={student_id:currentStudentId,title:title,type:type,date:getOffsetDate(taskDateOffset),is_done:false,student_done:false,teacher_confirmed:false,needs_check:checkEl?checkEl.checked:false};
   if(type==='hw'&&$('hw-due').value)data.due_date=$('hw-due').value;
   var res=await getSB().from('tasks').insert(data);
   if(res.error){toast('오류: '+res.error.message);return;}
-  input.value='';if(type==='hw')$('hw-due').value='';
+  input.value='';if(type==='hw')$('hw-due').value='';if(checkEl)checkEl.checked=false;
   await renderTasks();
 }
 
 function editTaskFromBtn(btn){
-  editTask(btn.dataset.id,btn.dataset.title,btn.dataset.type);
+  editTask(btn.dataset.id,btn.dataset.title,btn.dataset.type,btn.dataset.needsCheck==='1');
 }
 
-function editTask(id,title,type){
+function editTask(id,title,type,needsCheck){
   openMod('할일 수정',
     '<div class="form-group" style="padding-top:16px">'+
     '<label class="form-label">내용</label>'+
     '<input type="text" class="form-input" id="edit-task-input" value="'+escapeHtml(title)+'">'+
     '</div>'+
     (type==='hw'?'<div class="form-group"><label class="form-label">제출 기한</label><input type="date" class="form-input" id="edit-task-due"></div>':'')+
+    '<label style="display:flex;align-items:center;gap:6px;padding:8px 0;font-size:13px;color:#c0392b;cursor:pointer">'+
+    '<input type="checkbox" id="edit-task-needs-check" style="width:16px;height:16px;accent-color:#c0392b"'+(needsCheck?' checked':'')+'>'+
+    '🔴 교사 점검 필요'+
+    '</label>'+
     '<div class="p16"><button class="btn-primary" id="update-task-btn" data-id="'+id+'" data-type="'+type+'">수정 완료</button></div>'
   );
   setTimeout(function(){
@@ -1725,7 +1741,8 @@ function editTask(id,title,type){
 async function updateTask(id,type){
   var title=$('edit-task-input').value.trim();
   if(!title){toast('내용을 입력해주세요');return;}
-  var data={title:title};
+  var checkEl=$('edit-task-needs-check');
+  var data={title:title,needs_check:checkEl?checkEl.checked:false};
   if(type==='hw'&&$('edit-task-due')&&$('edit-task-due').value)data.due_date=$('edit-task-due').value;
   var res=await getSB().from('tasks').update(data).eq('id',id);
   if(res.error){toast('오류: '+res.error.message);return;}
@@ -1808,7 +1825,6 @@ async function saveNote(){
     return;
   }
   var feedback=$('note-feedback').value.trim();
-  if(!feedback){toast('피드백을 입력해주세요');return;}
   var res=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',today);
   var tasks=res.data||[];
   var d2=new Date();var monday2=new Date(d2);monday2.setDate(d2.getDate()-d2.getDay()+1);
@@ -2502,7 +2518,11 @@ async function openNotifPanel(){
         +'<span style="font-size:18px">'+(n.type==='attend'?'🏫':n.type==='task'?'✅':n.type==='note'?'📝':'🔔')+'</span>'
         +'<div><div style="font-size:13px">'+n.message+'</div><div style="font-size:11px;color:#aaa">'+n.created_at.slice(0,16).replace('T',' ')+'</div></div>'
         +'</div>';
-    }).join(''):'<div style="padding:24px;text-align:center;color:#aaa">알림이 없어요</div>')+'</div>'
+    }).join(''):'<div style="padding:24px;text-align:center;color:#aaa">알림이 없어요</div>')
+    +'<div style="padding:12px 16px;border-top:1px solid #F5F5F5;text-align:center">'
+    +'<button onclick="sendTestPushToMe()" style="background:none;border:1.5px dashed #ccc;color:#999;padding:8px 14px;border-radius:20px;font-size:11px;cursor:pointer;font-family:inherit">🔔 테스트 알림 보내보기</button>'
+    +'</div>'
+    +'</div>'
   );
 }
 async function sendNotification(targetId,message,type,sendPush){
@@ -4562,6 +4582,9 @@ async function updatePushButtonState(isOn){
       btn.style.background='#fff';btn.style.color='#1B4D3E';
     }
   });
+  document.querySelectorAll('.push-test-btn').forEach(function(btn){
+    btn.style.display=isOn?'inline-block':'none';
+  });
 }
 
 async function checkPushStatus(){
@@ -4599,15 +4622,32 @@ function renderPushBanner(){
   banner.style.cssText='position:fixed;bottom:70px;left:12px;right:12px;background:#1B4D3E;color:#fff;border-radius:14px;padding:14px 16px;z-index:9998;box-shadow:0 4px 20px rgba(0,0,0,0.3);display:flex;align-items:center;gap:12px';
   banner.innerHTML='<span style="font-size:26px">🔔</span>'
     +'<div style="flex:1;font-size:13px;line-height:1.5">알림을 켜면 등하원·성장노트·문의 답변을<br>휴대폰으로 바로 받을 수 있어요!</div>'
-    +'<button onclick="enablePushNotifications();closePushBanner()" style="background:#F0C040;color:#1B4D3E;border:none;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0">켜기</button>'
+    +'<button onclick="handlePushEnableClick()" style="background:#F0C040;color:#1B4D3E;border:none;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0">켜기</button>'
     +'<button onclick="closePushBanner()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:24px;height:24px;border-radius:50%;font-size:12px;cursor:pointer;flex-shrink:0">✕</button>';
   document.body.appendChild(banner);
+}
+
+async function handlePushEnableClick(){
+  await enablePushNotifications();
+  var banner=document.getElementById('push-banner');
+  if(!banner)return;
+  banner.innerHTML='<span style="font-size:26px">✅</span>'
+    +'<div style="flex:1;font-size:13px;line-height:1.5">알림이 켜졌어요!<br>테스트로 진짜 오는지 확인해보세요</div>'
+    +'<button onclick="sendTestPushToMe()" style="background:#F0C040;color:#1B4D3E;border:none;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0">테스트 보내기</button>'
+    +'<button onclick="closePushBanner()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:24px;height:24px;border-radius:50%;font-size:12px;cursor:pointer;flex-shrink:0">✕</button>';
 }
 
 function closePushBanner(){
   var b=document.getElementById('push-banner');
   if(b)b.remove();
   localStorage.setItem('pushBannerClosed','1');
+}
+
+async function sendTestPushToMe(){
+  if(!currentUser){toast('로그인이 필요해요');return;}
+  toast('테스트 알림을 보내는 중...');
+  await sendNotification(currentUser.id,'🔔 테스트 알림이에요! 이게 보이면 푸시 알림이 정상 작동하는 거예요 ✅','test');
+  toast('전송했어요! 몇 초 안에 휴대폰 알림이 오는지 확인해보세요');
 }
 
 // ===== 앱 시작 =====
