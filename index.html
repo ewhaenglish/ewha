@@ -849,13 +849,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
   <div id="p-note" class="p-tab content">
     <div class="date-banner">
       <div><div class="date-main">이화성장노트</div></div>
-      <div style="display:flex;align-items:center;gap:6px">
-        <button onclick="changeNoteDate(-1)" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">◀</button>
-        <span id="p-note-date-label" style="color:#fff;font-size:11px;white-space:nowrap">오늘</span>
-        <button onclick="changeNoteDate(1)" style="background:rgba(255,255,255,0.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;font-size:14px;cursor:pointer">▶</button>
-      </div>
     </div>
-    <div id="p-note-list"></div>
+    <div id="p-note-list" style="padding:12px"></div>
   </div>
 
   <!-- 학부모 문의 탭 -->
@@ -1479,7 +1474,7 @@ function taskHtmlGlobal(t,opts){
   var badge=t.student_done&&!t.teacher_confirmed?'<span class="pill pill-pending" style="margin-left:6px">확인 대기'+timeInfo+'</span>':'';
   var confirmedTimeInfo=(t.teacher_confirmed&&t.student_done_at)?'<span style="font-size:10px;color:#999;margin-left:6px">학생 '+formatKSTTime(t.student_done_at)+''+(t.confirmed_at?' · 확인 '+formatKSTTime(t.confirmed_at):'')+'</span>':'';
   var movedBadge=t.moved_to_hw?'<span class="pill" style="margin-left:6px;background:#F0F4FF;color:#1a56db">과제로 넘김</span>':'';
-  var checkBadge=t.needs_check?'<span class="pill" style="margin-left:6px;background:#FDECEA;color:#c0392b;font-weight:700">🔴 점검 필요</span>':'';
+  var checkBadge=t.needs_check?'<button class="pill" style="margin-left:6px;background:#FDECEA;color:#c0392b;font-weight:700;border:1.5px solid #c0392b;cursor:pointer" data-id="'+t.id+'" onclick="resolveNeedsCheck(this.dataset.id);event.stopPropagation()">🔴 점검 필요 (누르면 완료)</button>':'';
   var titleStyle=t.needs_check?'color:#c0392b;font-weight:700':'';
   var rowBorder=t.needs_check?'border-left:4px solid #c0392b;padding-left:8px;background:#FFFAFA':'';
   var actionBtn='';
@@ -2248,35 +2243,36 @@ async function loadChildData(idx){
 async function loadParentNotes(){
   if(!parentChildren.length){$('p-note-list').innerHTML='<div style="padding:16px;color:#aaa;text-align:center">연동된 자녀가 없어요</div>';return;}
   var student=parentChildren[currentChildIndex||0];
-  var dateStr=getOffsetDate(noteDateOffset);
-  var res=await getSB().from('growth_notes').select('*').eq('student_id',student.id).eq('date',dateStr).maybeSingle();
-  var n=res.data;
-  if(!n){
-    $('p-note-list').innerHTML='<div style="padding:40px 16px;color:#aaa;text-align:center;font-size:13px">이 날짜엔 성장노트가 없어요</div>';
+  var res=await getSB().from('growth_notes').select('*').eq('student_id',student.id).order('date',{ascending:false});
+  var notes=res.data||[];
+  if(!notes.length){
+    $('p-note-list').innerHTML='<div style="padding:40px 16px;color:#aaa;text-align:center;font-size:13px">아직 성장노트가 없어요</div>';
     return;
   }
-  var d=new Date(n.date);
   var days=['일','월','화','수','목','금','토'];
-  var dateLabel=d.getFullYear()+'. '+String(d.getMonth()+1).padStart(2,'0')+'. '+String(d.getDate()).padStart(2,'0')+' ('+days[d.getDay()]+')';
-  var c=n.content||'';
-  var isAbsent=/\[결석\]/.test(c);
-  function extractSection(label){
-    var re=new RegExp('\\['+label+'[^\\]]*\\]\\n([\\s\\S]*?)(?=\\n\\[|$)');
-    var m=c.match(re);return m?m[1].trim():'';
-  }
-  var vocab=extractSection('단어 TEST');
-  var todos=extractSection('오늘의 할 일');
-  var hws=extractSection('오늘의 과제');
-  var prevHw=extractSection('지난 시간 과제');
-  var prevMatch=c.match(/\[지난 시간 과제 - ([^\]]+)\]/);
-  var prevDateLabel=prevMatch?prevMatch[1]:'';
-  var goal=extractSection('이번 주 각오');
-  var feedback=extractSection('피드백');
-  $('p-note-list').innerHTML=buildNoteHtml(student.name,dateLabel,vocab,todos,hws,goal,feedback,n.id,prevHw,prevDateLabel,isAbsent?true:null,isAbsent).replace('<button onclick="closeMod()" class="btn-primary" style="width:100%;margin-top:4px">확인</button>','');
-  loadNoteComments(n.id);
-  if(!n.parent_read_at){
-    getSB().from('growth_notes').update({parent_read_at:new Date().toISOString()}).eq('id',n.id).then(function(){});
-  }
+  $('p-note-list').innerHTML=notes.map(function(n){
+    var d=new Date(n.date);
+    var dateLabel=(d.getMonth()+1)+'월 '+d.getDate()+'일('+days[d.getDay()]+')';
+    var c=n.content||'';
+    var isAbsent=/\[결석\]/.test(c);
+    var preview;
+    if(isAbsent){
+      preview='<span style="color:#E24B4A;font-weight:700">결석</span>';
+    } else {
+      var fbMatch=c.match(/\[피드백[^\]]*\]\n([\s\S]*?)(?=\n\[|$)/);
+      var fb=fbMatch?fbMatch[1].trim():'';
+      if(!fb){
+        var todoMatch=c.match(/\[오늘의 할 일[^\]]*\]\n([\s\S]*?)(?=\n\[|$)/);
+        fb=todoMatch?todoMatch[1].trim().split('\n').join(' · '):'';
+      }
+      preview=escapeHtml(fb).slice(0,50)||'내용을 확인해보세요';
+    }
+    var unread=!n.parent_read_at?'<span style="width:8px;height:8px;border-radius:50%;background:#F0C040;display:inline-block;margin-left:6px"></span>':'';
+    return '<div onclick="openNoteDetail(\''+n.id+'\')" style="background:#fff;border:1px solid #E8E8E8;border-radius:12px;overflow:hidden;margin-bottom:10px;cursor:pointer">'
+      +'<div style="background:#1B4D3E;padding:9px 14px;font-size:13px;font-weight:700;color:#fff;display:flex;align-items:center">'+dateLabel+unread+'</div>'
+      +'<div style="padding:12px 14px"><div style="font-size:13px;color:#333;line-height:1.6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+preview+'</div></div>'
+      +'</div>';
+  }).join('');
 }
 
 // ===== PDF 저장 =====
@@ -4648,6 +4644,14 @@ async function sendTestPushToMe(){
   toast('테스트 알림을 보내는 중...');
   await sendNotification(currentUser.id,'🔔 테스트 알림이에요! 이게 보이면 푸시 알림이 정상 작동하는 거예요 ✅','test');
   toast('전송했어요! 몇 초 안에 휴대폰 알림이 오는지 확인해보세요');
+}
+
+async function resolveNeedsCheck(taskId){
+  var res=await getSB().from('tasks').update({needs_check:false}).eq('id',taskId);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('✅ 점검 완료 처리했어요');
+  renderTasks();
+  loadPrevHwSection(currentStudentId,getOffsetDate(taskDateOffset));
 }
 
 // ===== 앱 시작 =====
