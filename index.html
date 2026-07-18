@@ -1055,16 +1055,19 @@ function tTab(id,btn){
   document.querySelectorAll('.t-tab').forEach(function(t){t.classList.remove('active');});
   document.querySelectorAll('#screen-teacher .nav-item').forEach(function(b){b.classList.remove('active');});
   $(id).classList.add('active');if(btn)btn.classList.add('active');setDate();
+  window.scrollTo(0,0);
 }
 function sTab(id,btn){
   document.querySelectorAll('.s-tab').forEach(function(t){t.classList.remove('active');});
   document.querySelectorAll('#screen-student .nav-item').forEach(function(b){b.classList.remove('active');});
   $(id).classList.add('active');if(btn)btn.classList.add('active');
+  window.scrollTo(0,0);
 }
 function pTab(id,btn){
   document.querySelectorAll('.p-tab').forEach(function(t){t.classList.remove('active');});
   document.querySelectorAll('#screen-parent .nav-item').forEach(function(b){b.classList.remove('active');});
   $(id).classList.add('active');if(btn)btn.classList.add('active');
+  window.scrollTo(0,0);
 }
 
 // ===== 선생님 =====
