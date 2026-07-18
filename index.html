@@ -796,6 +796,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <button class="logout-btn" onclick="doLogout()">로그아웃</button>
     </div>
   </div>
+  <div id="p-child-tabs-global" class="hidden" style="display:flex;gap:8px;padding:10px 16px;background:#F5F5F0;border-bottom:1px solid #E8E8E8;overflow-x:auto"></div>
   <!-- 소개 탭 -->
   <div id="p-intro" class="p-tab p-intro-tab" style="min-height:100vh;background:#1B4D3E;flex-direction:column">
     <div style="padding:48px 24px 24px;text-align:center;flex-shrink:0">
@@ -827,7 +828,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
       <div class="date-sub" id="p-child">학습 현황</div>
     </div>
-    <div id="p-child-tabs" class="hidden" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"></div>
     <div id="p-notice-area"></div>
     <!-- 달력 -->
     <div class="calendar-wrap">
@@ -2210,28 +2210,41 @@ async function confirmMsg(id,type){
 async function loadParent(){
   var res=await getSB().from('student_parent').select('*, students(*)').eq('parent_id',currentProfile.id);
   parentChildren=(res.data||[]).map(function(l){return l.students;}).filter(Boolean);
+  var gtabs=$('p-child-tabs-global');
   if(!parentChildren.length){
-    $('p-attend').innerHTML='<div style="padding:16px;color:#aaa;text-align:center">연동된 자녀가 없어요<br>하단 자녀추가 버튼을 눌러 초대코드를 입력해주세요</div>';
+    $('p-notice-area').innerHTML='<div style="padding:16px;color:#aaa;text-align:center">연동된 자녀가 없어요<br>하단 자녀추가 버튼을 눌러 초대코드를 입력해주세요</div>';
     $('p-child').textContent='자녀를 연동해주세요';
+    gtabs.classList.add('hidden');gtabs.style.display='none';
     renderCalendar('p');
     return;
   }
-  // 자녀 탭
-  var tabs=$('p-child-tabs');
   if(parentChildren.length>1){
-    tabs.style.display='flex';
-    tabs.innerHTML=parentChildren.map(function(c,i){
-      return '<button onclick="switchChild('+i+')" id="ctab-'+i+'" style="padding:6px 16px;border:none;background:'+(i===0?'#1B4D3E':'#F5F5F5')+';color:'+(i===0?'#fff':'#666')+';border-radius:20px;font-size:12px;cursor:pointer;font-family:inherit">'+c.name+'</button>';
+    // 자녀별 성장노트 미확인 여부 확인
+    var unreadByChild={};
+    await Promise.all(parentChildren.map(async function(c){
+      var r=await getSB().from('growth_notes').select('id',{count:'exact',head:true}).eq('student_id',c.id).is('parent_read_at',null);
+      unreadByChild[c.id]=(r.count||0)>0;
+    }));
+    gtabs.classList.remove('hidden');gtabs.style.display='flex';
+    gtabs.innerHTML=parentChildren.map(function(c,i){
+      var dot=unreadByChild[c.id]?'<span style="width:7px;height:7px;border-radius:50%;background:#E24B4A;display:inline-block;margin-left:5px"></span>':'';
+      return '<button onclick="switchChild('+i+')" id="ctab-'+i+'" style="padding:7px 16px;border:none;background:'+(i===(currentChildIndex||0)?'#1B4D3E':'#fff')+';color:'+(i===(currentChildIndex||0)?'#fff':'#666')+';border:1px solid '+(i===(currentChildIndex||0)?'#1B4D3E':'#E0E0E0')+';border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;white-space:nowrap;flex-shrink:0">'+c.name+dot+'</button>';
     }).join('');
+  } else {
+    gtabs.classList.add('hidden');gtabs.style.display='none';
   }
-  loadChildData(0);
+  loadChildData(currentChildIndex||0);
 }
 function switchChild(idx){
   currentChildIndex=idx;
   document.querySelectorAll('[id^="ctab-"]').forEach(function(b,i){
-    b.style.background=i===idx?'#1B4D3E':'#F5F5F5';b.style.color=i===idx?'#fff':'#666';
+    var on=i===idx;
+    b.style.background=on?'#1B4D3E':'#fff';b.style.color=on?'#fff':'#666';b.style.border='1px solid '+(on?'#1B4D3E':'#E0E0E0');
   });
-  loadChildData(idx);
+  // 현재 열려있는 탭을 그 자리에서 새로고침
+  if($('p-note').classList.contains('active')){loadParentNotes();}
+  else if($('p-inquiry').classList.contains('active')){loadParentInquiries();}
+  else{loadChildData(idx);}
 }
 async function loadChildData(idx){
   var student=parentChildren[idx];
