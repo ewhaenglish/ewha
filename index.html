@@ -1118,14 +1118,16 @@ async function renderTeacherHome(){
     } else if(att&&att.check_in){
       attHtml='<span style="color:#1B4D3E;font-weight:700">등원 '+formatKSTTime(att.check_in)+'</span>'
         +(att.check_out?' <span style="color:#888">· 하원 '+formatKSTTime(att.check_out)+'</span>':' <span style="color:#F0A030">· 하원 전</span>');
-      attBtns=att.check_out
+      attBtns=(att.check_out
         ?'<button class="btn-sm-outline" data-sid="'+s.id+'" onclick="teacherCheckOut(this.dataset.sid);event.stopPropagation()">하원취소</button>'
         :'<button class="btn-sm" style="background:#1B4D3E" data-sid="'+s.id+'" onclick="teacherCheckOut(this.dataset.sid);event.stopPropagation()">하원</button>'
-        +' <button class="btn-sm-outline" data-sid="'+s.id+'" onclick="teacherCheckIn(this.dataset.sid);event.stopPropagation()">등원취소</button>';
+        +' <button class="btn-sm-outline" data-sid="'+s.id+'" onclick="teacherCheckIn(this.dataset.sid);event.stopPropagation()">등원취소</button>')
+        +' <button class="btn-sm-outline" data-sid="'+s.id+'" onclick="openAttendTimeEdit(this.dataset.sid);event.stopPropagation()">✏️ 시간수정</button>';
     } else {
       attHtml='<span style="color:#ccc">미등원</span>';
       attBtns='<button class="btn-sm" style="background:#1B4D3E" data-sid="'+s.id+'" onclick="teacherCheckIn(this.dataset.sid);event.stopPropagation()">등원</button>'
-        +' <button class="btn-sm-outline" style="color:#E24B4A;border-color:#E24B4A" data-sid="'+s.id+'" onclick="teacherMarkAbsent(this.dataset.sid);event.stopPropagation()">결석</button>';
+        +' <button class="btn-sm-outline" style="color:#E24B4A;border-color:#E24B4A" data-sid="'+s.id+'" onclick="teacherMarkAbsent(this.dataset.sid);event.stopPropagation()">결석</button>'
+        +' <button class="btn-sm-outline" data-sid="'+s.id+'" onclick="openAttendTimeEdit(this.dataset.sid);event.stopPropagation()">✏️ 시간수정</button>';
     }
     return '<div class="student-row" onclick="goToConfirm(\''+s.id+'\')">'
       +'<div class="avatar">'+s.name.charAt(0)+'</div>'
@@ -1168,6 +1170,56 @@ async function teacherCheckOut(sid){
   toast('🏠 하원 처리했어요!');
   renderTeacherHome();
   notifyHwUnfinishedOnCheckout(sid);
+}
+
+// KST 'HH:MM' 입력값을 그 날짜의 정확한 UTC ISO 문자열로 변환
+function kstInputToISO(dateStr,timeStr){
+  var d=dateStr.split('-').map(Number);
+  var t=timeStr.split(':').map(Number);
+  var utcMs=Date.UTC(d[0],d[1]-1,d[2],t[0],t[1],0)-9*60*60*1000;
+  return new Date(utcMs).toISOString();
+}
+
+function openAttendTimeEdit(sid){
+  var s=allStudents.find(function(x){return x.id===sid;});
+  if(!s)return;
+  getSB().from('attendance').select('*').eq('student_id',sid).eq('date',todayStr()).maybeSingle().then(function(res){
+    var att=res.data||{};
+    var inTime=att.check_in?formatKSTTime(att.check_in):'';
+    var outTime=att.check_out?formatKSTTime(att.check_out):'';
+    var html='<div style="padding:16px">'
+      +'<div class="form-group"><label class="form-label">등원 시간</label><input type="time" class="form-input" id="att-edit-in" value="'+inTime+'"></div>'
+      +'<div class="form-group"><label class="form-label">하원 시간</label><input type="time" class="form-input" id="att-edit-out" value="'+outTime+'"></div>'
+      +'<div style="font-size:12px;color:#aaa;margin:2px 0 14px">비워두면 해당 기록은 지워져요</div>'
+      +'<button class="btn-primary" onclick="saveAttendTimeEdit(\''+sid+'\')" style="width:100%">최종입력</button>'
+      +'</div>';
+    openMod(s.name+' 등하원 시간 수정',html);
+  });
+}
+
+async function saveAttendTimeEdit(sid){
+  var inEl=document.getElementById('att-edit-in');
+  var outEl=document.getElementById('att-edit-out');
+  var inVal=inEl?inEl.value:'';
+  var outVal=outEl?outEl.value:'';
+  var date=todayStr();
+  var updateData={
+    check_in:inVal?kstInputToISO(date,inVal):null,
+    check_out:outVal?kstInputToISO(date,outVal):null
+  };
+  var existing=await getSB().from('attendance').select('id').eq('student_id',sid).eq('date',date).maybeSingle();
+  var res;
+  if(existing.data){
+    res=await getSB().from('attendance').update(updateData).eq('id',existing.data.id);
+  } else {
+    if(!inVal&&!outVal){toast('시간을 입력해주세요');return;}
+    var insertData={student_id:sid,date:date,check_in:updateData.check_in,check_out:updateData.check_out};
+    res=await getSB().from('attendance').insert(insertData);
+  }
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('✅ 등하원 시간을 저장했어요');
+  closeMod();
+  renderTeacherHome();
 }
 
 async function teacherMarkAbsent(sid){
@@ -1556,6 +1608,14 @@ async function autoGenerateVocabTestTodo(sid,todayDateStr){
   }catch(e){/* 자동 생성 실패해도 기존 화면엔 영향 없게 조용히 무시 */}
 }
 
+function toggleDoneTasks(id,headerEl){
+  var el=document.getElementById(id);
+  if(!el)return;
+  var show=el.style.display==='none';
+  el.style.display=show?'block':'none';
+  if(headerEl)headerEl.textContent=headerEl.textContent.replace(show?'눌러서 보기':'눌러서 숨기기',show?'눌러서 숨기기':'눌러서 보기');
+}
+
 async function renderTasks(){
   if(!currentStudentId)return;
   var today=getOffsetDate(taskDateOffset);
@@ -1579,10 +1639,22 @@ async function renderTasks(){
     +'<button class="btn-sm-outline" onclick="bulkDeleteTasks(\'hw-list\')">🗑 선택 삭제</button>'
     +'<button class="btn-sm-outline" onclick="bulkMoveDateTasks(\'hw-list\')">📅 선택 날짜이동</button>'
     +'</div>';
-  var todoItemsHtml=todos.map(function(t){return taskHtmlGlobal(t);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
-  var hwItemsHtml=hws.map(function(t){return taskHtmlGlobal(t);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">과제가 없어요</div>';
-  $('todo-list').innerHTML=(todos.length?todoToolbar:'')+'<div id="todo-sortable-wrap">'+todoItemsHtml+'</div>';
-  $('hw-list').innerHTML=(hws.length?hwToolbar:'')+'<div id="hw-sortable-wrap">'+hwItemsHtml+'</div>';
+  var todoActive=todos.filter(function(t){return !t.teacher_confirmed;});
+  var todoDone=todos.filter(function(t){return t.teacher_confirmed;});
+  var hwActive=hws.filter(function(t){return !t.teacher_confirmed;});
+  var hwDone=hws.filter(function(t){return t.teacher_confirmed;});
+  var todoItemsHtml=todoActive.map(function(t){return taskHtmlGlobal(t);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
+  var hwItemsHtml=hwActive.map(function(t){return taskHtmlGlobal(t);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">과제가 없어요</div>';
+  var todoDoneHtml=todoDone.length
+    ?'<div onclick="toggleDoneTasks(\'todo-done-list\',this)" style="padding:8px 16px;font-size:12px;color:#1B4D3E;font-weight:700;cursor:pointer;border-top:1px solid #F5F5F5;user-select:none">✅ 완료 '+todoDone.length+'개 (눌러서 보기)</div>'
+      +'<div id="todo-done-list" style="display:none">'+todoDone.map(function(t){return taskHtmlGlobal(t);}).join('')+'</div>'
+    :'';
+  var hwDoneHtml=hwDone.length
+    ?'<div onclick="toggleDoneTasks(\'hw-done-list\',this)" style="padding:8px 16px;font-size:12px;color:#1B4D3E;font-weight:700;cursor:pointer;border-top:1px solid #F5F5F5;user-select:none">✅ 완료 '+hwDone.length+'개 (눌러서 보기)</div>'
+      +'<div id="hw-done-list" style="display:none">'+hwDone.map(function(t){return taskHtmlGlobal(t);}).join('')+'</div>'
+    :'';
+  $('todo-list').innerHTML=(todos.length?todoToolbar:'')+'<div id="todo-sortable-wrap">'+todoItemsHtml+'</div>'+todoDoneHtml;
+  $('hw-list').innerHTML=(hws.length?hwToolbar:'')+'<div id="hw-sortable-wrap">'+hwItemsHtml+'</div>'+hwDoneHtml;
   document.querySelectorAll('#todo-list .task-item[data-style="1"], #hw-list .task-item[data-style="1"]').forEach(function(el){
     if(el.dataset.needsCheck!=='1')el.style.background='#FFFBF0';
   });
