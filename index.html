@@ -1556,14 +1556,6 @@ async function autoGenerateVocabTestTodo(sid,todayDateStr){
   }catch(e){/* 자동 생성 실패해도 기존 화면엔 영향 없게 조용히 무시 */}
 }
 
-function toggleDoneTasks(id,headerEl){
-  var el=document.getElementById(id);
-  if(!el)return;
-  var show=el.style.display==='none';
-  el.style.display=show?'block':'none';
-  if(headerEl)headerEl.textContent=headerEl.textContent.replace(show?'눌러서 보기':'눌러서 숨기기',show?'눌러서 숨기기':'눌러서 보기');
-}
-
 async function renderTasks(){
   if(!currentStudentId)return;
   var today=getOffsetDate(taskDateOffset);
@@ -1587,22 +1579,10 @@ async function renderTasks(){
     +'<button class="btn-sm-outline" onclick="bulkDeleteTasks(\'hw-list\')">🗑 선택 삭제</button>'
     +'<button class="btn-sm-outline" onclick="bulkMoveDateTasks(\'hw-list\')">📅 선택 날짜이동</button>'
     +'</div>';
-  var todoActive=todos.filter(function(t){return !t.teacher_confirmed;});
-  var todoDone=todos.filter(function(t){return t.teacher_confirmed;});
-  var hwActive=hws.filter(function(t){return !t.teacher_confirmed;});
-  var hwDone=hws.filter(function(t){return t.teacher_confirmed;});
-  var todoItemsHtml=todoActive.map(function(t){return taskHtmlGlobal(t);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
-  var hwItemsHtml=hwActive.map(function(t){return taskHtmlGlobal(t);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">과제가 없어요</div>';
-  var todoDoneHtml=todoDone.length
-    ?'<div onclick="toggleDoneTasks(\'todo-done-list\',this)" style="padding:8px 16px;font-size:12px;color:#1B4D3E;font-weight:700;cursor:pointer;border-top:1px solid #F5F5F5;user-select:none">✅ 완료 '+todoDone.length+'개 (눌러서 보기)</div>'
-      +'<div id="todo-done-list" style="display:none">'+todoDone.map(function(t){return taskHtmlGlobal(t);}).join('')+'</div>'
-    :'';
-  var hwDoneHtml=hwDone.length
-    ?'<div onclick="toggleDoneTasks(\'hw-done-list\',this)" style="padding:8px 16px;font-size:12px;color:#1B4D3E;font-weight:700;cursor:pointer;border-top:1px solid #F5F5F5;user-select:none">✅ 완료 '+hwDone.length+'개 (눌러서 보기)</div>'
-      +'<div id="hw-done-list" style="display:none">'+hwDone.map(function(t){return taskHtmlGlobal(t);}).join('')+'</div>'
-    :'';
-  $('todo-list').innerHTML=(todos.length?todoToolbar:'')+'<div id="todo-sortable-wrap">'+todoItemsHtml+'</div>'+todoDoneHtml;
-  $('hw-list').innerHTML=(hws.length?hwToolbar:'')+'<div id="hw-sortable-wrap">'+hwItemsHtml+'</div>'+hwDoneHtml;
+  var todoItemsHtml=todos.map(function(t){return taskHtmlGlobal(t);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
+  var hwItemsHtml=hws.map(function(t){return taskHtmlGlobal(t);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">과제가 없어요</div>';
+  $('todo-list').innerHTML=(todos.length?todoToolbar:'')+'<div id="todo-sortable-wrap">'+todoItemsHtml+'</div>';
+  $('hw-list').innerHTML=(hws.length?hwToolbar:'')+'<div id="hw-sortable-wrap">'+hwItemsHtml+'</div>';
   document.querySelectorAll('#todo-list .task-item[data-style="1"], #hw-list .task-item[data-style="1"]').forEach(function(el){
     if(el.dataset.needsCheck!=='1')el.style.background='#FFFBF0';
   });
