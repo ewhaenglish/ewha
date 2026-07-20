@@ -273,6 +273,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
       <div class="date-sub" id="t-day"></div>
     </div>
+    <div id="t-needscheck-section" style="display:none">
+      <div class="section-hd">🔴 교사 점검 필요</div>
+      <div class="card" style="margin-bottom:12px;border:1.5px solid #c0392b">
+        <div class="card-body" id="t-needscheck-list"></div>
+      </div>
+    </div>
     <div id="t-reminder-section" style="display:none">
       <div class="section-hd">오늘 과제 미제출</div>
       <div class="card" style="margin-bottom:12px">
@@ -1080,6 +1086,7 @@ async function loadTeacher(){
   loadTeacherMsgs();
   loadTeacherInquiries();
   loadHwReminder();
+  loadNeedsCheckSummary();
   loadNotices();
   checkNotifications();
   startClassEndAlertPolling();
@@ -4343,6 +4350,47 @@ function loadMileHistoryFromSel(){
   var sel=document.getElementById('mile-student-sel');
   loadMileHistory(sel?sel.value:'');
 }
+// ===== 교사 점검 필요 통합 요약 =====
+async function loadNeedsCheckSummary(){
+  var section=document.getElementById('t-needscheck-section');
+  var el=document.getElementById('t-needscheck-list');
+  if(!el||!section)return;
+  try{
+    var res=await getSB().from('tasks').select('*').eq('needs_check',true).order('date',{ascending:true});
+    if(res.error){section.style.display='none';return;}
+    var items=res.data||[];
+    if(!items.length){section.style.display='none';return;}
+    section.style.display='block';
+    var days=['일','월','화','수','목','금','토'];
+    el.innerHTML=items.map(function(t){
+      var s=allStudents.find(function(x){return x.id===t.student_id;});
+      var sname=s?s.name:'학생';
+      var d=new Date(t.date);
+      var dateLabel=(d.getMonth()+1)+'/'+d.getDate()+'('+days[d.getDay()]+')';
+      var typeLabel=t.type==='hw'?'과제':'할일';
+      return '<div style="padding:10px 16px;border-bottom:1px solid #F5F5F5">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:11px;color:#aaa;margin-bottom:2px">'+dateLabel+' · '+typeLabel+'</div>'
+        +'<div style="font-size:14px;font-weight:700;color:#c0392b">'+escapeHtml(sname)+'</div>'
+        +'<div style="font-size:13px;color:#333;margin-top:2px">'+escapeHtml(t.title||'')+'</div>'
+        +'</div>'
+        +'<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">'
+        +'<button onclick="goToConfirmDate(\''+t.student_id+'\',\''+t.date+'\')" style="padding:5px 10px;background:#1B4D3E;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">바로가기</button>'
+        +'<button onclick="resolveNeedsCheckFromSummary(\''+t.id+'\')" style="padding:5px 10px;background:#fff;color:#c0392b;border:1.5px solid #c0392b;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">완료</button>'
+        +'</div></div></div>';
+    }).join('');
+  }catch(e){section.style.display='none';}
+}
+
+async function resolveNeedsCheckFromSummary(taskId){
+  var res=await getSB().from('tasks').update({needs_check:false}).eq('id',taskId);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('✅ 점검 완료 처리했어요');
+  loadNeedsCheckSummary();
+  if(currentStudentId)renderTasks();
+}
+
 // ===== 과제 미제출 리마인더 =====
 async function loadHwReminder(){
   var section=document.getElementById('t-reminder-section');
@@ -4722,6 +4770,7 @@ async function resolveNeedsCheck(taskId){
   toast('✅ 점검 완료 처리했어요');
   renderTasks();
   loadPrevHwSection(currentStudentId,getOffsetDate(taskDateOffset));
+  loadNeedsCheckSummary();
 }
 
 async function notifySingleHwCheck(taskId,newDone){
