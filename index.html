@@ -1521,9 +1521,35 @@ async function loadPrevHwSection(sid,todayDateStr){
   list.innerHTML=items.map(function(t){return taskHtmlGlobal(t,{noDrag:true,noCheckbox:true,noMove:true});}).join('');
 }
 
+// ===== 단어 TEST 자동 생성 =====
+// 전날 과제 중 "Day 15-16 암기"처럼 숫자범위+암기 패턴이 있으면
+// 오늘 할일 맨 위에 "단어 Day 15-16 TEST"를 자동으로 만들어둠
+async function autoGenerateVocabTestTodo(sid,todayDateStr){
+  try{
+    var prevRes=await getSB().from('tasks').select('date').eq('student_id',sid).eq('type','hw').lt('date',todayDateStr).order('date',{ascending:false}).limit(1);
+    if(!prevRes.data||!prevRes.data.length)return;
+    var prevDate=prevRes.data[0].date;
+    var hwRes=await getSB().from('tasks').select('title').eq('student_id',sid).eq('type','hw').eq('date',prevDate);
+    var hwItems=hwRes.data||[];
+    var re=/day\s*(\d+)\s*[-~]\s*(\d+)/i;
+    for(var i=0;i<hwItems.length;i++){
+      var hwTitle=hwItems[i].title||'';
+      if(!/암기|외우/.test(hwTitle))continue;
+      var m=hwTitle.match(re);
+      if(!m)continue;
+      var testTitle='단어 Day '+m[1]+'-'+m[2]+' TEST';
+      var existRes=await getSB().from('tasks').select('id').eq('student_id',sid).eq('type','todo').eq('date',todayDateStr).eq('title',testTitle).limit(1);
+      if(existRes.error)continue;
+      if(existRes.data&&existRes.data.length)continue;
+      await getSB().from('tasks').insert({student_id:sid,type:'todo',title:testTitle,date:todayDateStr,is_done:false,student_done:false,teacher_confirmed:false,needs_check:false});
+    }
+  }catch(e){/* 자동 생성 실패해도 기존 화면엔 영향 없게 조용히 무시 */}
+}
+
 async function renderTasks(){
   if(!currentStudentId)return;
   var today=getOffsetDate(taskDateOffset);
+  await autoGenerateVocabTestTodo(currentStudentId,today);
   var res=await getSB().from('tasks').select('*').eq('student_id',currentStudentId).eq('date',today);
   var tasks=res.data||[];
   var sorter=function(a,b){
@@ -4098,10 +4124,36 @@ async function loadTeacherInquiries(){
       +'<span style="font-size:11px;color:#aaa">'+dateLabel+'</span></div>'
       +'<div style="font-size:13px;color:#333;margin-bottom:8px">'+q.content+'</div>'
       +(q.reply
-        ?'<div style="padding:8px 10px;background:#F8FDF9;border-radius:6px;font-size:12px;color:#555">↳ '+q.reply+'</div>'
+        ?'<div style="padding:8px 10px;background:#F8FDF9;border-radius:6px;font-size:12px;color:#555;margin-bottom:6px">↳ '+q.reply+'</div>'
+          +'<button onclick="editReply(\''+q.id+'\')" style="padding:5px 12px;background:#fff;color:#1B4D3E;border:1.5px solid #1B4D3E;border-radius:6px;font-size:11px;cursor:pointer">✏️ 답변 수정</button>'
         :'<button onclick="openReplyModal(this.dataset.id)" data-id="'+q.id+'" style="padding:6px 14px;background:#1B4D3E;color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer">답변하기</button>')
       +'</div>';
   }).join('');
+}
+
+async function editReply(id){
+  var res=await getSB().from('parent_inquiries').select('reply').eq('id',id).single();
+  if(res.error){toast('오류: '+res.error.message);return;}
+  var current=(res.data&&res.data.reply)||'';
+  var html='<div style="padding:16px">'
+    +'<textarea id="edit-reply-input" style="width:100%;min-height:100px;padding:12px;border:1.5px solid #E8E8E8;border-radius:10px;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box">'+escapeHtml(current)+'</textarea>'
+    +'<button class="btn-primary" id="edit-reply-btn" style="margin-top:10px">수정 완료</button>'
+    +'</div>';
+  openMod('답변 수정',html);
+  setTimeout(function(){
+    var b=document.getElementById('edit-reply-btn');
+    if(b)b.onclick=function(){saveReplyEdit(id);};
+  },50);
+}
+
+async function saveReplyEdit(id){
+  var input=document.getElementById('edit-reply-input');
+  if(!input||!input.value.trim()){toast('답변 내용을 입력해주세요');return;}
+  var res=await getSB().from('parent_inquiries').update({reply:input.value.trim()}).eq('id',id);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('✅ 답변이 수정됐어요!');
+  closeMod();
+  loadTeacherInquiries();
 }
 
 function openReplyModal(inquiryId){
