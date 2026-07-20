@@ -274,9 +274,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div class="date-sub" id="t-day"></div>
     </div>
     <div id="t-needscheck-section" style="display:none">
-      <div class="section-hd">🔴 교사 점검 필요</div>
+      <div class="section-hd" onclick="toggleNeedsCheckSection()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none">
+        <span>🔴 교사 점검 필요 <span id="t-needscheck-count" style="color:#c0392b;font-weight:700"></span></span>
+        <span id="t-needscheck-arrow" style="font-size:11px;color:#aaa">▼ 펼치기</span>
+      </div>
       <div class="card" style="margin-bottom:12px;border:1.5px solid #c0392b">
-        <div class="card-body" id="t-needscheck-list"></div>
+        <div class="card-body" id="t-needscheck-list" style="display:none"></div>
       </div>
     </div>
     <div id="t-reminder-section" style="display:none">
@@ -4351,9 +4354,22 @@ function loadMileHistoryFromSel(){
   loadMileHistory(sel?sel.value:'');
 }
 // ===== 교사 점검 필요 통합 요약 =====
+// ===== 교사 점검 필요 통합 요약 =====
+var needsCheckExpanded=false;
+function toggleNeedsCheckSection(){
+  needsCheckExpanded=!needsCheckExpanded;
+  applyNeedsCheckToggleState();
+}
+function applyNeedsCheckToggleState(){
+  var body=document.getElementById('t-needscheck-list');
+  var arrow=document.getElementById('t-needscheck-arrow');
+  if(body)body.style.display=needsCheckExpanded?'block':'none';
+  if(arrow)arrow.textContent=needsCheckExpanded?'▲ 접기':'▼ 펼치기';
+}
 async function loadNeedsCheckSummary(){
   var section=document.getElementById('t-needscheck-section');
   var el=document.getElementById('t-needscheck-list');
+  var countEl=document.getElementById('t-needscheck-count');
   if(!el||!section)return;
   try{
     var res=await getSB().from('tasks').select('*').eq('needs_check',true).order('date',{ascending:true});
@@ -4361,25 +4377,40 @@ async function loadNeedsCheckSummary(){
     var items=res.data||[];
     if(!items.length){section.style.display='none';return;}
     section.style.display='block';
+    if(countEl)countEl.textContent='('+items.length+'건)';
     var days=['일','월','화','수','목','금','토'];
-    el.innerHTML=items.map(function(t){
-      var s=allStudents.find(function(x){return x.id===t.student_id;});
-      var sname=s?s.name:'학생';
-      var d=new Date(t.date);
+    // 날짜(요일)별로 그룹화
+    var groups=[];
+    var groupMap={};
+    items.forEach(function(t){
+      if(!groupMap[t.date]){
+        groupMap[t.date]={date:t.date,items:[]};
+        groups.push(groupMap[t.date]);
+      }
+      groupMap[t.date].items.push(t);
+    });
+    el.innerHTML=groups.map(function(g){
+      var d=new Date(g.date);
       var dateLabel=(d.getMonth()+1)+'/'+d.getDate()+'('+days[d.getDay()]+')';
-      var typeLabel=t.type==='hw'?'과제':'할일';
-      return '<div style="padding:10px 16px;border-bottom:1px solid #F5F5F5">'
-        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
-        +'<div style="flex:1;min-width:0">'
-        +'<div style="font-size:11px;color:#aaa;margin-bottom:2px">'+dateLabel+' · '+typeLabel+'</div>'
-        +'<div style="font-size:14px;font-weight:700;color:#c0392b">'+escapeHtml(sname)+'</div>'
-        +'<div style="font-size:13px;color:#333;margin-top:2px">'+escapeHtml(t.title||'')+'</div>'
-        +'</div>'
-        +'<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">'
-        +'<button onclick="goToConfirmDate(\''+t.student_id+'\',\''+t.date+'\')" style="padding:5px 10px;background:#1B4D3E;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">바로가기</button>'
-        +'<button onclick="resolveNeedsCheckFromSummary(\''+t.id+'\')" style="padding:5px 10px;background:#fff;color:#c0392b;border:1.5px solid #c0392b;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">완료</button>'
-        +'</div></div></div>';
+      var rows=g.items.map(function(t){
+        var s=allStudents.find(function(x){return x.id===t.student_id;});
+        var sname=s?s.name:'학생';
+        var typeLabel=t.type==='hw'?'과제':'할일';
+        return '<div style="padding:10px 16px;border-bottom:1px solid #F5F5F5">'
+          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+          +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:11px;color:#aaa;margin-bottom:2px">'+typeLabel+'</div>'
+          +'<div style="font-size:14px;font-weight:700;color:#c0392b">'+escapeHtml(sname)+'</div>'
+          +'<div style="font-size:13px;color:#333;margin-top:2px">'+escapeHtml(t.title||'')+'</div>'
+          +'</div>'
+          +'<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">'
+          +'<button onclick="goToConfirmDate(\''+t.student_id+'\',\''+t.date+'\')" style="padding:5px 10px;background:#1B4D3E;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">바로가기</button>'
+          +'<button onclick="resolveNeedsCheckFromSummary(\''+t.id+'\')" style="padding:5px 10px;background:#fff;color:#c0392b;border:1.5px solid #c0392b;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">완료</button>'
+          +'</div></div></div>';
+      }).join('');
+      return '<div style="background:#FDECEA;padding:6px 16px;font-size:12px;font-weight:700;color:#c0392b">'+dateLabel+'</div>'+rows;
     }).join('');
+    applyNeedsCheckToggleState();
   }catch(e){section.style.display='none';}
 }
 
