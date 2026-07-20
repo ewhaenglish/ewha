@@ -282,13 +282,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <div class="card-body" id="t-needscheck-list" style="display:none"></div>
       </div>
     </div>
-    <div id="t-reminder-section" style="display:none">
-      <div class="section-hd">오늘 과제 미제출</div>
+    <div id="t-pending-confirm-section" style="display:none">
+      <div class="section-hd" onclick="togglePendingConfirmSection()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none">
+        <span>✅ CONFIRM 대기 <span id="t-pending-confirm-count" style="color:#1B4D3E;font-weight:700"></span></span>
+        <span id="t-pending-confirm-arrow" style="font-size:11px;color:#aaa">▼ 펼치기</span>
+      </div>
       <div class="card" style="margin-bottom:12px">
-        <div class="card-body" id="t-reminder-list"></div>
-        <div style="padding:10px 16px;border-top:1px solid #F5F5F5">
-          <button onclick="sendBulkReminder()" style="width:100%;padding:11px;background:#1B4D3E;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">미제출 학생 전체에게 알림 보내기</button>
-        </div>
+        <div class="card-body" id="t-pending-confirm-list" style="display:none"></div>
       </div>
     </div>
     <div class="section-hd">학부모 문의</div>
@@ -1088,7 +1088,7 @@ async function loadTeacher(){
   renderCalendar('t');
   loadTeacherMsgs();
   loadTeacherInquiries();
-  loadHwReminder();
+  loadPendingConfirmSummary();
   loadNeedsCheckSummary();
   loadNotices();
   checkNotifications();
@@ -1129,7 +1129,7 @@ async function renderTeacherHome(){
         +' <button class="btn-sm-outline" style="color:#E24B4A;border-color:#E24B4A" data-sid="'+s.id+'" onclick="teacherMarkAbsent(this.dataset.sid);event.stopPropagation()">결석</button>'
         +' <button class="btn-sm-outline" data-sid="'+s.id+'" onclick="openAttendTimeEdit(this.dataset.sid);event.stopPropagation()">✏️ 시간수정</button>';
     }
-    return '<div class="student-row" onclick="goToConfirm(\''+s.id+'\')">'
+    return '<div class="student-row" data-sid="'+s.id+'">'
       +'<div class="avatar">'+s.name.charAt(0)+'</div>'
       +'<div style="flex:1"><div style="font-size:15px;font-weight:700">'+s.name+badge+'</div>'
       +'<div style="font-size:11px;color:#aaa;margin-top:2px">'+(s.school||'')+(s.grade?' '+s.grade:'')+'</div>'
@@ -1608,14 +1608,6 @@ async function autoGenerateVocabTestTodo(sid,todayDateStr){
   }catch(e){/* 자동 생성 실패해도 기존 화면엔 영향 없게 조용히 무시 */}
 }
 
-function toggleDoneTasks(id,headerEl){
-  var el=document.getElementById(id);
-  if(!el)return;
-  var show=el.style.display==='none';
-  el.style.display=show?'block':'none';
-  if(headerEl)headerEl.textContent=headerEl.textContent.replace(show?'눌러서 보기':'눌러서 숨기기',show?'눌러서 숨기기':'눌러서 보기');
-}
-
 async function renderTasks(){
   if(!currentStudentId)return;
   var today=getOffsetDate(taskDateOffset);
@@ -1639,22 +1631,10 @@ async function renderTasks(){
     +'<button class="btn-sm-outline" onclick="bulkDeleteTasks(\'hw-list\')">🗑 선택 삭제</button>'
     +'<button class="btn-sm-outline" onclick="bulkMoveDateTasks(\'hw-list\')">📅 선택 날짜이동</button>'
     +'</div>';
-  var todoActive=todos.filter(function(t){return !t.teacher_confirmed;});
-  var todoDone=todos.filter(function(t){return t.teacher_confirmed;});
-  var hwActive=hws.filter(function(t){return !t.teacher_confirmed;});
-  var hwDone=hws.filter(function(t){return t.teacher_confirmed;});
-  var todoItemsHtml=todoActive.map(function(t){return taskHtmlGlobal(t);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
-  var hwItemsHtml=hwActive.map(function(t){return taskHtmlGlobal(t);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">과제가 없어요</div>';
-  var todoDoneHtml=todoDone.length
-    ?'<div onclick="toggleDoneTasks(\'todo-done-list\',this)" style="padding:8px 16px;font-size:12px;color:#1B4D3E;font-weight:700;cursor:pointer;border-top:1px solid #F5F5F5;user-select:none">✅ 완료 '+todoDone.length+'개 (눌러서 보기)</div>'
-      +'<div id="todo-done-list" style="display:none">'+todoDone.map(function(t){return taskHtmlGlobal(t);}).join('')+'</div>'
-    :'';
-  var hwDoneHtml=hwDone.length
-    ?'<div onclick="toggleDoneTasks(\'hw-done-list\',this)" style="padding:8px 16px;font-size:12px;color:#1B4D3E;font-weight:700;cursor:pointer;border-top:1px solid #F5F5F5;user-select:none">✅ 완료 '+hwDone.length+'개 (눌러서 보기)</div>'
-      +'<div id="hw-done-list" style="display:none">'+hwDone.map(function(t){return taskHtmlGlobal(t);}).join('')+'</div>'
-    :'';
-  $('todo-list').innerHTML=(todos.length?todoToolbar:'')+'<div id="todo-sortable-wrap">'+todoItemsHtml+'</div>'+todoDoneHtml;
-  $('hw-list').innerHTML=(hws.length?hwToolbar:'')+'<div id="hw-sortable-wrap">'+hwItemsHtml+'</div>'+hwDoneHtml;
+  var todoItemsHtml=todos.map(function(t){return taskHtmlGlobal(t);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
+  var hwItemsHtml=hws.map(function(t){return taskHtmlGlobal(t);}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">과제가 없어요</div>';
+  $('todo-list').innerHTML=(todos.length?todoToolbar:'')+'<div id="todo-sortable-wrap">'+todoItemsHtml+'</div>';
+  $('hw-list').innerHTML=(hws.length?hwToolbar:'')+'<div id="hw-sortable-wrap">'+hwItemsHtml+'</div>';
   document.querySelectorAll('#todo-list .task-item[data-style="1"], #hw-list .task-item[data-style="1"]').forEach(function(el){
     if(el.dataset.needsCheck!=='1')el.style.background='#FFFBF0';
   });
@@ -1869,7 +1849,7 @@ async function confirmTask(id){
     }
     toast('✅ 확인! '+(task.type==='hw'?'과제':'할일')+' +'+pts+'점');
   }
-  await renderTasks();await renderTeacherHome();
+  await renderTasks();await renderTeacherHome();loadPendingConfirmSummary();
 }
 
 // ===== 성장노트 =====
@@ -2213,9 +2193,10 @@ function renderStudentOverview(sid, allTasks){
   }
 
   overview.innerHTML=
-    '<div style="padding:12px 14px;border-bottom:1px solid #E8E8E8;background:#F8FDF9">'
-    +'<span style="font-size:14px;font-weight:700;color:#1B4D3E">'+s.name+'</span>'
-    +'<span style="font-size:11px;color:#aaa;margin-left:8px">할일 '+todos.length+'개 · 과제 '+hws.length+'개</span>'
+    '<div onclick="goToConfirmDate(\''+sid+'\',\''+getHomeDateStr(homeOffset)+'\')" style="padding:12px 14px;border-bottom:1px solid #E8E8E8;background:#F8FDF9;cursor:pointer;display:flex;justify-content:space-between;align-items:center">'
+    +'<div><span style="font-size:14px;font-weight:700;color:#1B4D3E">'+s.name+'</span>'
+    +'<span style="font-size:11px;color:#aaa;margin-left:8px">할일 '+todos.length+'개 · 과제 '+hws.length+'개</span></div>'
+    +'<span style="font-size:11px;color:#1B4D3E;font-weight:700;flex-shrink:0">전체보기 →</span>'
     +'</div>'
     +(todos.length?'<div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:#1B4D3E;background:#F8FDF9">오늘의 할일</div>'+todos.map(taskHtml).join(''):'')
     +(hws.length?'<div style="padding:8px 14px 4px;font-size:11px;font-weight:700;color:#1a56db;background:#F0F4FF"><span class="gold-star">✦</span> 과제</div>'+hws.map(taskHtml).join(''):'')
@@ -2237,6 +2218,7 @@ async function quickConfirmOverview(id){
   renderStudentOverview(window._selectedOverviewStudent, res.data||[]);
   // 사이드바 배지 업데이트
   loadTaskOverview();
+  loadPendingConfirmSummary();
 }
 
 
@@ -3033,7 +3015,7 @@ async function loadTeacherByDate(offset){
       }
     }
     var pendBadge=cnt?'<span style="font-size:11px;background:#FFC107;color:#000;padding:2px 8px;border-radius:10px;margin-left:4px">확인대기 '+cnt+'</span>':'';
-    return '<div class="student-row" onclick="goToConfirmDate(this.dataset.sid,this.dataset.date)" data-sid="'+s.id+'" data-date="'+date+'">'+'<div class="avatar">'+s.name.charAt(0)+'</div>'+'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+s.name+attBadge+pendBadge+'</div>'+'<div style="font-size:11px;color:#aaa;margin-top:2px">'+(s.school||'')+(s.grade?' '+s.grade:'')+'</div></div></div>';
+    return '<div class="student-row" data-sid="'+s.id+'" data-date="'+date+'">'+'<div class="avatar">'+s.name.charAt(0)+'</div>'+'<div style="flex:1"><div style="font-size:14px;font-weight:700">'+s.name+attBadge+pendBadge+'</div>'+'<div style="font-size:11px;color:#aaa;margin-top:2px">'+(s.school||'')+(s.grade?' '+s.grade:'')+'</div></div></div>';
   }).join('');
 }
 function goToConfirmDate(sid,date){
@@ -4488,54 +4470,42 @@ async function resolveNeedsCheckFromSummary(taskId){
   if(currentStudentId)renderTasks();
 }
 
-// ===== 과제 미제출 리마인더 =====
-async function loadHwReminder(){
-  var section=document.getElementById('t-reminder-section');
-  var el=document.getElementById('t-reminder-list');
+// ===== 할일/과제 CONFIRM 대기 통합 =====
+var pendingConfirmExpanded=false;
+function togglePendingConfirmSection(){
+  pendingConfirmExpanded=!pendingConfirmExpanded;
+  applyPendingConfirmToggleState();
+}
+function applyPendingConfirmToggleState(){
+  var body=document.getElementById('t-pending-confirm-list');
+  var arrow=document.getElementById('t-pending-confirm-arrow');
+  if(body)body.style.display=pendingConfirmExpanded?'block':'none';
+  if(arrow)arrow.textContent=pendingConfirmExpanded?'▲ 접기':'▼ 펼치기';
+}
+async function loadPendingConfirmSummary(){
+  var section=document.getElementById('t-pending-confirm-section');
+  var el=document.getElementById('t-pending-confirm-list');
+  var countEl=document.getElementById('t-pending-confirm-count');
   if(!el||!section||!allStudents.length)return;
   var today=todayStr();
-  var res=await getSB().from('tasks').select('*').eq('date',today).eq('type','hw');
-  var hwTasks=res.data||[];
-  // 학생별로 과제가 있는데 하나라도 미완료면 미제출로 간주
-  var notDone=[];
-  allStudents.forEach(function(s){
-    var mine=hwTasks.filter(function(t){return t.student_id===s.id;});
-    if(mine.length&&mine.some(function(t){return !t.student_done;})){
-      notDone.push(s);
-    }
-  });
-  if(!notDone.length){section.style.display='none';return;}
+  var res=await getSB().from('tasks').select('*').eq('date',today).eq('student_done',true).eq('teacher_confirmed',false);
+  var items=res.data||[];
+  if(!items.length){section.style.display='none';return;}
   section.style.display='block';
-  el.innerHTML=notDone.map(function(s){
-    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #F5F5F5">'
-      +'<span style="font-size:14px;font-weight:700;color:#333">'+s.name+'</span>'
-      +'<button onclick="sendSingleReminder(this.dataset.sid,this.dataset.sname)" data-sid="'+s.id+'" data-sname="'+s.name+'" style="padding:6px 14px;background:#fff;color:#1B4D3E;border:1.5px solid #1B4D3E;border-radius:6px;font-size:12px;cursor:pointer">알림 보내기</button>'
+  if(countEl)countEl.textContent='('+items.length+'건)';
+  el.innerHTML=items.map(function(t){
+    var s=allStudents.find(function(x){return x.id===t.student_id;});
+    var sname=s?s.name:'학생';
+    var typeLabel=t.type==='hw'?'과제':'할일';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid #F5F5F5">'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:11px;color:#aaa;margin-bottom:2px">'+escapeHtml(sname)+' · '+typeLabel+'</div>'
+      +'<div style="font-size:13px;color:#333">'+escapeHtml(t.title||'')+'</div>'
+      +'</div>'
+      +'<button class="btn-sm" style="flex-shrink:0" onclick="confirmTask(\''+t.id+'\')">Confirm ✅</button>'
       +'</div>';
   }).join('');
-}
-
-async function sendSingleReminder(sid,sname){
-  var s=allStudents.find(function(x){return x.id===sid;});
-  if(s&&s.profile_id)await sendNotification(s.profile_id,'📚 오늘 과제를 아직 제출하지 않았어요! 잊지 말고 제출해주세요','reminder');
-  toast(sname+' 학생에게 알림을 보냈어요');
-}
-
-async function sendBulkReminder(){
-  var el=document.getElementById('t-reminder-list');
-  if(!el)return;
-  var btns=el.querySelectorAll('button[data-sid]');
-  if(!btns.length){toast('미제출 학생이 없어요');return;}
-  if(!confirm(btns.length+'명에게 알림을 보낼까요?'))return;
-  var count=0;
-  for(var i=0;i<btns.length;i++){
-    var sid=btns[i].dataset.sid;
-    var s=allStudents.find(function(x){return x.id===sid;});
-    if(s&&s.profile_id){
-      await sendNotification(s.profile_id,'📚 오늘 과제를 아직 제출하지 않았어요! 잊지 말고 제출해주세요','reminder');
-      count++;
-    }
-  }
-  toast(count+'명에게 알림을 보냈어요!');
+  applyPendingConfirmToggleState();
 }
 
 // ===== 교사용 출석부 (월간 캘린더 뷰) =====
