@@ -1103,13 +1103,9 @@ async function renderTeacherHome(){
   if(!allStudents.length){list.innerHTML='<div style="padding:16px;color:#aaa;text-align:center">등록된 학생이 없어요</div>';return;}
   $('t-attend-count').textContent=allStudents.length+'명';
   var today=todayStr();
-  var res=await getSB().from('tasks').select('*').eq('date',today).eq('student_done',true).eq('teacher_confirmed',false);
-  var pending=res.data||[];
   var attRes=await getSB().from('attendance').select('*').eq('date',today);
   var attList=attRes.data||[];
   list.innerHTML=allStudents.map(function(s){
-    var cnt=pending.filter(function(t){return t.student_id===s.id;}).length;
-    var badge=cnt?'<span class="pill pill-pending" style="margin-left:6px">확인 대기 '+cnt+'</span>':'';
     var att=attList.find(function(a){return a.student_id===s.id;});
     var attHtml, attBtns;
     if(att&&att.is_absent){
@@ -1131,7 +1127,7 @@ async function renderTeacherHome(){
     }
     return '<div class="student-row" data-sid="'+s.id+'">'
       +'<div class="avatar">'+s.name.charAt(0)+'</div>'
-      +'<div style="flex:1"><div style="font-size:15px;font-weight:700">'+s.name+badge+'</div>'
+      +'<div style="flex:1"><div style="font-size:15px;font-weight:700">'+s.name+'</div>'
       +'<div style="font-size:11px;color:#aaa;margin-top:2px">'+(s.school||'')+(s.grade?' '+s.grade:'')+'</div>'
       +'<div style="font-size:12px;margin-top:3px">'+attHtml+'</div></div>'
       +'<div style="flex-shrink:0;display:flex;gap:4px" onclick="event.stopPropagation()">'+attBtns+'</div>'
@@ -1776,11 +1772,12 @@ async function teacherMarkDone(taskId){
 }
 
 async function teacherUnmarkTask(taskId){
-  if(!confirm('완료 처리를 취소할까요?'))return;
-  var res=await getSB().from('tasks').update({student_done:false,teacher_confirmed:false}).eq('id',taskId);
+  if(!confirm('완료 확인을 취소할까요? (학생이 완료한 상태는 유지되고 다시 확인 대기로 돌아가요)'))return;
+  var res=await getSB().from('tasks').update({teacher_confirmed:false}).eq('id',taskId);
   if(res.error){toast('오류: '+res.error.message);return;}
-  toast('취소됐어요');
+  toast('확인이 취소됐어요 (확인 대기로 돌아감)');
   renderTasks();
+  loadPendingConfirmSummary();
 }
 
 async function addTask(type){
