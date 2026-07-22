@@ -403,7 +403,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
       <div class="card" id="prev-hw-card" style="margin-bottom:12px;display:none;border:1.5px solid #F0C040">
         <div class="card-header" style="background:#FFFDF5">
-          <span class="card-title">🔁 지난시간 과제 확인</span>
+          <span class="card-title">🔁 지난시간 한 일 확인</span>
           <span class="card-count" id="prev-hw-date-label" style="color:#B8860B"></span>
         </div>
         <div class="card-body" id="prev-hw-list"></div>
@@ -1567,16 +1567,27 @@ async function loadPrevHwSection(sid,todayDateStr){
   var list=document.getElementById('prev-hw-list');
   var label=document.getElementById('prev-hw-date-label');
   if(!card||!list)return;
-  var prevRes=await getSB().from('tasks').select('date').eq('student_id',sid).eq('type','hw').lt('date',todayDateStr).order('date',{ascending:false}).limit(1);
+  var prevRes=await getSB().from('tasks').select('date').eq('student_id',sid).lt('date',todayDateStr).order('date',{ascending:false}).limit(1);
   if(!prevRes.data||!prevRes.data.length){card.style.display='none';return;}
   var prevDate=prevRes.data[0].date;
   var d=new Date(prevDate);var days=['일','월','화','수','목','금','토'];
-  if(label)label.textContent=(d.getMonth()+1)+'/'+d.getDate()+'('+days[d.getDay()]+') 부여';
-  var tRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('type','hw').eq('date',prevDate).order('created_at',{ascending:true});
+  if(label)label.textContent=(d.getMonth()+1)+'/'+d.getDate()+'('+days[d.getDay()]+') 활동';
+  var tRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',prevDate).order('created_at',{ascending:true});
   var items=tRes.data||[];
   if(!items.length){card.style.display='none';return;}
   card.style.display='block';
-  list.innerHTML=items.map(function(t){return taskHtmlGlobal(t,{noDrag:true,noCheckbox:true,noMove:true});}).join('');
+  var todos=items.filter(function(t){return t.type==='todo';});
+  var hws=items.filter(function(t){return t.type==='hw';});
+  var html='';
+  if(todos.length){
+    html+='<div style="padding:6px 16px;font-size:11px;font-weight:700;color:#B8860B;background:#FFFDF5">📌 할일</div>'
+      +todos.map(function(t){return taskHtmlGlobal(t,{noDrag:true,noCheckbox:true,noMove:true});}).join('');
+  }
+  if(hws.length){
+    html+='<div style="padding:6px 16px;font-size:11px;font-weight:700;color:#B8860B;background:#FFFDF5">📚 과제</div>'
+      +hws.map(function(t){return taskHtmlGlobal(t,{noDrag:true,noCheckbox:true,noMove:true});}).join('');
+  }
+  list.innerHTML=html;
 }
 
 // ===== 단어 TEST 자동 생성 =====
@@ -4461,6 +4472,7 @@ async function loadNeedsCheckSummary(){
           +'<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">'
           +'<button onclick="goToConfirmDate(\''+t.student_id+'\',\''+t.date+'\')" style="padding:5px 10px;background:#1B4D3E;color:#fff;border:none;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">바로가기</button>'
           +'<button onclick="resolveNeedsCheckFromSummary(\''+t.id+'\')" style="padding:5px 10px;background:#fff;color:#c0392b;border:1.5px solid #c0392b;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">완료</button>'
+          +'<button onclick="deleteNeedsCheckItem(\''+t.id+'\')" style="padding:5px 10px;background:#fff;color:#888;border:1.5px solid #ddd;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap">삭제</button>'
           +'</div></div></div>';
       }).join('');
       return '<div style="background:#FDECEA;padding:6px 16px;font-size:12px;font-weight:700;color:#c0392b">'+dateLabel+'</div>'+rows;
@@ -4473,6 +4485,15 @@ async function resolveNeedsCheckFromSummary(taskId){
   var res=await getSB().from('tasks').update({needs_check:false}).eq('id',taskId);
   if(res.error){toast('오류: '+res.error.message);return;}
   toast('✅ 점검 완료 처리했어요');
+  loadNeedsCheckSummary();
+  if(currentStudentId)renderTasks();
+}
+
+async function deleteNeedsCheckItem(taskId){
+  if(!confirm('이 항목을 완전히 삭제할까요? (되돌릴 수 없어요)'))return;
+  var res=await getSB().from('tasks').delete().eq('id',taskId);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('삭제됐어요');
   loadNeedsCheckSummary();
   if(currentStudentId)renderTasks();
 }
