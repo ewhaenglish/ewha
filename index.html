@@ -1567,9 +1567,10 @@ async function loadPrevHwSection(sid,todayDateStr){
   var list=document.getElementById('prev-hw-list');
   var label=document.getElementById('prev-hw-date-label');
   if(!card||!list)return;
-  var prevRes=await getSB().from('tasks').select('date').eq('student_id',sid).lt('date',todayDateStr).order('date',{ascending:false}).limit(1);
-  if(!prevRes.data||!prevRes.data.length){card.style.display='none';return;}
-  var prevDate=prevRes.data[0].date;
+  // 실제로 등원(check_in) 기록이 있는 날짜만 '지난시간'으로 인정 (엉뚱한 날짜 방지)
+  var attRes=await getSB().from('attendance').select('date').eq('student_id',sid).lt('date',todayDateStr).not('check_in','is',null).order('date',{ascending:false}).limit(1);
+  if(!attRes.data||!attRes.data.length){card.style.display='none';return;}
+  var prevDate=attRes.data[0].date;
   var d=new Date(prevDate);var days=['일','월','화','수','목','금','토'];
   if(label)label.textContent=(d.getMonth()+1)+'/'+d.getDate()+'('+days[d.getDay()]+') 활동';
   var tRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',prevDate).order('created_at',{ascending:true});
@@ -1595,7 +1596,7 @@ async function loadPrevHwSection(sid,todayDateStr){
 // 오늘 할일 맨 위에 "단어 Day 15-16 TEST"를 자동으로 만들어둠
 async function autoGenerateVocabTestTodo(sid,todayDateStr){
   try{
-    var prevRes=await getSB().from('tasks').select('date').eq('student_id',sid).eq('type','hw').lt('date',todayDateStr).order('date',{ascending:false}).limit(1);
+    var prevRes=await getSB().from('attendance').select('date').eq('student_id',sid).lt('date',todayDateStr).not('check_in','is',null).order('date',{ascending:false}).limit(1);
     if(!prevRes.data||!prevRes.data.length)return;
     var prevDate=prevRes.data[0].date;
     var hwRes=await getSB().from('tasks').select('title').eq('student_id',sid).eq('type','hw').eq('date',prevDate);
