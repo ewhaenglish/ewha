@@ -1780,10 +1780,11 @@ async function reorderTask(taskId,type,dir){
 }
 
 async function teacherMarkDone(taskId){
-  var res=await getSB().from('tasks').update({student_done:true,teacher_confirmed:true,student_done_at:new Date().toISOString()}).eq('id',taskId);
+  var res=await getSB().from('tasks').update({student_done:true,teacher_confirmed:true,student_done_at:new Date().toISOString(),needs_check:false}).eq('id',taskId);
   if(res.error){toast('오류: '+res.error.message);return;}
   toast('✅ 완료 처리했어요');
   renderTasks();
+  loadNeedsCheckSummary();
   checkHwCompletionNotify(currentStudentId);
 }
 
@@ -1859,7 +1860,7 @@ async function deleteTask(id){
   await renderTasks();
 }
 async function confirmTask(id){
-  await getSB().from('tasks').update({teacher_confirmed:true,confirmed_at:new Date().toISOString()}).eq('id',id);
+  await getSB().from('tasks').update({teacher_confirmed:true,confirmed_at:new Date().toISOString(),needs_check:false}).eq('id',id);
   var task=(await getSB().from('tasks').select('*').eq('id',id).single()).data;
   if(task){
     var pts=10;
@@ -1872,7 +1873,7 @@ async function confirmTask(id){
     }
     toast('✅ 확인! '+(task.type==='hw'?'과제':'할일')+' +'+pts+'점');
   }
-  await renderTasks();await renderTeacherHome();loadPendingConfirmSummary();
+  await renderTasks();await renderTeacherHome();loadPendingConfirmSummary();loadNeedsCheckSummary();
 }
 
 // ===== 성장노트 =====
@@ -2227,7 +2228,7 @@ function renderStudentOverview(sid, allTasks){
 }
 
 async function quickConfirmOverview(id){
-  await getSB().from('tasks').update({teacher_confirmed:true,confirmed_at:new Date().toISOString()}).eq('id',id);
+  await getSB().from('tasks').update({teacher_confirmed:true,confirmed_at:new Date().toISOString(),needs_check:false}).eq('id',id);
   var task=(await getSB().from('tasks').select('*').eq('id',id).single()).data;
   if(task){
     await getSB().from('mileage').insert({student_id:task.student_id,amount:10,reason:'할일 완료: '+task.title});
@@ -2242,6 +2243,7 @@ async function quickConfirmOverview(id){
   // 사이드바 배지 업데이트
   loadTaskOverview();
   loadPendingConfirmSummary();
+  loadNeedsCheckSummary();
 }
 
 
