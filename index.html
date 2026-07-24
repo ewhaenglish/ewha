@@ -1677,9 +1677,11 @@ function initTaskSortable(wrapId,type){
 }
 
 async function persistTaskOrder(ids){
+  window._suppressTaskRealtimeNotify=true;
   await Promise.all(ids.map(function(id,i){
     return getSB().from('tasks').update({sort_order:i+1}).eq('id',id);
   }));
+  setTimeout(function(){window._suppressTaskRealtimeNotify=false;},1500);
 }
 
 async function bulkDeleteTasks(listId){
@@ -1765,6 +1767,7 @@ async function reorderTask(taskId,type,dir){
   var idx=list.findIndex(function(t){return t.id===taskId;});
   var targetIdx=idx+dir;
   if(idx<0||targetIdx<0||targetIdx>=list.length)return;
+  window._suppressTaskRealtimeNotify=true;
   var needsInit=list.every(function(t){return !t.sort_order;});
   if(needsInit){
     await Promise.all(list.map(function(t,i){
@@ -1778,6 +1781,7 @@ async function reorderTask(taskId,type,dir){
     getSB().from('tasks').update({sort_order:bOrder}).eq('id',a.id),
     getSB().from('tasks').update({sort_order:aOrder}).eq('id',b.id)
   ]);
+  setTimeout(function(){window._suppressTaskRealtimeNotify=false;},1500);
   renderTasks();
 }
 
@@ -2679,7 +2683,14 @@ function setupRealtime(profile){
         renderTeacherHome();
       })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'tasks'},function(payload){
-        if(payload.new.student_done&&!payload.new.teacher_confirmed){
+        if(window._suppressTaskRealtimeNotify)return; // 우리 코드가 직접 순서만 바꾸는 중이면 무시
+        var actuallyChanged=!payload.old||payload.old.student_done!==payload.new.student_done;
+        if(payload.new.student_done&&!payload.new.teacher_confirmed&&actuallyChanged){
+          var tid=payload.new.id;
+          var now=Date.now();
+          if(!window._lastTaskDoneNotify)window._lastTaskDoneNotify={};
+          if(window._lastTaskDoneNotify[tid]&&now-window._lastTaskDoneNotify[tid]<5000)return;
+          window._lastTaskDoneNotify[tid]=now;
           renderTeacherHome();
           loadTaskOverview();
           var s=allStudents.find(function(x){return x.id===payload.new.student_id;});
