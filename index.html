@@ -1602,25 +1602,32 @@ async function autoGenerateVocabTestTodo(sid,todayDateStr){
     var hwRes=await getSB().from('tasks').select('title').eq('student_id',sid).eq('type','hw').eq('date',prevDate);
     var hwItems=hwRes.data||[];
     var re=/day\s*(\d+)\s*[-~]\s*(\d+)/i;
+    var testTitles=[];
     for(var i=0;i<hwItems.length;i++){
       var hwTitle=hwItems[i].title||'';
       if(!/암기|외우/.test(hwTitle))continue;
       var m=hwTitle.match(re);
       if(!m)continue;
-      var testTitle='단어 Day '+m[1]+'-'+m[2]+' TEST';
-      var existRes=await getSB().from('tasks').select('id').eq('student_id',sid).eq('type','todo').eq('date',todayDateStr).eq('title',testTitle).limit(1);
-      if(existRes.error)continue;
-      if(existRes.data&&existRes.data.length)continue;
-      await getSB().from('tasks').insert({student_id:sid,type:'todo',title:testTitle,date:todayDateStr,is_done:false,student_done:false,teacher_confirmed:false,needs_check:false});
+      testTitles.push('단어 Day '+m[1]+'-'+m[2]+' TEST');
     }
+    await Promise.all(testTitles.map(async function(testTitle){
+      var existRes=await getSB().from('tasks').select('id').eq('student_id',sid).eq('type','todo').eq('date',todayDateStr).eq('title',testTitle).limit(1);
+      if(existRes.error)return;
+      if(existRes.data&&existRes.data.length)return;
+      await getSB().from('tasks').insert({student_id:sid,type:'todo',title:testTitle,date:todayDateStr,is_done:false,student_done:false,teacher_confirmed:false,needs_check:false});
+    }));
   }catch(e){/* 자동 생성 실패해도 기존 화면엔 영향 없게 조용히 무시 */}
 }
 
+var _renderTasksToken=0;
 async function renderTasks(){
   if(!currentStudentId)return;
+  var myToken=++_renderTasksToken;
   var today=getOffsetDate(taskDateOffset);
   await autoGenerateVocabTestTodo(currentStudentId,today);
+  if(myToken!==_renderTasksToken)return;
   var res=await getSB().from('tasks').select('*').eq('student_id',currentStudentId).eq('date',today);
+  if(myToken!==_renderTasksToken)return;
   var tasks=res.data||[];
   var sorter=function(a,b){
     var ao=a.sort_order||0, bo=b.sort_order||0;
@@ -1670,9 +1677,9 @@ function initTaskSortable(wrapId,type){
 }
 
 async function persistTaskOrder(ids){
-  for(var i=0;i<ids.length;i++){
-    await getSB().from('tasks').update({sort_order:i+1}).eq('id',ids[i]);
-  }
+  await Promise.all(ids.map(function(id,i){
+    return getSB().from('tasks').update({sort_order:i+1}).eq('id',id);
+  }));
 }
 
 async function bulkDeleteTasks(listId){
@@ -1680,11 +1687,8 @@ async function bulkDeleteTasks(listId){
   if(!checks.length){toast('삭제할 항목을 선택해주세요');return;}
   if(!confirm(checks.length+'개 항목을 삭제할까요?'))return;
   var ids=Array.from(checks).map(function(c){return c.dataset.id;});
-  var failed=0;
-  for(var i=0;i<ids.length;i++){
-    var res=await getSB().from('tasks').delete().eq('id',ids[i]);
-    if(res.error)failed++;
-  }
+  var results=await Promise.all(ids.map(function(id){return getSB().from('tasks').delete().eq('id',id);}));
+  var failed=results.filter(function(r){return r.error;}).length;
   if(failed>0){toast(failed+'개 삭제 실패, '+(ids.length-failed)+'개 성공');}
   else{toast('✅ '+ids.length+'개 삭제 완료!');}
   renderTasks();
