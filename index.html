@@ -1551,10 +1551,9 @@ function taskHtmlGlobal(t,opts){
   var moveBtn=(!opts.noMove&&t.type==='todo'&&!t.teacher_confirmed&&!t.moved_to_hw)
     ?'<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px;color:#1a56db;border-color:#1a56db" data-id="'+t.id+'" data-title="'+escapeHtml(t.title)+'" onclick="moveTaskToHomework(this.dataset.id,this.dataset.title);event.stopPropagation()">→과제</button>'
     :'';
-  var canMove=(!opts.noMove&&t.type==='todo'&&!t.teacher_confirmed&&!t.moved_to_hw);
   var dragHandle=opts.noDrag?'':'<span class="drag-handle" style="cursor:grab;color:#ccc;font-size:18px;padding:0 8px 0 0;flex-shrink:0;touch-action:none;user-select:none">⠿</span>';
   var checkbox=opts.noCheckbox?'':'<input type="checkbox" class="task-select-check" data-id="'+t.id+'" style="width:17px;height:17px;margin-right:8px;flex-shrink:0;accent-color:#1B4D3E" onclick="event.stopPropagation()">';
-  return '<div class="task-item '+statusClass+'" data-id="'+t.id+'" data-title="'+escapeHtml(t.title)+'"'+(canMove?' onclick="moveTaskFromRow(this)" style="cursor:pointer;'+rowBorder+'"':(rowBorder?' style="'+rowBorder+'"':''))+' data-style="'+(t.student_done&&!t.teacher_confirmed?'1':'0')+'" data-needs-check="'+(t.needs_check?'1':'0')+'">'
+  return '<div class="task-item '+statusClass+'" data-id="'+t.id+'" data-title="'+escapeHtml(t.title)+'"'+(rowBorder?' style="'+rowBorder+'"':'')+' data-style="'+(t.student_done&&!t.teacher_confirmed?'1':'0')+'" data-needs-check="'+(t.needs_check?'1':'0')+'">'
     +dragHandle
     +checkbox
     +'<div class="task-check" style="'+checkStyle+'">'+checkIcon+'</div>'
@@ -1742,10 +1741,6 @@ async function confirmBulkMoveDate(ids,getType){
   toast('✅ '+ids.length+'개 항목을 '+dateInput.value+(typeLabel?' '+typeLabel+'로':'')+' 옮겼어요!');
   closeMod();
   renderTasks();
-}
-
-function moveTaskFromRow(el){
-  moveTaskToHomework(el.dataset.id,el.dataset.title);
 }
 
 async function moveTaskToHomework(taskId,title){
