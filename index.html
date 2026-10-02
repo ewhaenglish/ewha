@@ -318,9 +318,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div class="card-header"><span class="card-title" id="t-cal-detail-title">날짜 상세</span></div>
       <div class="card-body" id="t-cal-detail-body"></div>
     </div>
-    <div class="section-hd">오늘 학생 현황</div>
+    <div class="section-hd" id="t-attend-sechd">오늘 학생 현황</div>
     <div class="card">
-      <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 출결 &amp; 할일 현황</span><span class="card-count" id="t-attend-count"></span></div>
+      <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 출결 &amp; 할일 현황</span><span style="display:flex;align-items:center;gap:6px"><button class="btn-sm-outline" onclick="changeAttendDate(-1)">◀</button><span id="t-attend-date-label" style="font-size:13px;font-weight:700;min-width:70px;text-align:center;cursor:pointer" onclick="resetAttendDate()">오늘</span><button class="btn-sm-outline" id="t-attend-next" onclick="changeAttendDate(1)">▶</button><span class="card-count" id="t-attend-count"></span></span></div>
       <div class="card-body" id="t-student-list"></div>
     </div>
     <div class="section-hd">학생별 할일/과제 현황</div>
@@ -900,6 +900,15 @@ var currentChildIndex=0;
 var repChartInstance=null,repHwChartInstance=null;
 
 var taskDateOffset=0; // 오늘=0, 어제=-1, 내일=+1
+var attendDateOffset=0; // 홈 출결 카드 날짜: 오늘=0, 어제=-1 ... (미래는 불가)
+function attendDate(){return getOffsetDate(attendDateOffset);}
+function changeAttendDate(dir){
+  var n=attendDateOffset+dir;
+  if(n>0)return;
+  attendDateOffset=n;
+  renderTeacherHome();
+}
+function resetAttendDate(){attendDateOffset=0;renderTeacherHome();}
 
 function getOffsetDate(offset){
   var d=new Date(new Date().getTime()+9*60*60*1000);
@@ -1102,7 +1111,16 @@ async function renderTeacherHome(){
   var list=$('t-student-list');
   if(!allStudents.length){list.innerHTML='<div style="padding:16px;color:#aaa;text-align:center">등록된 학생이 없어요</div>';return;}
   $('t-attend-count').textContent=allStudents.length+'명';
-  var today=todayStr();
+  var today=attendDate();
+  var isToday=attendDateOffset===0;
+  (function(){
+    var lbl=$('t-attend-date-label'),nx=$('t-attend-next'),hd=$('t-attend-sechd');
+    var dd=new Date(today),dn=['일','월','화','수','목','금','토'][dd.getDay()];
+    var txt=isToday?'오늘':(attendDateOffset===-1?'어제':(dd.getMonth()+1)+'/'+dd.getDate()+'('+dn+')');
+    if(lbl){lbl.textContent=txt;lbl.style.color=isToday?'':'#B8860B';}
+    if(nx){nx.style.opacity=isToday?'0.3':'1';nx.style.pointerEvents=isToday?'none':'auto';}
+    if(hd)hd.textContent=isToday?'오늘 학생 현황':(dd.getMonth()+1)+'/'+dd.getDate()+'('+dn+') 학생 현황 (지난 날짜)';
+  })();
   var attRes=await getSB().from('attendance').select('*').eq('date',today);
   var attList=attRes.data||[];
   list.innerHTML=allStudents.map(function(s){
@@ -1113,15 +1131,15 @@ async function renderTeacherHome(){
       attBtns='<button class="btn-sm-outline" data-sid="'+s.id+'" onclick="teacherMarkAbsent(this.dataset.sid);event.stopPropagation()">결석 취소</button>';
     } else if(att&&att.check_in){
       attHtml='<span style="color:#1B4D3E;font-weight:700">등원 '+formatKSTTime(att.check_in)+'</span>'
-        +(att.check_out?' <span style="color:#888">· 하원 '+formatKSTTime(att.check_out)+'</span>':' <span style="color:#F0A030">· 하원 전</span>');
+        +(att.check_out?' <span style="color:#888">· 하원 '+formatKSTTime(att.check_out)+'</span>':' <span style="color:#F0A030">· '+(isToday?'하원 전':'하원 기록 없음')+'</span>');
       attBtns=(att.check_out
         ?'<button class="btn-sm-outline" data-sid="'+s.id+'" onclick="teacherCheckOut(this.dataset.sid);event.stopPropagation()">하원취소</button>'
         :'<button class="btn-sm" style="background:#1B4D3E" data-sid="'+s.id+'" onclick="teacherCheckOut(this.dataset.sid);event.stopPropagation()">하원</button>'
         +' <button class="btn-sm-outline" data-sid="'+s.id+'" onclick="teacherCheckIn(this.dataset.sid);event.stopPropagation()">등원취소</button>')
         +' <button class="btn-sm-outline" data-sid="'+s.id+'" onclick="openAttendTimeEdit(this.dataset.sid);event.stopPropagation()">✏️ 시간수정</button>';
     } else {
-      attHtml='<span style="color:#ccc">미등원</span>';
-      attBtns='<button class="btn-sm" style="background:#1B4D3E" data-sid="'+s.id+'" onclick="teacherCheckIn(this.dataset.sid);event.stopPropagation()">등원</button>'
+      attHtml='<span style="color:#ccc">'+(isToday?'미등원':'기록 없음')+'</span>';
+      attBtns='<button class="btn-sm" style="background:#1B4D3E" data-sid="'+s.id+'" onclick="teacherCheckIn(this.dataset.sid);event.stopPropagation()">'+(isToday?'등원':'등원 입력')+'</button>'
         +' <button class="btn-sm-outline" style="color:#E24B4A;border-color:#E24B4A" data-sid="'+s.id+'" onclick="teacherMarkAbsent(this.dataset.sid);event.stopPropagation()">결석</button>'
         +' <button class="btn-sm-outline" data-sid="'+s.id+'" onclick="openAttendTimeEdit(this.dataset.sid);event.stopPropagation()">✏️ 시간수정</button>';
     }
@@ -1136,17 +1154,23 @@ async function renderTeacherHome(){
 }
 
 async function teacherCheckIn(sid){
-  var dup=await getSB().from('attendance').select('id').eq('student_id',sid).eq('date',todayStr()).maybeSingle();
+  var date=attendDate();
+  var isToday=attendDateOffset===0;
+  var dup=await getSB().from('attendance').select('id').eq('student_id',sid).eq('date',date).maybeSingle();
   if(dup.data){
     if(!confirm('등원을 취소할까요?'))return;
-    var delRes=await getSB().from('attendance').delete().eq('student_id',sid).eq('date',todayStr());
+    var delRes=await getSB().from('attendance').delete().eq('student_id',sid).eq('date',date);
     if(delRes.error){toast('오류: '+delRes.error.message);return;}
-    var mRes=await getSB().from('mileage').select('id').eq('student_id',sid).eq('reason','출석').order('created_at',{ascending:false}).limit(1);
-    if(mRes.data&&mRes.data.length>0)await getSB().from('mileage').delete().eq('id',mRes.data[0].id);
+    if(isToday){
+      var mRes=await getSB().from('mileage').select('id').eq('student_id',sid).eq('reason','출석').order('created_at',{ascending:false}).limit(1);
+      if(mRes.data&&mRes.data.length>0)await getSB().from('mileage').delete().eq('id',mRes.data[0].id);
+    }
     toast('등원 취소됐어요');
     renderTeacherHome();
     return;
   }
+  // 지난 날짜는 '지금 시각'으로 찍으면 안 되므로 시간 입력창을 띄움
+  if(!isToday){openAttendTimeEdit(sid);return;}
   var res=await getSB().from('attendance').insert({student_id:sid,date:todayStr(),check_in:new Date().toISOString()});
   if(res.error){toast('오류: '+res.error.message);return;}
   await getSB().from('mileage').insert({student_id:sid,amount:5,reason:'출석'});
@@ -1155,12 +1179,14 @@ async function teacherCheckIn(sid){
 }
 
 async function teacherCheckOut(sid){
-  var att=await getSB().from('attendance').select('*').eq('student_id',sid).eq('date',todayStr()).maybeSingle();
+  var date=attendDate();
+  var att=await getSB().from('attendance').select('*').eq('student_id',sid).eq('date',date).maybeSingle();
   if(att.data&&att.data.check_out){
     if(!confirm('하원을 취소할까요?'))return;
-    await getSB().from('attendance').update({check_out:null}).eq('student_id',sid).eq('date',todayStr());
+    await getSB().from('attendance').update({check_out:null}).eq('student_id',sid).eq('date',date);
     toast('하원 취소됐어요');renderTeacherHome();return;
   }
+  if(attendDateOffset!==0){openAttendTimeEdit(sid);return;}
   var res=await getSB().from('attendance').update({check_out:new Date().toISOString()}).eq('student_id',sid).eq('date',todayStr());
   if(res.error){toast('오류: '+res.error.message);return;}
   toast('🏠 하원 처리했어요!');
@@ -1176,10 +1202,10 @@ function kstInputToISO(dateStr,timeStr){
   return new Date(utcMs).toISOString();
 }
 
-function openAttendTimeEdit(sid,dateStr){
+function openAttendTimeEdit(sid,dateStr,src){
   var s=allStudents.find(function(x){return x.id===sid;});
   if(!s)return;
-  var date=dateStr||todayStr();
+  var date=dateStr||attendDate();
   if(date>todayStr()){toast('미래 날짜는 출결을 입력할 수 없어요');return;}
   var isPast=date!==todayStr();
   getSB().from('attendance').select('*').eq('student_id',sid).eq('date',date).maybeSingle().then(function(res){
@@ -1190,19 +1216,19 @@ function openAttendTimeEdit(sid,dateStr){
       +'<div class="form-group"><label class="form-label">등원 시간</label><input type="time" class="form-input" id="att-edit-in" value="'+inTime+'"></div>'
       +'<div class="form-group"><label class="form-label">하원 시간</label><input type="time" class="form-input" id="att-edit-out" value="'+outTime+'"></div>'
       +'<div style="font-size:12px;color:#aaa;margin:2px 0 14px">비워두면 해당 기록은 지워져요</div>'
-      +'<button class="btn-primary" onclick="saveAttendTimeEdit(\''+sid+'\',\''+date+'\')" style="width:100%">최종입력</button>'
+      +'<button class="btn-primary" onclick="saveAttendTimeEdit(\''+sid+'\',\''+date+'\',\''+(src||'')+'\')" style="width:100%">최종입력</button>'
       +'</div>';
     var dd=new Date(date);
     openMod(s.name+(isPast?' '+(dd.getMonth()+1)+'/'+dd.getDate()+' 등하원 입력':' 등하원 시간 수정'),html);
   });
 }
 
-async function saveAttendTimeEdit(sid,dateStr){
+async function saveAttendTimeEdit(sid,dateStr,src){
   var inEl=document.getElementById('att-edit-in');
   var outEl=document.getElementById('att-edit-out');
   var inVal=inEl?inEl.value:'';
   var outVal=outEl?outEl.value:'';
-  var date=dateStr||todayStr();
+  var date=dateStr||attendDate();
   if(date>todayStr()){toast('미래 날짜는 출결을 입력할 수 없어요');return;}
   var updateData={
     check_in:inVal?kstInputToISO(date,inVal):null,
@@ -1222,28 +1248,28 @@ async function saveAttendTimeEdit(sid,dateStr){
   if(inVal)await getSB().from('attendance').update({is_absent:false}).eq('student_id',sid).eq('date',date).eq('is_absent',true);
   toast('✅ 등하원 시간을 저장했어요');
   closeMod();
-  if(date===todayStr()){
-    renderTeacherHome();
-  } else {
-    // 지난 날짜 입력: 달력 새로고침 후 그 학생 기록 다시 열기
+  if(src==='cal'){
+    // 달력에서 연 경우: 달력 새로고침 후 그 학생 기록 다시 열기
     try{renderCalendar('t');}catch(e){}
     openTeacherCalStudentDetail(sid,date);
+  } else {
+    renderTeacherHome();
   }
 }
 
 async function teacherMarkAbsent(sid){
-  var att=await getSB().from('attendance').select('*').eq('student_id',sid).eq('date',todayStr()).maybeSingle();
+  var att=await getSB().from('attendance').select('*').eq('student_id',sid).eq('date',attendDate()).maybeSingle();
   if(att.data&&att.data.is_absent){
     if(!confirm('결석 처리를 취소할까요?'))return;
-    await getSB().from('attendance').update({is_absent:false}).eq('student_id',sid).eq('date',todayStr());
+    await getSB().from('attendance').update({is_absent:false}).eq('student_id',sid).eq('date',attendDate());
     toast('결석 취소됐어요');renderTeacherHome();return;
   }
   if(!confirm('결석 처리할까요?'))return;
   if(att.data){
-    var res=await getSB().from('attendance').update({is_absent:true}).eq('student_id',sid).eq('date',todayStr());
+    var res=await getSB().from('attendance').update({is_absent:true}).eq('student_id',sid).eq('date',attendDate());
     if(res.error){toast('오류: '+res.error.message);return;}
   } else {
-    var res2=await getSB().from('attendance').insert({student_id:sid,date:todayStr(),is_absent:true});
+    var res2=await getSB().from('attendance').insert({student_id:sid,date:attendDate(),is_absent:true});
     if(res2.error){toast('오류: '+res2.error.message);return;}
   }
   toast('결석 처리했어요');
@@ -1992,12 +2018,12 @@ async function saveNote(){
   var todoText=todos.map(function(t){return (t.student_done?'✔':'✕')+' '+t.title;}).join('\n')||'없음';
   // 오늘 새로 나간 과제 - 아직 마감 전이므로 체크 표시 없이 목록만
   var hwTodayText=hwsToday.map(function(t){return '• '+t.title;}).join('\n')||'없음';
-  // 지난 수업 시간에 나간 과제 - 오늘 이전 날짜 중 가장 최근에 과제가 있던 날을 찾아 완료여부+시각 표시
+  // 지난 수업 시간에 나간 과제 - '지난 수업일'(출결/선생님이 넣은 할일·과제 기준)을 먼저 찾고, 그날 과제만 표시
+  // (그날 과제가 없으면 옛날 과제를 끌어오지 않고 '없음'으로 표시)
   var prevHwText='';
   var prevDateLabel='';
-  var prevRes=await getSB().from('tasks').select('date').eq('student_id',sid).eq('type','hw').lt('date',today).order('date',{ascending:false}).limit(1);
-  if(prevRes.data&&prevRes.data.length){
-    var prevDate=prevRes.data[0].date;
+  var prevDate=await findPrevClassDate(sid,today);
+  if(prevDate){
     prevDateLabel=fmtDateLabel(prevDate);
     var prevTasksRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('type','hw').eq('date',prevDate);
     var prevHws=prevTasksRes.data||[];
@@ -3521,7 +3547,7 @@ async function openTeacherCalStudentDetail(sid,dateStr){
   }
   if(!todos.length&&!hws.length)html+='<div style="padding:20px 0;text-align:center;color:#aaa;font-size:13px">이날 할일/과제 기록이 없어요</div>';
   if(dateStr<=todayStr()){
-    html+='<button onclick="openAttendTimeEdit(this.dataset.sid,this.dataset.date)" data-sid="'+sid+'" data-date="'+dateStr+'" class="btn-sm-outline" style="width:100%;margin-top:14px;padding:10px">✏️ '+(att&&att.check_in?'등하원 시간 수정':'등하원 입력')+'</button>';
+    html+='<button onclick="openAttendTimeEdit(this.dataset.sid,this.dataset.date,\'cal\')" data-sid="'+sid+'" data-date="'+dateStr+'" class="btn-sm-outline" style="width:100%;margin-top:14px;padding:10px">✏️ '+(att&&att.check_in?'등하원 시간 수정':'등하원 입력')+'</button>';
   }
   html+='<button onclick="closeMod()" class="btn-primary" style="width:100%;margin-top:12px">닫기</button></div>';
   openMod((s?s.name:'')+' 기록', html);
