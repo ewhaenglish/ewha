@@ -474,6 +474,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
           <div class="note-section-text" id="note-today-tasks">-</div>
         </div>
         <div class="note-section" style="margin:0 16px 8px">
+          <div class="note-section-title" id="note-prev-hw-title">🔁 지난 시간 과제</div>
+          <div class="note-section-text" id="note-prev-hw">-</div>
+        </div>
+        <div class="note-section" style="margin:0 16px 8px">
           <div class="note-section-title">📚 오늘의 과제</div>
           <div class="note-section-text" id="note-today-hw">-</div>
         </div>
@@ -543,6 +547,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         <option value="">학생을 선택하세요</option>
       </select>
     </div>
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-header"><span class="card-title"><span class="gold-star">✦</span> 월간 출결 · 수업시간</span><button class="btn-sm-outline" onclick="exportMonthlyAttendanceCSV()">CSV 저장</button></div>
+      <div id="mon-att-note" style="padding:8px 16px 0;font-size:12px;color:#999"></div>
+      <div id="mon-att-table" style="padding:8px 8px 12px;overflow-x:auto"></div>
+    </div>
     <div id="report-area" class="hidden">
       <div class="stat-grid">
         <div class="stat-card"><div class="stat-label">출석일수</div><div class="stat-num" id="rep-attend">0<span class="stat-unit">일</span></div></div>
@@ -586,7 +595,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
     <button class="nav-item" onclick="tTab('t-note',this);loadRecentNotes();populateStudentSelects()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l1.5 4.5L18 10l-4.5 1.5L12 16l-1.5-4.5L6 10l4.5-1.5z"/><path d="M18 15l.8 2.2L21 18l-2.2.8L18 21l-.8-2.2L15 18l2.2-.8z"/></svg></span><span class="nav-label">성장노트</span></button>
     <button class="nav-item" onclick="tTab('t-students',this);loadStudents()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3 3-5 6-5s6 2 6 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 15c2.5 0 5 1.6 5 4"/></svg></span><span class="nav-label">학생관리</span></button>
     <button class="nav-item" onclick="tTab('t-mileage',this);loadMileageTab()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.4 5.4 5.6.6-4.2 3.9 1.2 5.6-5-3-5 3 1.2-5.6L4 9l5.6-.6z"/></svg></span><span class="nav-label">마일리지</span></button>
-    <button class="nav-item" onclick="tTab('t-report',this);populateStudentSelects()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg></span><span class="nav-label">리포트</span></button>
+    <button class="nav-item" onclick="tTab('t-report',this);populateStudentSelects();loadMonthlyAttendance()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></svg></span><span class="nav-label">리포트</span></button>
     <button class="nav-item" onclick="tTab('t-intro',this);loadIntroTab();loadIntroToTeacher()"><span class="nav-icon"><svg class="nav-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c-2 3-6 4-6 9a6 6 0 0 0 12 0c0-5-4-6-6-9z"/><path d="M12 21v-6"/></svg></span><span class="nav-label">Intro</span></button>
   </div>
 </div>
@@ -1603,11 +1612,12 @@ function taskHtmlGlobal(t,opts){
 // ===== 지난 수업일 찾기 =====
 // 1) 등원(check_in) 기록이 있는 날 + 2) 선생님이 직접 넣은 할일/과제가 있는 날 중 가장 최근 날짜.
 // 출결을 깜빡해도 그날 과제를 냈다면 수업일로 인정됨.
-// 자동 생성 항목(반복 할일, 단어 TEST 자동생성, [지난 과제 확인])만 있는 날과 결석 처리된 날은 제외 → 엉뚱한 날짜 방지
+// 자동 생성 항목(반복 할일, 단어 TEST 자동생성, [지난 과제 확인])은 선생님이 확인 완료한 할일일 때만 인정, 결석 처리된 날은 제외 → 엉뚱한 날짜 방지
+// 과제가 없는 날이어도 할일 기록만 있으면 수업일로 인정됨 (그날 과제는 '과제 없음'으로 표시)
 async function findPrevClassDate(sid,beforeDateStr){
   var results=await Promise.all([
     getSB().from('attendance').select('date').eq('student_id',sid).lt('date',beforeDateStr).not('check_in','is',null).order('date',{ascending:false}).limit(1),
-    getSB().from('tasks').select('date,title,type').eq('student_id',sid).lt('date',beforeDateStr).order('date',{ascending:false}).limit(80),
+    getSB().from('tasks').select('date,title,type,student_done,teacher_confirmed').eq('student_id',sid).lt('date',beforeDateStr).order('date',{ascending:false}).limit(120),
     getSB().from('recurring_tasks').select('title,type').eq('student_id',sid),
     getSB().from('attendance').select('date').eq('student_id',sid).lt('date',beforeDateStr).eq('is_absent',true).order('date',{ascending:false}).limit(30)
   ]);
@@ -1621,9 +1631,9 @@ async function findPrevClassDate(sid,beforeDateStr){
   for(var i=0;i<rows.length;i++){
     var t=rows[i], title=t.title||'';
     if(absentSet[t.date])continue;
-    if(recurSet[t.type+'_'+title])continue;
-    if(/^단어 Day \d+-\d+ TEST$/.test(title))continue;
-    if(title.indexOf('[지난 과제 확인]')===0)continue;
+    var isAuto=!!recurSet[t.type+'_'+title]||/^단어 Day \d+-\d+ TEST$/.test(title)||title.indexOf('[지난 과제 확인]')===0;
+    // 자동 생성 항목은 '선생님이 확인 완료한 할일'일 때만 수업 기록으로 인정 (수업 없는 날 로그인만 한 경우 방지)
+    if(isAuto&&!(t.type==='todo'&&t.teacher_confirmed))continue;
     taskDate=t.date;break;
   }
   if(attDate&&taskDate)return attDate>taskDate?attDate:taskDate;
@@ -1956,6 +1966,20 @@ async function loadNotePreview(){
   var tasks=res.data||[];
   $('note-today-tasks').textContent=tasks.filter(function(t){return t.type==='todo';}).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')||'할일 없음';
   $('note-today-hw').textContent=tasks.filter(function(t){return t.type==='hw';}).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')||'과제 없음';
+  // 지난 시간 과제 (저장 전에 어느 날짜 과제가 들어가는지 미리 확인)
+  try{
+    var pvTitle=$('note-prev-hw-title'),pvEl=$('note-prev-hw');
+    var pvDate=await findPrevClassDate(sid,today);
+    if(pvEl){
+      if(!pvDate){pvEl.textContent='지난 수업 기록 없음';if(pvTitle)pvTitle.textContent='🔁 지난 시간 과제';}
+      else{
+        var pvd=new Date(pvDate),pvDn=['일','월','화','수','목','금','토'][pvd.getDay()];
+        if(pvTitle)pvTitle.textContent='🔁 지난 시간 과제 ('+(pvd.getMonth()+1)+'/'+pvd.getDate()+' '+pvDn+')';
+        var pvRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('type','hw').eq('date',pvDate);
+        pvEl.textContent=(pvRes.data||[]).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')||'과제 없음';
+      }
+    }
+  }catch(e){}
   // 이번 주 각오
   var d2=new Date();var monday2=new Date(d2);monday2.setDate(d2.getDate()-d2.getDay()+1);
   var ms2=monday2.getFullYear()+'-'+String(monday2.getMonth()+1).padStart(2,'0')+'-'+String(monday2.getDate()).padStart(2,'0');
@@ -2027,7 +2051,7 @@ async function saveNote(){
     prevDateLabel=fmtDateLabel(prevDate);
     var prevTasksRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('type','hw').eq('date',prevDate);
     var prevHws=prevTasksRes.data||[];
-    prevHwText=prevHws.map(function(t){return (t.student_done?'✔':'✕')+' '+t.title;}).join('\n')||'없음';
+    prevHwText=prevHws.map(function(t){return (t.student_done?'✔':'✕')+' '+t.title;}).join('\n')||'과제 없음';
   }
   var noteContent='📅 Date: '+dateLabel+'\n\n[단어 TEST]\n'+vtText
     +(prevDateLabel?'\n\n[지난 시간 과제 - '+prevDateLabel+']\n'+prevHwText:'')
@@ -3222,13 +3246,24 @@ async function deleteSelectedNotes(){
 }
 
 var repMonthOffset=0;
+// 리포트가 보고 있는 달 (1일 기준으로 계산 → 31일에 ◀를 눌러도 달이 밀리지 않음)
+function repMonthInfo(){
+  var now=new Date();
+  var d=new Date(now.getFullYear(),now.getMonth()+repMonthOffset,1);
+  var n=new Date(d.getFullYear(),d.getMonth()+1,1);
+  var pad=function(x){return String(x).padStart(2,'0');};
+  return {date:d,year:d.getFullYear(),month:d.getMonth()+1,
+    start:d.getFullYear()+'-'+pad(d.getMonth()+1)+'-01',
+    next:n.getFullYear()+'-'+pad(n.getMonth()+1)+'-01'};
+}
 function changeRepMonth(dir){
   repMonthOffset+=dir;
   updateRepMonthLabel();
   loadReport();
+  loadMonthlyAttendance();
 }
 function updateRepMonthLabel(){
-  var d=new Date();d.setMonth(d.getMonth()+repMonthOffset);
+  var d=repMonthInfo().date;
   var el=document.getElementById('rep-month-label');
   if(el)el.textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월';
 }
@@ -3237,17 +3272,17 @@ async function loadReport(){
   var sid=document.getElementById('report-student-sel').value;
   if(!sid){document.getElementById('report-area').classList.add('hidden');return;}
   document.getElementById('report-area').classList.remove('hidden');
-  var d=new Date();d.setMonth(d.getMonth()+repMonthOffset);
+  var mi=repMonthInfo();var d=mi.date;
   var ym=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
-  var res=await getSB().from('tasks').select('*').eq('student_id',sid).gte('date',ym+'-01').lte('date',ym+'-31');
+  var res=await getSB().from('tasks').select('*').eq('student_id',sid).gte('date',mi.start).lt('date',mi.next);
   var tasks=res.data||[];
   var todos=tasks.filter(function(t){return t.type==='todo';});
   var hws=tasks.filter(function(t){return t.type==='hw';});
   var todoRate=todos.length?Math.round(todos.filter(function(t){return t.teacher_confirmed;}).length/todos.length*100):0;
   var hwRate=hws.length?Math.round(hws.filter(function(t){return t.teacher_confirmed;}).length/hws.length*100):0;
-  var aRes=await getSB().from('attendance').select('date').eq('student_id',sid).gte('date',ym+'-01');
+  var aRes=await getSB().from('attendance').select('date').eq('student_id',sid).gte('date',mi.start).lt('date',mi.next).not('check_in','is',null);
   var attendDays=[...new Set((aRes.data||[]).map(function(a){return a.date;}))].length;
-  var vRes=await getSB().from('vocab_tests').select('score,total').eq('student_id',sid).gte('date',ym+'-01').not('score','is',null);
+  var vRes=await getSB().from('vocab_tests').select('score,total').eq('student_id',sid).gte('date',mi.start).lt('date',mi.next).not('score','is',null);
   var vocabs=vRes.data||[];
   var validVocabs=vocabs.filter(function(v){return v.total&&v.total>0&&v.score!=null;});
   var vocabAvg=validVocabs.length?Math.round(validVocabs.reduce(function(s,v){return s+(v.score/v.total*100);},0)/validVocabs.length):null;
@@ -3277,10 +3312,82 @@ async function loadReport(){
   }
 }
 
+// ===== 월간 출결 · 수업시간 (전체 학생) =====
+// 등원 횟수 = 등원(check_in) 기록이 있는 날 수 / 수업시간 = 하원-등원 합계(하원 기록 없는 날은 시간 계산에서 제외)
+var _monAttRows=[];
+function fmtMinutes(m){
+  if(!m||m<=0)return '-';
+  var h=Math.floor(m/60),mm=m%60;
+  return h>0?(h+'시간'+(mm?' '+mm+'분':'')):(mm+'분');
+}
+async function loadMonthlyAttendance(){
+  var box=$('mon-att-table');if(!box)return;
+  var mi=repMonthInfo();
+  box.innerHTML='<div style="padding:16px;text-align:center;color:#aaa;font-size:13px">불러오는 중...</div>';
+  var res=await getSB().from('attendance').select('student_id,date,check_in,check_out,is_absent').gte('date',mi.start).lt('date',mi.next);
+  if(res.error){box.innerHTML='<div style="padding:16px;color:#c00;font-size:13px">오류: '+res.error.message+'</div>';return;}
+  var by={};
+  (res.data||[]).forEach(function(a){(by[a.student_id]=by[a.student_id]||[]).push(a);});
+  var rows=allStudents.map(function(st){
+    var list=by[st.id]||[];
+    var days=0,absent=0,mins=0,timed=0,noOut=0;
+    list.forEach(function(a){
+      if(a.check_in){
+        days++;
+        if(a.check_out){
+          var diff=Math.round((new Date(a.check_out)-new Date(a.check_in))/60000);
+          if(diff>0&&diff<=720){mins+=diff;timed++;}else noOut++;
+        } else noOut++;
+      } else if(a.is_absent){absent++;}
+    });
+    return {name:st.name,days:days,absent:absent,mins:mins,timed:timed,noOut:noOut};
+  });
+  _monAttRows=rows;
+  var note=$('mon-att-note');
+  var todayD=todayStr();
+  if(note)note.textContent=(mi.start<=todayD&&todayD<mi.next)?'오늘까지 집계 · 월말까지 계속 반영돼요':'';
+  var th='padding:8px 6px;font-size:12px;color:#888;font-weight:600;text-align:center;border-bottom:1px solid #eee;white-space:nowrap';
+  var td='padding:9px 6px;font-size:13px;text-align:center;border-bottom:1px solid #f5f5f5;white-space:nowrap';
+  var html='<table style="width:100%;border-collapse:collapse"><thead><tr>'
+    +'<th style="'+th+';text-align:left">학생</th><th style="'+th+'">등원</th><th style="'+th+'">수업시간</th><th style="'+th+'">회당 평균</th><th style="'+th+'">결석</th></tr></thead><tbody>';
+  var tDays=0,tMins=0,tAbs=0,tNoOut=0;
+  rows.forEach(function(r){
+    tDays+=r.days;tMins+=r.mins;tAbs+=r.absent;tNoOut+=r.noOut;
+    var avg=r.timed?Math.round(r.mins/r.timed):0;
+    var warn=r.noOut?'<div style="font-size:10px;color:#F0A030">하원 미기록 '+r.noOut+'회</div>':'';
+    html+='<tr><td style="'+td+';text-align:left;font-weight:600">'+r.name+'</td>'
+      +'<td style="'+td+'">'+(r.days?r.days+'회':'-')+'</td>'
+      +'<td style="'+td+'">'+fmtMinutes(r.mins)+warn+'</td>'
+      +'<td style="'+td+'">'+fmtMinutes(avg)+'</td>'
+      +'<td style="'+td+';color:'+(r.absent?'#c0392b':'#bbb')+'">'+(r.absent?r.absent+'회':'-')+'</td></tr>';
+  });
+  html+='<tr style="background:#FAFAF5"><td style="'+td+';text-align:left;font-weight:700">합계</td>'
+    +'<td style="'+td+';font-weight:700">'+tDays+'회</td>'
+    +'<td style="'+td+';font-weight:700">'+fmtMinutes(tMins)+'</td><td style="'+td+'"></td>'
+    +'<td style="'+td+';font-weight:700">'+(tAbs?tAbs+'회':'-')+'</td></tr></tbody></table>';
+  if(tNoOut)html+='<div style="padding:8px 8px 0;font-size:11px;color:#999">※ 하원 기록이 없는 날은 수업시간 합계에서 빠져요. 홈 출결에서 하원 시간을 입력하면 반영돼요.</div>';
+  box.innerHTML=html;
+}
+function exportMonthlyAttendanceCSV(){
+  if(!_monAttRows.length){toast('먼저 월간 출결을 불러와주세요');return;}
+  var mi=repMonthInfo();
+  var lines=['학생,등원횟수,수업시간(분),회당평균(분),결석,하원미기록'];
+  _monAttRows.forEach(function(r){
+    var avg=r.timed?Math.round(r.mins/r.timed):0;
+    lines.push('"'+String(r.name).replace(/"/g,'""')+'",'+r.days+','+r.mins+','+avg+','+r.absent+','+r.noOut);
+  });
+  var blob=new Blob(['\ufeff'+lines.join('\r\n')],{type:'text/csv;charset=utf-8;'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='이화영어_출결_'+mi.year+'-'+String(mi.month).padStart(2,'0')+'.csv';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+}
+
 async function saveReport(){
   var sid=document.getElementById('report-student-sel').value;
   if(!sid){toast('학생을 선택해주세요');return;}
-  var d=new Date();
+  var d=repMonthInfo().date;
   var s1=document.getElementById('rep-summary');var s2=document.getElementById('rep-comment');
   var r=await getSB().from('monthly_reports').upsert({student_id:sid,year:d.getFullYear(),month:d.getMonth()+1,
     monthly_summary:s1?s1.value:'',teacher_comment:s2?s2.value:'',
