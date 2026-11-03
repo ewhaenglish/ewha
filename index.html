@@ -393,6 +393,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
         </div>
         <div class="card-body" id="prev-hw-list"></div>
       </div>
+      <div style="margin-bottom:12px"><button class="btn-sm-outline" style="width:100%;padding:10px" onclick="openCopyDayModal()">📋 이 날 할일·과제를 다른 학생에게 복사</button></div>
       <div class="card">
         <div class="card-header"><span class="card-title">오늘의 할일</span><span class="card-count" id="todo-count"></span></div>
         <div class="card-body" id="todo-list"></div>
@@ -1876,6 +1877,93 @@ async function teacherUnmarkTask(taskId){
   toast(wentThroughConfirm?'확인이 취소됐어요 (확인 대기로 돌아감)':'완료 처리가 취소됐어요');
   renderTasks();
   loadPendingConfirmSummary();
+}
+
+// ===== 하루 할일/과제 목록을 다른 학생에게 복사 =====
+// 선택한 학생의 그 날짜 목록(자동 생성 항목 제외)에서 복사할 항목과 받을 학생·날짜를 골라 한 번에 넣음.
+// 받는 쪽에 같은 종류·같은 내용이 이미 있으면 건너뛰고, 순서는 원래 순서 그대로 받는 학생 목록 맨 뒤에 붙음.
+var _copySrc=[];
+function _isAutoTaskTitle(title){
+  return /^단어 Day \d+-\d+ TEST$/.test(title||'')||(title||'').indexOf('[지난 과제 확인]')===0;
+}
+async function openCopyDayModal(){
+  if(!currentStudentId){toast('먼저 학생을 선택해주세요');return;}
+  var date=getOffsetDate(taskDateOffset);
+  var res=await getSB().from('tasks').select('*').eq('student_id',currentStudentId).eq('date',date);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  var items=(res.data||[]).filter(function(t){return !_isAutoTaskTitle(t.title);});
+  var todos=items.filter(function(t){return t.type==='todo';}).sort(taskOrderSorter);
+  var hws=items.filter(function(t){return t.type==='hw';}).sort(taskOrderSorter);
+  _copySrc=todos.concat(hws);
+  if(!_copySrc.length){toast('복사할 할일/과제가 없어요');return;}
+  var src=allStudents.find(function(x){return x.id===currentStudentId;});
+  var dd=new Date(date),dn=['일','월','화','수','목','금','토'][dd.getDay()];
+  var lbl='display:flex;align-items:flex-start;gap:8px;padding:6px 0;font-size:13px;cursor:pointer';
+  var html='<div style="padding:16px">'
+    +'<div style="font-size:13px;color:#666;margin-bottom:10px">'+escapeHtml(src?src.name:'')+' · '+(dd.getMonth()+1)+'/'+dd.getDate()+'('+dn+') 목록을 복사해요. 완료 표시는 초기화돼요.</div>';
+  var idx=0;
+  function section(title,list){
+    if(!list.length)return '';
+    var h='<div style="font-size:12px;font-weight:700;color:#1B4D3E;margin:10px 0 2px">'+title+' '+list.length+'개</div>';
+    list.forEach(function(t){
+      h+='<label style="'+lbl+'"><input type="checkbox" class="copy-item-chk" data-i="'+idx+'" checked style="margin-top:2px"><span>'+escapeHtml(t.title)+'</span></label>';
+      idx++;
+    });
+    return h;
+  }
+  html+=section('할일',todos)+section('과제',hws);
+  html+='<div style="font-size:12px;font-weight:700;color:#1B4D3E;margin:16px 0 4px;display:flex;justify-content:space-between;align-items:center"><span>받을 학생</span>'
+    +'<span><button type="button" class="btn-sm-outline" onclick="copyDayToggleAll(true)" style="padding:3px 8px;font-size:11px">전체 선택</button> <button type="button" class="btn-sm-outline" onclick="copyDayToggleAll(false)" style="padding:3px 8px;font-size:11px">해제</button></span></div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:6px 14px">';
+  allStudents.filter(function(x){return x.id!==currentStudentId;}).forEach(function(x){
+    html+='<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="copy-stu-chk" data-id="'+x.id+'">'+escapeHtml(x.name)+'</label>';
+  });
+  html+='</div>'
+    +'<div style="font-size:12px;font-weight:700;color:#1B4D3E;margin:16px 0 4px">복사할 날짜</div>'
+    +'<input type="date" class="form-input" id="copy-day-date" value="'+date+'" style="margin-bottom:16px">'
+    +'<button class="btn-primary" id="copy-day-btn" data-src="'+date+'">복사하기</button></div>';
+  openMod('다른 학생에게 복사',html);
+  setTimeout(function(){
+    var b=document.getElementById('copy-day-btn');
+    if(b)b.onclick=function(){confirmCopyDay(b.dataset.src);};
+  },50);
+}
+function copyDayToggleAll(on){
+  document.querySelectorAll('.copy-stu-chk').forEach(function(c){c.checked=on;});
+}
+async function confirmCopyDay(srcDate){
+  var picked=Array.from(document.querySelectorAll('.copy-item-chk:checked')).map(function(c){return _copySrc[parseInt(c.dataset.i,10)];}).filter(Boolean);
+  var targets=Array.from(document.querySelectorAll('.copy-stu-chk:checked')).map(function(c){return c.dataset.id;});
+  var dEl=document.getElementById('copy-day-date');
+  var date=dEl?dEl.value:'';
+  if(!picked.length){toast('복사할 항목을 선택해주세요');return;}
+  if(!targets.length){toast('받을 학생을 선택해주세요');return;}
+  if(!date){toast('날짜를 선택해주세요');return;}
+  var btn=document.getElementById('copy-day-btn');if(btn){btn.disabled=true;btn.textContent='복사 중...';}
+  var exRes=await getSB().from('tasks').select('student_id,title,type,sort_order').in('student_id',targets).eq('date',date);
+  if(exRes.error){toast('오류: '+exRes.error.message);if(btn){btn.disabled=false;btn.textContent='복사하기';}return;}
+  var existing=exRes.data||[];
+  var rows=[],skipped=0,sameDate=(date===srcDate);
+  targets.forEach(function(sid){
+    var mine=existing.filter(function(e){return e.student_id===sid;});
+    var maxOrder={todo:0,hw:0};
+    mine.forEach(function(e){if(e.type in maxOrder&&(e.sort_order||0)>maxOrder[e.type])maxOrder[e.type]=e.sort_order||0;});
+    var have={};
+    mine.forEach(function(e){have[e.type+'|'+(e.title||'').trim()]=true;});
+    picked.forEach(function(t){
+      var key=t.type+'|'+(t.title||'').trim();
+      if(have[key]){skipped++;return;}
+      maxOrder[t.type]++;
+      var row={student_id:sid,title:t.title,type:t.type,date:date,is_done:false,student_done:false,teacher_confirmed:false,needs_check:!!t.needs_check,sort_order:maxOrder[t.type]};
+      if(t.type==='hw'&&t.due_date&&sameDate)row.due_date=t.due_date;
+      rows.push(row);
+    });
+  });
+  if(!rows.length){toast('이미 모두 들어 있어서 새로 복사된 항목이 없어요');closeMod();return;}
+  var ins=await getSB().from('tasks').insert(rows);
+  if(ins.error){toast('오류: '+ins.error.message);if(btn){btn.disabled=false;btn.textContent='복사하기';}return;}
+  toast('✅ '+targets.length+'명에게 '+rows.length+'개 복사했어요'+(skipped?' (중복 '+skipped+'개 건너뜀)':''));
+  closeMod();
 }
 
 async function addTask(type){
