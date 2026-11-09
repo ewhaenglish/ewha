@@ -1171,6 +1171,7 @@ async function teacherCheckIn(sid){
   if(res.error){toast('오류: '+res.error.message);return;}
   await getSB().from('mileage').insert({student_id:sid,amount:5,reason:'출석'});
   toast('✅ 등원 처리했어요! +5점');
+  autoCarryPartialTodos(sid,todayStr());
   renderTeacherHome();
 }
 
@@ -1587,7 +1588,7 @@ function taskHtmlGlobal(t,opts){
   }
   var editBtn='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px" data-id="'+t.id+'" data-type="'+t.type+'" data-title="'+escapeHtml(t.title)+'" data-needs-check="'+(t.needs_check?'1':'0')+'" onclick="editTaskFromBtn(this);event.stopPropagation()">✏️</button>';
   var delBtn='<button class="btn-danger" style="flex-shrink:0;margin-left:4px" onclick="deleteTask(\''+t.id+'\');event.stopPropagation()">🗑</button>';
-  var moveBtn=(!opts.noMove&&t.type==='todo'&&!t.teacher_confirmed&&!t.moved_to_hw)
+  var moveBtn=(!opts.noMove&&t.type==='todo'&&(!t.teacher_confirmed||t.partial_done)&&!t.moved_to_hw)
     ?'<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px;color:#1a56db;border-color:#1a56db" data-id="'+t.id+'" data-title="'+escapeHtml(t.title)+'" onclick="moveTaskToHomework(this.dataset.id,this.dataset.title);event.stopPropagation()">→과제</button>'
     :'';
   var dragHandle=opts.noDrag?'':'<span class="drag-handle" style="cursor:grab;color:#ccc;font-size:18px;padding:0 8px 0 0;flex-shrink:0;touch-action:none;user-select:none">⠿</span>';
@@ -1622,7 +1623,7 @@ async function findPrevClassDate(sid,beforeDateStr){
   for(var i=0;i<rows.length;i++){
     var t=rows[i], title=t.title||'';
     if(absentSet[t.date])continue;
-    var isAuto=!!recurSet[t.type+'_'+title]||/^단어 Day \d+-\d+ TEST$/.test(title)||title.indexOf('[지난 과제 확인]')===0;
+    var isAuto=!!recurSet[t.type+'_'+title]||/^단어 Day \d+-\d+ TEST$/.test(title)||title.indexOf('[지난 과제 확인]')===0||title.indexOf('[이어서]')===0;
     // 자동 생성 항목은 '선생님이 확인 완료한 할일'일 때만 수업 기록으로 인정 (수업 없는 날 로그인만 한 경우 방지)
     if(isAuto&&!(t.type==='todo'&&t.teacher_confirmed))continue;
     taskDate=t.date;break;
@@ -1693,12 +1694,57 @@ function taskOrderSorter(a,b){
   if(ao!==bo)return ao-bo;
   return (a.created_at||'').localeCompare(b.created_at||'');
 }
+// ===== 부분 완료 할일 → 다음 수업일 할일로 자동 이월 =====
+// 대상: 최근 14일 안의 '부분 완료(△)' 할일 중 아직 이월/과제 전환이 안 된 것 (과제로 넘기면 type이 hw가 되어 제외됨)
+// 시점: 그 학생이 등원했거나, 선생님이 직접 넣은 할일/과제가 있는 '수업일'에만 → 수업 없는 날에 엉뚱하게 생기지 않음
+// 한 번 이월되면 표시(carried_over)를 남겨 지워도 다시 생기지 않음. DB에 carried_over 열이 없으면 조용히 동작 안 함.
+async function autoCarryPartialTodos(sid,dateStr){
+  try{
+    if(!sid||dateStr>todayStr())return 0;
+    var base=await Promise.all([
+      getSB().from('attendance').select('check_in,is_absent').eq('student_id',sid).eq('date',dateStr).maybeSingle(),
+      getSB().from('tasks').select('title,type').eq('student_id',sid).eq('date',dateStr),
+      getSB().from('recurring_tasks').select('title,type').eq('student_id',sid)
+    ]);
+    var att=base[0].data;
+    if(att&&att.is_absent)return 0;
+    var dayTasks=base[1].data||[];
+    var recur={};(base[2].data||[]).forEach(function(r){recur[r.type+'_'+r.title]=true;});
+    var manual=dayTasks.some(function(t){
+      var ti=t.title||'';
+      return !recur[t.type+'_'+ti]&&!/^단어 Day \d+-\d+ TEST$/.test(ti)&&ti.indexOf('[지난 과제 확인]')!==0&&ti.indexOf('[이어서]')!==0;
+    });
+    if(!(att&&att.check_in)&&!manual)return 0;
+    var d0=new Date(dateStr);d0.setDate(d0.getDate()-14);
+    var from=d0.getFullYear()+'-'+String(d0.getMonth()+1).padStart(2,'0')+'-'+String(d0.getDate()).padStart(2,'0');
+    var srcRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('type','todo').eq('partial_done',true).eq('carried_over',false).lt('date',dateStr).gte('date',from);
+    if(srcRes.error||!srcRes.data||!srcRes.data.length)return 0;
+    var have={};dayTasks.forEach(function(t){if(t.type==='todo')have[(t.title||'').trim()]=true;});
+    var n=0;
+    var srcs=srcRes.data.sort(function(a,b){return (a.date+(a.created_at||'')).localeCompare(b.date+(b.created_at||''));});
+    for(var i=0;i<srcs.length;i++){
+      var src=srcs[i];
+      var newTitle='[이어서] '+(src.title||'').replace(/^\[이어서\]\s*/,'');
+      // 먼저 '이월됨' 표시를 선점(동시에 두 화면이 열려 있어도 한 번만 만들어지게)
+      var claim=await getSB().from('tasks').update({carried_over:true}).eq('id',src.id).eq('carried_over',false).select('id');
+      if(claim.error||!claim.data||!claim.data.length)continue;
+      if(have[newTitle.trim()])continue;
+      var ins=await getSB().from('tasks').insert({student_id:sid,type:'todo',title:newTitle,date:dateStr,is_done:false,student_done:false,teacher_confirmed:false,needs_check:false});
+      if(ins.error){await getSB().from('tasks').update({carried_over:false}).eq('id',src.id);continue;}
+      have[newTitle.trim()]=true;n++;
+    }
+    return n;
+  }catch(e){return 0;}
+}
+
 var _renderTasksToken=0;
 async function renderTasks(){
   if(!currentStudentId)return;
   var myToken=++_renderTasksToken;
   var today=getOffsetDate(taskDateOffset);
   await autoGenerateVocabTestTodo(currentStudentId,today);
+  var carried=await autoCarryPartialTodos(currentStudentId,today);
+  if(carried)toast('📌 부분 완료한 할일 '+carried+'개를 오늘 할일로 이월했어요');
   if(myToken!==_renderTasksToken)return;
   var res=await getSB().from('tasks').select('*').eq('student_id',currentStudentId).eq('date',today);
   if(myToken!==_renderTasksToken)return;
@@ -1819,8 +1865,12 @@ async function confirmBulkMoveDate(ids,getType){
 }
 
 async function moveTaskToHomework(taskId,title){
-  if(!confirm('"'+title+'" 항목을 과제로 넘길까요?'))return;
-  var res=await getSB().from('tasks').update({type:'hw'}).eq('id',taskId);
+  var cur=await getSB().from('tasks').select('partial_done').eq('id',taskId).single();
+  var isPartial=!!(cur.data&&cur.data.partial_done);
+  if(!confirm('"'+title+'" 항목을 과제로 넘길까요?'+(isPartial?'\n(부분 완료 표시는 해제되고, 미완료 과제로 넘어가요. 다음 시간 자동 이월은 되지 않아요)':'')))return;
+  var upd={type:'hw'};
+  if(isPartial){upd.partial_done=false;upd.teacher_confirmed=false;upd.confirmed_at=null;upd.student_done=false;upd.student_done_at=null;}
+  var res=await getSB().from('tasks').update(upd).eq('id',taskId);
   if(res.error){toast('오류: '+res.error.message);return;}
   toast('✅ 과제로 넘겼어요!');
   renderTasks();
@@ -1911,7 +1961,7 @@ async function teacherUnmarkTask(taskId){
 // 받는 쪽에 같은 종류·같은 내용이 이미 있으면 건너뛰고, 순서는 원래 순서 그대로 받는 학생 목록 맨 뒤에 붙음.
 var _copySrc=[];
 function _isAutoTaskTitle(title){
-  return /^단어 Day \d+-\d+ TEST$/.test(title||'')||(title||'').indexOf('[지난 과제 확인]')===0;
+  return /^단어 Day \d+-\d+ TEST$/.test(title||'')||(title||'').indexOf('[지난 과제 확인]')===0||(title||'').indexOf('[이어서]')===0;
 }
 async function openCopyDayModal(){
   if(!currentStudentId){toast('먼저 학생을 선택해주세요');return;}
@@ -3794,6 +3844,7 @@ async function checkIn(){
   if(res.error){toast('오류: '+res.error.message);return;}
   await getSB().from('mileage').insert({student_id:sid,amount:5,reason:'출석'});
   toast('✅ 등원 완료! +5점');
+  await autoCarryPartialTodos(sid,todayStr());
   loadStudent();
 }
 
