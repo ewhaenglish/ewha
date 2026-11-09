@@ -1563,9 +1563,10 @@ function insertQuick(type,text){$(type==='todo'?'todo-input':'hw-input').value=t
 
 function taskHtmlGlobal(t,opts){
   opts=opts||{};
-  var statusClass=t.teacher_confirmed?'done':'';
-  var checkIcon=t.teacher_confirmed?'✓':(t.student_done?'⏳':'');
-  var checkStyle=t.student_done&&!t.teacher_confirmed?'border-color:#FFC107;color:#FFC107':'';
+  var statusClass=(t.teacher_confirmed&&!t.partial_done)?'done':'';
+  var partialBadge=t.partial_done?'<span class="pill" style="margin-left:6px;background:#FFF4D6;color:#B8860B;font-weight:700">△ 부분 완료</span>':'';
+  var checkIcon=t.partial_done?'△':(t.teacher_confirmed?'✓':(t.student_done?'⏳':''));
+  var checkStyle=t.partial_done?'border-color:#B8860B;color:#B8860B':(t.student_done&&!t.teacher_confirmed?'border-color:#FFC107;color:#FFC107':'');
   var timeInfo=(t.student_done&&t.student_done_at)?' · '+formatKSTTime(t.student_done_at):'';
   var badge=t.student_done&&!t.teacher_confirmed?'<span class="pill pill-pending" style="margin-left:6px">확인 대기'+timeInfo+'</span>':'';
   var confirmedTimeInfo=(t.teacher_confirmed&&t.student_done_at)?'<span style="font-size:10px;color:#999;margin-left:6px">학생 '+formatKSTTime(t.student_done_at)+''+(t.confirmed_at?' · 확인 '+formatKSTTime(t.confirmed_at):'')+'</span>':'';
@@ -1581,6 +1582,9 @@ function taskHtmlGlobal(t,opts){
   } else {
     actionBtn='<button class="btn-sm" style="flex-shrink:0;background:#1B4D3E" onclick="teacherMarkDone(\''+t.id+'\');event.stopPropagation()">완료 처리</button>';
   }
+  if(!t.teacher_confirmed){
+    actionBtn+='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px;color:#B8860B;border-color:#B8860B" onclick="teacherMarkPartial(\''+t.id+'\');event.stopPropagation()">△ 부분 완료</button>';
+  }
   var editBtn='<button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px" data-id="'+t.id+'" data-type="'+t.type+'" data-title="'+escapeHtml(t.title)+'" data-needs-check="'+(t.needs_check?'1':'0')+'" onclick="editTaskFromBtn(this);event.stopPropagation()">✏️</button>';
   var delBtn='<button class="btn-danger" style="flex-shrink:0;margin-left:4px" onclick="deleteTask(\''+t.id+'\');event.stopPropagation()">🗑</button>';
   var moveBtn=(!opts.noMove&&t.type==='todo'&&!t.teacher_confirmed&&!t.moved_to_hw)
@@ -1592,7 +1596,7 @@ function taskHtmlGlobal(t,opts){
     +dragHandle
     +checkbox
     +'<div class="task-check" style="'+checkStyle+'">'+checkIcon+'</div>'
-    +'<span class="task-text" style="'+titleStyle+'">'+t.title+(t.due_date?'<br><span style="font-size:11px;color:#aaa">기한: '+t.due_date+'</span>':'')+badge+confirmedTimeInfo+movedBadge+checkBadge+'</span>'
+    +'<span class="task-text" style="'+titleStyle+'">'+t.title+(t.due_date?'<br><span style="font-size:11px;color:#aaa">기한: '+t.due_date+'</span>':'')+badge+partialBadge+confirmedTimeInfo+movedBadge+checkBadge+'</span>'
     +'<div class="task-actions" style="display:flex;align-items:center;flex-wrap:wrap">'+actionBtn+moveBtn+editBtn+delBtn+'</div></div>';
 }
 
@@ -1860,8 +1864,31 @@ async function teacherMarkDone(taskId){
   checkHwCompletionNotify(currentStudentId);
 }
 
+// ===== 부분 완료 (할일/과제) =====
+// 일부만 한 경우: 선생님이 '△ 부분 완료'로 처리 → 확인 대기에서 빠지고, 성장노트·학부모/학생 화면에 △로 표시, 마일리지 +5
+async function teacherMarkPartial(taskId){
+  var PARTIAL_POINTS=5;
+  var up=await getSB().from('tasks').update({partial_done:true,teacher_confirmed:true,confirmed_at:new Date().toISOString(),needs_check:false}).eq('id',taskId);
+  if(up.error){toast('오류: '+up.error.message+' (Supabase에 partial_done 열을 먼저 추가해주세요)');return;}
+  var task=(await getSB().from('tasks').select('*').eq('id',taskId).single()).data;
+  if(task){
+    await getSB().from('mileage').insert({student_id:task.student_id,amount:PARTIAL_POINTS,reason:(task.type==='hw'?'과제':'할일')+' 부분 완료: '+task.title});
+    var st=allStudents.find(function(x){return x.id===task.student_id;});
+    if(st&&st.profile_id)await sendNotification(st.profile_id,'△ 부분 완료로 확인됐어요! +'+PARTIAL_POINTS+'점: '+task.title,'task');
+    toast('△ 부분 완료 처리 +'+PARTIAL_POINTS+'점');
+  }
+  await renderTasks();await renderTeacherHome();loadPendingConfirmSummary();loadNeedsCheckSummary();
+}
 async function teacherUnmarkTask(taskId){
-  var taskRes=await getSB().from('tasks').select('confirmed_at').eq('id',taskId).single();
+  var taskRes=await getSB().from('tasks').select('confirmed_at,partial_done').eq('id',taskId).single();
+  if(taskRes.data&&taskRes.data.partial_done){
+    if(!confirm('부분 완료를 취소할까요?'))return;
+    var pr=await getSB().from('tasks').update({partial_done:false,teacher_confirmed:false,confirmed_at:null}).eq('id',taskId);
+    if(pr.error){toast('오류: '+pr.error.message);return;}
+    toast('부분 완료가 취소됐어요');
+    renderTasks();loadPendingConfirmSummary();loadNeedsCheckSummary();
+    return;
+  }
   var wentThroughConfirm=!!(taskRes.data&&taskRes.data.confirmed_at);
   var res;
   if(wentThroughConfirm){
@@ -2045,8 +2072,8 @@ async function loadNotePreview(){
   var today=getOffsetDate(noteDateOffset);
   var res=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',today);
   var tasks=res.data||[];
-  $('note-today-tasks').textContent=tasks.filter(function(t){return t.type==='todo';}).sort(taskOrderSorter).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')||'할일 없음';
-  $('note-today-hw').textContent=tasks.filter(function(t){return t.type==='hw';}).sort(taskOrderSorter).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')||'과제 없음';
+  $('note-today-tasks').textContent=tasks.filter(function(t){return t.type==='todo';}).sort(taskOrderSorter).map(function(t){return (t.partial_done?'△':(t.student_done?'✅':'⬜'))+' '+t.title;}).join('\n')||'할일 없음';
+  $('note-today-hw').textContent=tasks.filter(function(t){return t.type==='hw';}).sort(taskOrderSorter).map(function(t){return (t.partial_done?'△':(t.student_done?'✅':'⬜'))+' '+t.title;}).join('\n')||'과제 없음';
   // 지난 시간 과제 (저장 전에 어느 날짜 과제가 들어가는지 미리 확인)
   try{
     var pvTitle=$('note-prev-hw-title'),pvEl=$('note-prev-hw');
@@ -2057,7 +2084,7 @@ async function loadNotePreview(){
         var pvd=new Date(pvDate),pvDn=['일','월','화','수','목','금','토'][pvd.getDay()];
         if(pvTitle)pvTitle.textContent='🔁 지난 시간 과제 ('+(pvd.getMonth()+1)+'/'+pvd.getDate()+' '+pvDn+')';
         var pvRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('type','hw').eq('date',pvDate);
-        pvEl.textContent=(pvRes.data||[]).map(function(t){return (t.student_done?'✅':'⬜')+' '+t.title;}).join('\n')||'과제 없음';
+        pvEl.textContent=(pvRes.data||[]).map(function(t){return (t.partial_done?'△':(t.student_done?'✅':'⬜'))+' '+t.title;}).join('\n')||'과제 없음';
       }
     }
   }catch(e){}
@@ -2120,7 +2147,7 @@ async function saveNote(){
   var vtText=vr3.data?((vr3.data.score!=null&&vr3.data.total?vr3.data.score+'/'+vr3.data.total+'점 ':'')+'('+(vr3.data.result==='pass'?'통과 ✔':vr3.data.result==='retest'?'재시 ✕':'미응시')+')'):'기록없음';
   var todos=tasks.filter(function(t){return t.type==='todo';}).sort(taskOrderSorter);
   var hwsToday=tasks.filter(function(t){return t.type==='hw';}).sort(taskOrderSorter);
-  var todoText=todos.map(function(t){return (t.student_done?'✔':'✕')+' '+t.title;}).join('\n')||'없음';
+  var todoText=todos.map(function(t){return (t.partial_done?'△':(t.student_done?'✔':'✕'))+' '+t.title;}).join('\n')||'없음';
   // 오늘 새로 나간 과제 - 아직 마감 전이므로 체크 표시 없이 목록만
   var hwTodayText=hwsToday.map(function(t){return '• '+t.title;}).join('\n')||'없음';
   // 지난 수업 시간에 나간 과제 - '지난 수업일'(출결/선생님이 넣은 할일·과제 기준)을 먼저 찾고, 그날 과제만 표시
@@ -2132,7 +2159,7 @@ async function saveNote(){
     prevDateLabel=fmtDateLabel(prevDate);
     var prevTasksRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('type','hw').eq('date',prevDate);
     var prevHws=prevTasksRes.data||[];
-    prevHwText=prevHws.map(function(t){return (t.student_done?'✔':'✕')+' '+t.title;}).join('\n')||'과제 없음';
+    prevHwText=prevHws.map(function(t){return (t.partial_done?'△':(t.student_done?'✔':'✕'))+' '+t.title;}).join('\n')||'과제 없음';
   }
   var noteContent='📅 Date: '+dateLabel+'\n\n[단어 TEST]\n'+vtText
     +(prevDateLabel?'\n\n[지난 시간 과제 - '+prevDateLabel+']\n'+prevHwText:'')
@@ -2905,7 +2932,7 @@ function setupRealtime(profile){
       })
       .on('postgres_changes',{event:'UPDATE',schema:'public',table:'tasks'},function(payload){
         if(payload.new.teacher_confirmed&&window._currentStudentRowId&&payload.new.student_id===window._currentStudentRowId){
-          loadStudent();popupNotif('확인됐어요! +10점!','🎉');
+          loadStudent();popupNotif(payload.new.partial_done?'△ 부분 완료로 확인됐어요! +5점':'확인됐어요! +10점!','🎉');
         }
       })
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'notices'},function(){loadNotices();})
@@ -3168,7 +3195,7 @@ async function loadStudentByDate(offset){
   var pct=todos.length?Math.round(dc/todos.length*100):0;
   var sc=document.getElementById('s-todo-cnt');var sb2=document.getElementById('s-todo-bar');var sp=document.getElementById('s-todo-pct');
   if(sc)sc.textContent=dc+'/'+todos.length;if(sb2)sb2.style.width=pct+'%';if(sp)sp.textContent=pct+'%';
-  function sh(t){var c=t.teacher_confirmed,d=t.student_done;return '<div class="task-item'+(c?' done':'')+'" onclick="studentToggle(this.dataset.id,'+d+',\''+studentId+'\')\" data-id="'+t.id+'"><div class="task-check" style="'+(d&&!c?'border-color:#FFC107;color:#FFC107':'')+'">'+(c?'✓':(d?'⏳':''))+'</div><span class="task-text">'+t.title+(c?' <span style="font-size:10px;color:#1B4D3E">✅확인됨</span>':(d?' <span style="font-size:10px;color:#FFC107">확인대기</span>':''))+'</span></div>';}
+  function sh(t){var c=t.teacher_confirmed,d=t.student_done,pa=t.partial_done;return '<div class="task-item'+(c&&!pa?' done':'')+'" onclick="studentToggle(this.dataset.id,'+d+',\''+studentId+'\')\" data-id="'+t.id+'"><div class="task-check" style="'+(d&&!c?'border-color:#FFC107;color:#FFC107':'')+'">'+(pa?'△':(c?'✓':(d?'⏳':'')))+'</div><span class="task-text">'+t.title+(pa?' <span style="font-size:10px;color:#B8860B">△부분 완료</span>':(c?' <span style="font-size:10px;color:#1B4D3E">✅확인됨</span>':(d?' <span style="font-size:10px;color:#FFC107">확인대기</span>':'')))+'</span></div>';}
 
   var stl=document.getElementById('s-todo-list');if(stl)stl.innerHTML=todos.map(sh).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
   var shc=document.getElementById('s-hw-cnt');if(shc)shc.textContent=hws.filter(function(t){return t.student_done;}).length+'/'+hws.length;
@@ -3195,9 +3222,9 @@ async function loadParentByDate(offset){
   var dc=todos.filter(function(t){return t.student_done;}).length;var pct=todos.length?Math.round(dc/todos.length*100):0;
   var ptc=document.getElementById('p-todo-cnt');var pb=document.getElementById('p-todo-bar');var pp2=document.getElementById('p-todo-pct');
   if(ptc)ptc.textContent=dc+'/'+todos.length;if(pb)pb.style.width=pct+'%';if(pp2)pp2.textContent=pct+'%';
-  var ptl=document.getElementById('p-todo-list');if(ptl)ptl.innerHTML=todos.map(function(t){return '<div class="task-item'+(t.teacher_confirmed?' done':'')+'"><div class="task-check">'+(t.teacher_confirmed?'✓':(t.student_done?'⏳':''))+'</div><span class="task-text">'+t.title+'</span></div>';}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
+  var ptl=document.getElementById('p-todo-list');if(ptl)ptl.innerHTML=todos.map(function(t){return '<div class="task-item'+(t.teacher_confirmed&&!t.partial_done?' done':'')+'"><div class="task-check">'+(t.partial_done?'△':(t.teacher_confirmed?'✓':(t.student_done?'⏳':'')))+'</div><span class="task-text">'+t.title+(t.partial_done?' <span style="font-size:10px;color:#B8860B">부분 완료</span>':'')+'</span></div>';}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">할일이 없어요</div>';
   var phc=document.getElementById('p-hw-cnt');if(phc)phc.textContent=hws.filter(function(t){return t.student_done;}).length+'/'+hws.length;
-  var phl=document.getElementById('p-hw-list');if(phl)phl.innerHTML=hws.map(function(t){return '<div class="task-item'+(t.teacher_confirmed?' done':'')+'"><div class="task-check">'+(t.teacher_confirmed?'✓':(t.student_done?'⏳':''))+'</div><span class="task-text">'+t.title+'</span></div>';}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">과제가 없어요</div>';
+  var phl=document.getElementById('p-hw-list');if(phl)phl.innerHTML=hws.map(function(t){return '<div class="task-item'+(t.teacher_confirmed&&!t.partial_done?' done':'')+'"><div class="task-check">'+(t.partial_done?'△':(t.teacher_confirmed?'✓':(t.student_done?'⏳':'')))+'</div><span class="task-text">'+t.title+(t.partial_done?' <span style="font-size:10px;color:#B8860B">부분 완료</span>':'')+'</span></div>';}).join('')||'<div style="padding:12px 16px;color:#aaa;font-size:13px">과제가 없어요</div>';
 }
 async function loadTeacherByDate(offset){
   var date=getHomeDateStr(offset);
@@ -3360,8 +3387,8 @@ async function loadReport(){
   var tasks=res.data||[];
   var todos=tasks.filter(function(t){return t.type==='todo';}).sort(taskOrderSorter);
   var hws=tasks.filter(function(t){return t.type==='hw';}).sort(taskOrderSorter);
-  var todoRate=todos.length?Math.round(todos.filter(function(t){return t.teacher_confirmed;}).length/todos.length*100):0;
-  var hwRate=hws.length?Math.round(hws.filter(function(t){return t.teacher_confirmed;}).length/hws.length*100):0;
+  var todoRate=todos.length?Math.round(todos.reduce(function(a,t){return a+(t.partial_done?0.5:(t.teacher_confirmed?1:0));},0)/todos.length*100):0;
+  var hwRate=hws.length?Math.round(hws.reduce(function(a,t){return a+(t.partial_done?0.5:(t.teacher_confirmed?1:0));},0)/hws.length*100):0;
   var aRes=await getSB().from('attendance').select('date').eq('student_id',sid).gte('date',mi.start).lt('date',mi.next).not('check_in','is',null);
   var attendDays=[...new Set((aRes.data||[]).map(function(a){return a.date;}))].length;
   var vRes=await getSB().from('vocab_tests').select('score,total').eq('student_id',sid).gte('date',mi.start).lt('date',mi.next).not('score','is',null);
@@ -3698,11 +3725,11 @@ async function calSelectDate(dateStr,role,el){
   var html3='';
   if(todos.length){
     html3+='<div style="padding:8px 14px;background:#F8FDF9;font-size:12px;font-weight:700;color:#1B4D3E;border-bottom:1px solid #E8E8E8">📌 할일</div>';
-    html3+=todos.map(function(t){return '<div style="padding:9px 14px;border-bottom:1px solid #F5F5F5;font-size:14px;display:flex;align-items:center;gap:8px"><span>'+(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜'))+'</span>'+t.title+'</div>';}).join('');
+    html3+=todos.map(function(t){return '<div style="padding:9px 14px;border-bottom:1px solid #F5F5F5;font-size:14px;display:flex;align-items:center;gap:8px"><span>'+(t.partial_done?'△':(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜')))+'</span>'+t.title+'</div>';}).join('');
   }
   if(hws.length){
     html3+='<div style="padding:8px 14px;background:#F0F4FF;font-size:12px;font-weight:700;color:#1a56db;border-bottom:1px solid #E8E8E8"><span class="gold-star">✦</span> 과제</div>';
-    html3+=hws.map(function(t){return '<div style="padding:9px 14px;border-bottom:1px solid #F5F5F5;font-size:14px;display:flex;align-items:center;gap:8px"><span>'+(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜'))+'</span>'+t.title+'</div>';}).join('');
+    html3+=hws.map(function(t){return '<div style="padding:9px 14px;border-bottom:1px solid #F5F5F5;font-size:14px;display:flex;align-items:center;gap:8px"><span>'+(t.partial_done?'△':(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜')))+'</span>'+t.title+'</div>';}).join('');
   }
   if(!html3)html3='<div style="padding:20px;text-align:center;color:#aaa;font-size:13px">이날의 기록이 없어요</div>';
   if(role==='s'&&(todos.length||hws.length)){
@@ -3728,11 +3755,11 @@ async function openTeacherCalStudentDetail(sid,dateStr){
     +'<div style="font-size:12px;color:#666;margin-bottom:14px">'+(att&&att.check_in?'등원 '+formatKSTTime(att.check_in)+(att.check_out?' · 하원 '+formatKSTTime(att.check_out):''):'등원 기록 없음')+'</div>';
   if(todos.length){
     html+='<div style="font-size:12px;font-weight:700;color:#1B4D3E;margin-bottom:6px">할일</div>';
-    html+=todos.map(function(t){return '<div style="padding:7px 0;font-size:14px;display:flex;gap:8px"><span>'+(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜'))+'</span>'+t.title+'</div>';}).join('');
+    html+=todos.map(function(t){return '<div style="padding:7px 0;font-size:14px;display:flex;gap:8px"><span>'+(t.partial_done?'△':(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜')))+'</span>'+t.title+'</div>';}).join('');
   }
   if(hws.length){
     html+='<div style="font-size:12px;font-weight:700;color:#1a56db;margin:10px 0 6px">과제</div>';
-    html+=hws.map(function(t){return '<div style="padding:7px 0;font-size:14px;display:flex;gap:8px"><span>'+(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜'))+'</span>'+t.title+'</div>';}).join('');
+    html+=hws.map(function(t){return '<div style="padding:7px 0;font-size:14px;display:flex;gap:8px"><span>'+(t.partial_done?'△':(t.teacher_confirmed?'✅':(t.student_done?'⏳':'⬜')))+'</span>'+t.title+'</div>';}).join('');
   }
   if(!todos.length&&!hws.length)html+='<div style="padding:20px 0;text-align:center;color:#aaa;font-size:13px">이날 할일/과제 기록이 없어요</div>';
   if(dateStr<=todayStr()){
@@ -3940,10 +3967,10 @@ async function loadStudentTasks(){
   if(tb)tb.style.width=pct+'%';
   if(tp)tp.textContent=pct+'%';
   function th(t){
-    var c=t.teacher_confirmed,d2=t.student_done;
-    return '<div class="task-item'+(c?' done':'')+'" data-id="'+t.id+'" data-done="'+String(d2)+'" data-sid="'+sid+'" style="cursor:pointer" onclick="stToggle(this.dataset.id,this.dataset.done===\'true\',this.dataset.sid)">'
-      +'<div class="task-check" style="'+(c?'background:#1B4D3E;border-color:#1B4D3E;color:#fff':(d2?'border-color:#FFC107;color:#FFC107':''))+'">'+(c?'✓':(d2?'⏳':''))+'</div>'
-      +'<span class="task-text">'+t.title+(c?' <span style="font-size:11px;color:#1B4D3E">✅확인됨</span>':(d2?' <span style="font-size:11px;color:#FFC107">확인대기</span>':''))+'</span></div>';
+    var c=t.teacher_confirmed,d2=t.student_done,pa=t.partial_done;
+    return '<div class="task-item'+(c&&!pa?' done':'')+'" data-id="'+t.id+'" data-done="'+String(d2)+'" data-sid="'+sid+'" style="cursor:pointer" onclick="stToggle(this.dataset.id,this.dataset.done===\'true\',this.dataset.sid)">'
+      +'<div class="task-check" style="'+(pa?'border-color:#B8860B;color:#B8860B':(c?'background:#1B4D3E;border-color:#1B4D3E;color:#fff':(d2?'border-color:#FFC107;color:#FFC107':'')))+'">'+(pa?'△':(c?'✓':(d2?'⏳':'')))+'</div>'
+      +'<span class="task-text">'+t.title+(pa?' <span style="font-size:11px;color:#B8860B">△부분 완료</span>':(c?' <span style="font-size:11px;color:#1B4D3E">✅확인됨</span>':(d2?' <span style="font-size:11px;color:#FFC107">확인대기</span>':'')))+'</span></div>';
   }
   var tl=document.getElementById('st-todo-list');
   if(tl)tl.innerHTML=todos.map(th).join('')||'<div style="padding:12px 16px;color:#aaa">할일이 없어요</div>';
@@ -4636,7 +4663,7 @@ function buildNoteHtml(studentName,dateLabel,vtText,todoText,hwText,goalContent,
       +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">'
       +'<span style="display:inline-block;width:3.5px;height:14px;background:'+(isGold?'#F0C040':'#1B4D3E')+';border-radius:2px"></span>'
       +'<span style="font-size:13px;font-weight:700;color:'+(isGold?'#B8860B':'#1B4D3E')+'">'+title+'</span></div>'
-      +'<div style="font-size:14px;color:#333;line-height:1.9;white-space:pre-line;padding-left:10px">'+txt.replace(/✔/g,'<span style="display:inline-block;color:#1B4D3E;font-weight:900;font-size:15px;width:16px">✔</span>').replace(/✕/g,'<span style="display:inline-block;color:#A6231E;font-weight:900;font-size:15px;width:16px">✕</span>')+'</div>'
+      +'<div style="font-size:14px;color:#333;line-height:1.9;white-space:pre-line;padding-left:10px">'+txt.replace(/✔/g,'<span style="display:inline-block;color:#1B4D3E;font-weight:900;font-size:15px;width:16px">✔</span>').replace(/✕/g,'<span style="display:inline-block;color:#A6231E;font-weight:900;font-size:15px;width:16px">✕</span>').replace(/△/g,'<span style="display:inline-block;color:#B8860B;font-weight:900;font-size:15px;width:16px">△</span>')+'</div>'
       +'</div>';
   }
   return '<div style="padding:16px">'
@@ -4861,7 +4888,7 @@ async function loadPendingConfirmSummary(){
       +'<div style="font-size:11px;color:#aaa;margin-bottom:2px">'+escapeHtml(sname)+' · '+typeLabel+'</div>'
       +'<div style="font-size:13px;color:#333">'+escapeHtml(t.title||'')+'</div>'
       +'</div>'
-      +'<button class="btn-sm" style="flex-shrink:0" onclick="confirmTask(\''+t.id+'\')">Confirm ✅</button>'
+      +'<button class="btn-sm" style="flex-shrink:0" onclick="confirmTask(\''+t.id+'\')">Confirm ✅</button><button class="btn-sm-outline" style="flex-shrink:0;margin-left:4px;color:#B8860B;border-color:#B8860B" onclick="teacherMarkPartial(\''+t.id+'\')">△ 부분 완료</button>'
       +'</div>';
   }).join('');
   applyPendingConfirmToggleState();
