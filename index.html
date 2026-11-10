@@ -2122,8 +2122,8 @@ async function loadNotePreview(){
   var today=getOffsetDate(noteDateOffset);
   var res=await getSB().from('tasks').select('*').eq('student_id',sid).eq('date',today);
   var tasks=res.data||[];
-  $('note-today-tasks').textContent=tasks.filter(function(t){return t.type==='todo';}).sort(taskOrderSorter).map(function(t){return (t.partial_done?'△':(t.student_done?'✅':'⬜'))+' '+t.title;}).join('\n')||'할일 없음';
-  $('note-today-hw').textContent=tasks.filter(function(t){return t.type==='hw';}).sort(taskOrderSorter).map(function(t){return (t.partial_done?'△':(t.student_done?'✅':'⬜'))+' '+t.title;}).join('\n')||'과제 없음';
+  $('note-today-tasks').textContent=tasks.filter(function(t){return t.type==='todo';}).sort(taskOrderSorter).map(function(t){return (t.partial_done?'△':((t.student_done||t.teacher_confirmed)?'✅':'⬜'))+' '+t.title;}).join('\n')||'할일 없음';
+  $('note-today-hw').textContent=tasks.filter(function(t){return t.type==='hw';}).sort(taskOrderSorter).map(function(t){return (t.partial_done?'△':((t.student_done||t.teacher_confirmed)?'✅':'⬜'))+' '+t.title;}).join('\n')||'과제 없음';
   // 지난 시간 과제 (저장 전에 어느 날짜 과제가 들어가는지 미리 확인)
   try{
     var pvTitle=$('note-prev-hw-title'),pvEl=$('note-prev-hw');
@@ -2134,7 +2134,7 @@ async function loadNotePreview(){
         var pvd=new Date(pvDate),pvDn=['일','월','화','수','목','금','토'][pvd.getDay()];
         if(pvTitle)pvTitle.textContent='🔁 지난 시간 과제 ('+(pvd.getMonth()+1)+'/'+pvd.getDate()+' '+pvDn+')';
         var pvRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('type','hw').eq('date',pvDate);
-        pvEl.textContent=(pvRes.data||[]).map(function(t){return (t.partial_done?'△':(t.student_done?'✅':'⬜'))+' '+t.title;}).join('\n')||'과제 없음';
+        pvEl.textContent=(pvRes.data||[]).map(function(t){return (t.partial_done?'△':((t.student_done||t.teacher_confirmed)?'✅':'⬜'))+' '+t.title;}).join('\n')||'과제 없음';
       }
     }
   }catch(e){}
@@ -2197,7 +2197,7 @@ async function saveNote(){
   var vtText=vr3.data?((vr3.data.score!=null&&vr3.data.total?vr3.data.score+'/'+vr3.data.total+'점 ':'')+'('+(vr3.data.result==='pass'?'통과 ✔':vr3.data.result==='retest'?'재시 ✕':'미응시')+')'):'기록없음';
   var todos=tasks.filter(function(t){return t.type==='todo';}).sort(taskOrderSorter);
   var hwsToday=tasks.filter(function(t){return t.type==='hw';}).sort(taskOrderSorter);
-  var todoText=todos.map(function(t){return (t.partial_done?'△':(t.student_done?'✔':'✕'))+' '+t.title;}).join('\n')||'없음';
+  var todoText=todos.map(function(t){return (t.partial_done?'△':((t.student_done||t.teacher_confirmed)?'✔':'✕'))+' '+t.title;}).join('\n')||'없음';
   // 오늘 새로 나간 과제 - 아직 마감 전이므로 체크 표시 없이 목록만
   var hwTodayText=hwsToday.map(function(t){return '• '+t.title;}).join('\n')||'없음';
   // 지난 수업 시간에 나간 과제 - '지난 수업일'(출결/선생님이 넣은 할일·과제 기준)을 먼저 찾고, 그날 과제만 표시
@@ -2209,7 +2209,7 @@ async function saveNote(){
     prevDateLabel=fmtDateLabel(prevDate);
     var prevTasksRes=await getSB().from('tasks').select('*').eq('student_id',sid).eq('type','hw').eq('date',prevDate);
     var prevHws=prevTasksRes.data||[];
-    prevHwText=prevHws.map(function(t){return (t.partial_done?'△':(t.student_done?'✔':'✕'))+' '+t.title;}).join('\n')||'과제 없음';
+    prevHwText=prevHws.map(function(t){return (t.partial_done?'△':((t.student_done||t.teacher_confirmed)?'✔':'✕'))+' '+t.title;}).join('\n')||'과제 없음';
   }
   var noteContent='📅 Date: '+dateLabel+'\n\n[단어 TEST]\n'+vtText
     +(prevDateLabel?'\n\n[지난 시간 과제 - '+prevDateLabel+']\n'+prevHwText:'')
@@ -4209,8 +4209,25 @@ function formatKSTTime(isoStr){
   var kst=new Date(d.getTime()+9*60*60*1000);
   return String(kst.getUTCHours()).padStart(2,'0')+':'+String(kst.getUTCMinutes()).padStart(2,'0');
 }
+// 노트는 저장한 순간의 글이라, 저장 뒤에 완료한 할일은 ✕로 남아 있었음 → 열 때 현재 할일 상태로 ✔/✕/△를 다시 맞춤
+// (학생이 체크했거나 선생님이 확인했으면 ✔, 부분 완료면 △). 제목이 바뀌었거나 지워진 항목은 저장된 그대로 둠.
+async function syncNoteMarks(sid,tasksDate,text,type){
+  if(!text||!sid||!tasksDate)return text;
+  var res=await getSB().from('tasks').select('title,type,student_done,teacher_confirmed,partial_done').eq('student_id',sid).eq('date',tasksDate).eq('type',type);
+  if(res.error||!res.data||!res.data.length)return text;
+  var pool=res.data.slice();
+  return text.split('\n').map(function(line){
+    var m=line.match(/^([✔✕△])\s+(.*)$/);
+    if(!m)return line;
+    var title=m[2].trim();
+    var idx=pool.findIndex(function(t){return (t.title||'').trim()===title;});
+    if(idx<0)return line;
+    var t=pool.splice(idx,1)[0];
+    return (t.partial_done?'△':((t.student_done||t.teacher_confirmed)?'✔':'✕'))+' '+m[2];
+  }).join('\n');
+}
 function openNoteDetail(noteId){
-  getSB().from('growth_notes').select('*, students(name)').eq('id',noteId).single().then(function(res){
+  getSB().from('growth_notes').select('*, students(name)').eq('id',noteId).single().then(async function(res){
     var n=res.data;if(!n)return;
     var studentName=n.students?n.students.name:'';
     var d=new Date(n.date);
@@ -4230,6 +4247,11 @@ function openNoteDetail(noteId){
     var prevDateLabel=prevMatch?prevMatch[1]:'';
     var goal=extractSection('이번 주 각오');
     var feedback=extractSection('피드백');
+    try{
+      todos=await syncNoteMarks(n.student_id,n.date,todos,'todo');
+      var pmk=prevDateLabel.match(/(\d{4})\.\s*(\d{2})\.\s*(\d{2})/);
+      if(pmk)prevHw=await syncNoteMarks(n.student_id,pmk[1]+'-'+pmk[2]+'-'+pmk[3],prevHw,'hw');
+    }catch(e){}
     var readInfo=null;
     if(currentProfile&&currentProfile.role==='teacher'){
       if(n.parent_read_at){
