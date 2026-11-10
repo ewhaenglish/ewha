@@ -1657,7 +1657,54 @@ async function loadPrevHwSection(sid,todayDateStr){
     html+='<div style="padding:6px 16px;font-size:11px;font-weight:700;color:#B8860B;background:#FFFDF5">📚 과제</div>'
       +hws.map(function(t){return taskHtmlGlobal(t,{noDrag:true,noCheckbox:true,noMove:true});}).join('');
   }
+  // 지난시간에 다 못 끝낸 항목(미체크 또는 △ 부분 완료)을 오늘 할일로 한 번에 내리는 버튼
+  var unfinished=items.filter(function(t){
+    if((t.title||'').indexOf('[지난 과제 확인]')===0)return false;
+    return t.partial_done||!(t.student_done||t.teacher_confirmed);
+  }).sort(function(a,b){
+    if(a.type!==b.type)return a.type==='todo'?-1:1;
+    return taskOrderSorter(a,b);
+  });
+  window._prevCarry={sid:sid,date:todayDateStr,items:[]};
+  if(unfinished.length){
+    var exT=await getSB().from('tasks').select('title').eq('student_id',sid).eq('type','todo').eq('date',todayDateStr);
+    var haveT={};((exT.data)||[]).forEach(function(e){haveT[(e.title||'').trim()]=true;});
+    var pending=[];
+    unfinished.forEach(function(t){
+      var nt='[이어서] '+(t.title||'').replace(/^\[이어서\]\s*/,'');
+      if(!haveT[nt.trim()])pending.push({id:t.id,newTitle:nt});
+    });
+    window._prevCarry.items=pending;
+    if(pending.length){
+      html+='<div style="padding:10px 16px 12px"><button class="btn-sm" style="width:100%;padding:10px;background:#F0C040;color:#333;font-weight:700" onclick="pushPrevUnfinishedToToday()">⬇ 미완료 '+pending.length+'개 오늘 할일로 내리기</button></div>';
+    } else {
+      html+='<div style="padding:10px 16px 12px;font-size:12px;color:#1B4D3E;text-align:center">✅ 못 끝낸 항목은 이미 오늘 할일에 들어 있어요</div>';
+    }
+  }
   list.innerHTML=html;
+}
+// 지난시간 미완료 항목 → 오늘 할일 ("[이어서] 제목"). 이미 오늘 할일에 있으면 건너뜀, 목록 맨 뒤에 붙음
+async function pushPrevUnfinishedToToday(){
+  var st=window._prevCarry;
+  if(!st||!st.items||!st.items.length){toast('내릴 항목이 없어요');return;}
+  var ex=await getSB().from('tasks').select('title,sort_order').eq('student_id',st.sid).eq('type','todo').eq('date',st.date);
+  if(ex.error){toast('오류: '+ex.error.message);return;}
+  var have={},max=0;
+  (ex.data||[]).forEach(function(e){have[(e.title||'').trim()]=true;if((e.sort_order||0)>max)max=e.sort_order||0;});
+  var rows=[],srcIds=[];
+  st.items.forEach(function(it){
+    if(have[it.newTitle.trim()])return;
+    max++;
+    rows.push({student_id:st.sid,type:'todo',title:it.newTitle,date:st.date,is_done:false,student_done:false,teacher_confirmed:false,needs_check:false,sort_order:max});
+    srcIds.push(it.id);
+  });
+  if(!rows.length){toast('이미 모두 오늘 할일에 있어요');await renderTasks();return;}
+  var ins=await getSB().from('tasks').insert(rows);
+  if(ins.error){toast('오류: '+ins.error.message);return;}
+  // 부분 완료 자동 이월과 겹치지 않게 '이월됨' 표시 (열이 없으면 무시)
+  try{await getSB().from('tasks').update({carried_over:true}).in('id',srcIds);}catch(e){}
+  toast('⬇ '+rows.length+'개를 오늘 할일로 내렸어요');
+  await renderTasks();
 }
 
 // ===== 단어 TEST 자동 생성 =====
