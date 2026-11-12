@@ -292,6 +292,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       <div class="card-header"><span class="card-title">공지사항</span><button class="btn-sm" onclick="openNoticeModal()">+ 작성</button></div>
       <div class="card-body" id="t-notices"></div>
     </div>
+    <div class="section-hd">학생 시간표</div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">🗓 시간표 <span style="font-size:11px;font-weight:400;color:#999">선택한 학생의 할일 탭 맨 위에 항상 보여요</span></span><button class="btn-sm" onclick="openTimetableModal()">+ 등록</button></div>
+      <div class="card-body" id="t-timetables"></div>
+    </div>
     <div class="section-hd">달력</div>
     <div class="calendar-wrap">
       <div class="calendar-header">
@@ -670,6 +675,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Noto Sans KR",sans-serif;back
       </div>
       <div class="date-sub">할일 & 과제</div>
     </div>
+    <div id="st-timetable-area"></div>
     <div class="section-hd" style="color:#C0392B">이번주 나의 각오</div>
     <div class="card">
       <div class="card-body" id="st-weekly-body"></div>
@@ -1095,6 +1101,7 @@ async function loadTeacher(){
   loadPendingConfirmSummary();
   loadNeedsCheckSummary();
   loadNotices();
+  loadTimetablesAdmin();
   checkNotifications();
   checkMonthEndReminder();
   startClassEndAlertPolling();
@@ -1632,6 +1639,35 @@ async function findPrevClassDate(sid,beforeDateStr){
   return attDate||taskDate;
 }
 
+// 지난시간 카드의 한 줄: 상태 표시 + [완결] [과제] [할일] [삭제]
+//  완결 = 그 항목을 완료 처리 / 과제 = 오늘 과제로 내리기 / 할일 = 오늘 할일로 내리기 / 삭제 = 지난시간 목록에서 삭제
+function prevItemHtml(t){
+  var done=(t.student_done||t.teacher_confirmed)&&!t.partial_done;
+  var icon=t.partial_done?'△':(t.teacher_confirmed?'✓':(t.student_done?'⏳':''));
+  var iconStyle=t.partial_done?'border-color:#B8860B;color:#B8860B':(t.teacher_confirmed?'background:#1B4D3E;border-color:#1B4D3E;color:#fff':(t.student_done?'border-color:#FFC107;color:#FFC107':''));
+  var badges='';
+  if(t.partial_done)badges+='<span class="pill" style="margin-left:6px;background:#FFF4D6;color:#B8860B;font-weight:700">△ 부분 완료</span>';
+  else if(t.student_done&&!t.teacher_confirmed)badges+='<span class="pill" style="margin-left:6px;background:#FFF3CD;color:#856404">확인 대기</span>';
+  if(t.carried_over)badges+='<span class="pill" style="margin-left:6px;background:#E8F1FF;color:#1a56db">⬇ 오늘로 내림</span>';
+  var bs='flex:1;padding:7px 0;font-size:12px;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;';
+  var btns;
+  if(done){
+    btns='<button style="'+bs+'background:#fff;border:1px solid #1B4D3E;color:#1B4D3E" onclick="teacherUnmarkTask(\''+t.id+'\')">취소</button>'
+        +'<button style="'+bs+'background:#fff;border:1px solid #E74C3C;color:#E74C3C" onclick="deleteTask(\''+t.id+'\')">삭제</button>';
+  } else {
+    btns='<button style="'+bs+'background:#1B4D3E;border:1px solid #1B4D3E;color:#fff" onclick="teacherMarkDone(\''+t.id+'\')">완결</button>'
+        +'<button style="'+bs+'background:#fff;border:1px solid #1a56db;color:#1a56db" onclick="prevSendToToday(\''+t.id+'\',\'hw\')">과제</button>'
+        +'<button style="'+bs+'background:#fff;border:1px solid #B8860B;color:#B8860B" onclick="prevSendToToday(\''+t.id+'\',\'todo\')">할일</button>'
+        +'<button style="'+bs+'background:#fff;border:1px solid #E74C3C;color:#E74C3C" onclick="deleteTask(\''+t.id+'\')">삭제</button>';
+  }
+  return '<div style="padding:10px 16px;border-bottom:1px solid #F5F0E0">'
+    +'<div style="display:flex;align-items:flex-start;gap:10px">'
+    +'<div class="task-check" style="flex-shrink:0;'+iconStyle+'">'+icon+'</div>'
+    +'<div style="flex:1;font-size:14px;line-height:1.45;'+(done?'color:#aaa;text-decoration:line-through':'color:#222')+'">'+escapeHtml(t.title||'')+badges+'</div>'
+    +'</div>'
+    +'<div style="display:flex;gap:6px;margin-top:8px;padding-left:34px">'+btns+'</div>'
+    +'</div>';
+}
 async function loadPrevHwSection(sid,todayDateStr){
   var card=document.getElementById('prev-hw-card');
   var list=document.getElementById('prev-hw-list');
@@ -1651,19 +1687,16 @@ async function loadPrevHwSection(sid,todayDateStr){
   var html='';
   if(todos.length){
     html+='<div style="padding:6px 16px;font-size:11px;font-weight:700;color:#B8860B;background:#FFFDF5">📌 할일</div>'
-      +todos.map(function(t){return taskHtmlGlobal(t,{noDrag:true,noCheckbox:true,noMove:true});}).join('');
+      +todos.map(prevItemHtml).join('');
   }
   if(hws.length){
     html+='<div style="padding:6px 16px;font-size:11px;font-weight:700;color:#B8860B;background:#FFFDF5">📚 과제</div>'
-      +hws.map(function(t){return taskHtmlGlobal(t,{noDrag:true,noCheckbox:true,noMove:true});}).join('');
+      +hws.map(prevItemHtml).join('');
   }
-  // 지난시간에 다 못 끝낸 항목(미체크 또는 △ 부분 완료)을 오늘 할일로 한 번에 내리는 버튼
-  var unfinished=items.filter(function(t){
+  // 한 번에 내리기 버튼: 지난시간 '할일' 중 못 끝낸 것만 (과제는 각 줄의 [과제]/[할일] 버튼으로 골라서 내림)
+  var unfinished=todos.filter(function(t){
     if((t.title||'').indexOf('[지난 과제 확인]')===0)return false;
     return t.partial_done||!(t.student_done||t.teacher_confirmed);
-  }).sort(function(a,b){
-    if(a.type!==b.type)return a.type==='todo'?-1:1;
-    return taskOrderSorter(a,b);
   });
   window._prevCarry={sid:sid,date:todayDateStr,items:[]};
   if(unfinished.length){
@@ -1676,12 +1709,29 @@ async function loadPrevHwSection(sid,todayDateStr){
     });
     window._prevCarry.items=pending;
     if(pending.length){
-      html+='<div style="padding:10px 16px 12px"><button class="btn-sm" style="width:100%;padding:10px;background:#F0C040;color:#333;font-weight:700" onclick="pushPrevUnfinishedToToday()">⬇ 미완료 '+pending.length+'개 오늘 할일로 내리기</button></div>';
-    } else {
-      html+='<div style="padding:10px 16px 12px;font-size:12px;color:#1B4D3E;text-align:center">✅ 못 끝낸 항목은 이미 오늘 할일에 들어 있어요</div>';
+      html+='<div style="padding:10px 16px 12px"><button class="btn-sm" style="width:100%;padding:10px;background:#F0C040;color:#333;font-weight:700" onclick="pushPrevUnfinishedToToday()">⬇ 못 끝낸 할일 '+pending.length+'개 오늘 할일로 내리기</button></div>';
     }
   }
   list.innerHTML=html;
+}
+// 지난시간 항목 하나를 오늘 할일(todo) 또는 오늘 과제(hw)로 내림. 이미 있으면 건너뜀, 목록 맨 뒤에 붙음
+async function prevSendToToday(taskId,type){
+  var st=window._prevCarry;
+  if(!st||!st.sid||!st.date){toast('다시 시도해주세요');return;}
+  var src=(await getSB().from('tasks').select('*').eq('id',taskId).single()).data;
+  if(!src){toast('항목을 찾을 수 없어요');return;}
+  var where=type==='hw'?'과제':'할일';
+  var nt='[이어서] '+(src.title||'').replace(/^\[이어서\]\s*/,'');
+  var ex=await getSB().from('tasks').select('title,sort_order').eq('student_id',st.sid).eq('type',type).eq('date',st.date);
+  if(ex.error){toast('오류: '+ex.error.message);return;}
+  var max=0,dup=false;
+  (ex.data||[]).forEach(function(e){if((e.title||'').trim()===nt.trim())dup=true;if((e.sort_order||0)>max)max=e.sort_order||0;});
+  if(dup){toast('이미 오늘 '+where+'에 있어요');return;}
+  var ins=await getSB().from('tasks').insert({student_id:st.sid,type:type,title:nt,date:st.date,is_done:false,student_done:false,teacher_confirmed:false,needs_check:false,sort_order:max+1});
+  if(ins.error){toast('오류: '+ins.error.message);return;}
+  try{await getSB().from('tasks').update({carried_over:true}).eq('id',taskId);}catch(e){}
+  toast('⬇ 오늘 '+where+'로 내렸어요');
+  await renderTasks();
 }
 // 지난시간 미완료 항목 → 오늘 할일 ("[이어서] 제목"). 이미 오늘 할일에 있으면 건너뜀, 목록 맨 뒤에 붙음
 async function pushPrevUnfinishedToToday(){
@@ -3098,6 +3148,123 @@ async function deleteNotice(id){
   await getSB().from('notices').delete().eq('id',id);loadNotices();
 }
 
+// ===== 학생 시간표 =====
+// 선생님이 시간표 사진을 올리고 받을 학생을 고르면, 그 학생의 '할일' 탭 맨 위에 항상 보임 (다른 학생에게는 안 보임)
+async function fetchTimetables(){
+  var r=await getSB().from('timetables').select('*').order('created_at',{ascending:false});
+  return r.error?null:(r.data||[]);
+}
+function openImageViewer(src){
+  openMod('크게 보기','<div style="padding:10px"><div style="font-size:11px;color:#999;text-align:center;margin-bottom:6px">사진을 누르면 확대/축소돼요 · 확대 후 좌우로 밀어서 보세요</div><div style="overflow:auto;max-height:72vh;border:1px solid #eee;border-radius:8px"><img src="'+src+'" style="width:100%;display:block;cursor:zoom-in" onclick="var z=this.style.width===\'100%\';this.style.width=z?\'260%\':\'100%\';this.style.cursor=z?\'zoom-out\':\'zoom-in\'"></div><button class="btn-primary" style="width:100%;margin-top:10px" onclick="closeMod()">닫기</button></div>');
+}
+async function loadStudentTimetable(){
+  var el=document.getElementById('st-timetable-area');
+  if(!el)return;
+  var sid=window._currentStudentRowId;
+  if(!sid){el.innerHTML='';return;}
+  var all=await fetchTimetables();
+  var mine=(all||[]).filter(function(t){return (t.student_ids||[]).indexOf(sid)>=0;});
+  el.innerHTML=mine.map(function(t){
+    return '<div class="section-hd" style="color:#1B4D3E">🗓 '+escapeHtml(t.title||'시간표')+'</div>'
+      +'<div class="card" style="border:1.5px solid #1B4D3E"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch">'
+      +'<img src="'+t.image_url+'" onclick="openImageViewer(this.src)" style="display:block;width:100%;min-width:680px;cursor:zoom-in"></div>'
+      +'<div style="font-size:11px;color:#999;text-align:center;padding:6px">좌우로 밀어서 보거나, 누르면 크게 볼 수 있어요</div></div>';
+  }).join('');
+}
+async function loadTimetablesAdmin(){
+  var el=document.getElementById('t-timetables');
+  if(!el)return;
+  var all=await fetchTimetables();
+  if(all===null){el.innerHTML='<div style="padding:12px 16px;color:#c0392b;font-size:13px">시간표 저장 공간이 아직 없어요. Supabase에서 timetables.sql을 먼저 실행해주세요.</div>';return;}
+  window._ttCache={};all.forEach(function(t){window._ttCache[t.id]=t;});
+  el.innerHTML=all.length?all.map(function(t){
+    var names=(t.student_ids||[]).map(function(id){var st=allStudents.find(function(x){return x.id===id;});return st?st.name:'(삭제된 학생)';}).join(', ')||'받는 학생 없음';
+    return '<div style="padding:12px 16px;border-bottom:1px solid #f0f0f0">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><span style="font-size:14px;font-weight:700;color:#1B4D3E">'+escapeHtml(t.title||'시간표')+'</span>'
+      +'<span style="flex-shrink:0"><button class="btn-sm-outline" data-id="'+t.id+'" onclick="openTimetableModal(this.dataset.id)">수정</button> <button class="btn-sm-outline" style="color:#E74C3C;border-color:#E74C3C" data-id="'+t.id+'" onclick="deleteTimetable(this.dataset.id)">삭제</button></span></div>'
+      +'<div style="font-size:12px;color:#1a56db;font-weight:700;margin:4px 0 8px">👥 '+escapeHtml(names)+'</div>'
+      +'<img src="'+t.image_url+'" onclick="openImageViewer(this.src)" style="width:100%;border-radius:8px;border:1px solid #eee;cursor:zoom-in">'
+      +'</div>';
+  }).join(''):'<div style="padding:12px 16px;color:#aaa;font-size:13px">등록된 시간표가 없어요</div>';
+}
+function openTimetableModal(editId){
+  var t=editId&&window._ttCache?window._ttCache[editId]:null;
+  var tg=(t&&t.student_ids)||[];
+  var stuHtml=allStudents.map(function(x){
+    return '<label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer"><input type="checkbox" class="tt-stu-chk" data-id="'+x.id+'"'+(tg.indexOf(x.id)>=0?' checked':'')+'>'+escapeHtml(x.name)+'</label>';
+  }).join('');
+  openMod(t?'시간표 수정':'시간표 등록',
+    '<div class="form-group" style="padding-top:16px"><label class="form-label">제목</label><input type="text" class="form-input" id="tt-title" placeholder="예: 목요일 저녁반 시간표" value="'+(t?String(t.title||'').replace(/"/g,'&quot;'):'')+'"></div>'+
+    '<div class="form-group"><label class="form-label">시간표 사진'+(t?' <span style="font-weight:400;color:#999">(바꿀 때만 선택)</span>':'')+'</label>'+
+      (t?'<img src="'+t.image_url+'" style="width:100%;border-radius:8px;border:1px solid #eee;margin-bottom:8px">':'')+
+      '<input type="file" accept="image/*" id="tt-file" class="form-input" style="padding:8px"></div>'+
+    '<div class="form-group"><label class="form-label">받는 학생</label>'+
+      '<div style="display:flex;flex-wrap:wrap;gap:8px 14px;padding:4px 0">'+stuHtml+'</div>'+
+      '<div style="font-size:11px;color:#999;margin-top:6px">선택한 학생의 할일 탭 맨 위에만 보여요.</div></div>'+
+    '<div style="padding:16px"><button class="btn-primary" id="tt-save-btn">'+(t?'수정 완료':'등록')+'</button></div>'
+  );
+  document.getElementById('tt-save-btn').onclick=function(){saveTimetable(t?editId:null);};
+}
+// 사진을 적당한 크기로 줄여서 올림 (저장소 업로드가 막혀 있으면 시간표 안에 직접 담아 저장)
+function prepareImageForUpload(file){
+  return new Promise(function(resolve,reject){
+    var img=new Image();var url=URL.createObjectURL(file);
+    img.onload=function(){
+      var sc=Math.min(1,1800/img.width);
+      var c=document.createElement('canvas');
+      c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
+      var ctx=c.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,c.width,c.height);
+      ctx.drawImage(img,0,0,c.width,c.height);
+      URL.revokeObjectURL(url);
+      c.toBlob(function(b){resolve({blob:b,canvas:c});},'image/jpeg',0.88);
+    };
+    img.onerror=function(){URL.revokeObjectURL(url);reject(new Error('사진을 읽을 수 없어요'));};
+    img.src=url;
+  });
+}
+async function uploadTimetableImage(file){
+  var pre=await prepareImageForUpload(file);
+  var fileName='timetables/'+Date.now()+'.jpg';
+  try{
+    var up=await getSB().storage.from('homework-photos').upload(fileName,pre.blob,{contentType:'image/jpeg'});
+    if(!up.error){
+      var u=getSB().storage.from('homework-photos').getPublicUrl(fileName);
+      if(u&&u.data&&u.data.publicUrl)return u.data.publicUrl;
+    }
+  }catch(e){}
+  var q=0.8,data=pre.canvas.toDataURL('image/jpeg',q);
+  while(data.length>700000&&q>0.4){q-=0.1;data=pre.canvas.toDataURL('image/jpeg',q);}
+  return data;
+}
+async function saveTimetable(editId){
+  var title=document.getElementById('tt-title').value.trim()||'시간표';
+  var fileEl=document.getElementById('tt-file');
+  var file=fileEl&&fileEl.files&&fileEl.files[0];
+  var targets=Array.from(document.querySelectorAll('.tt-stu-chk:checked')).map(function(c){return c.dataset.id;});
+  if(!editId&&!file){toast('시간표 사진을 선택해주세요');return;}
+  if(!targets.length){toast('받는 학생을 선택해주세요');return;}
+  var btn=document.getElementById('tt-save-btn');if(btn){btn.disabled=true;btn.textContent='저장 중...';}
+  var payload={title:title,student_ids:targets};
+  try{if(file)payload.image_url=await uploadTimetableImage(file);}
+  catch(e){toast('사진 오류: '+e.message);if(btn){btn.disabled=false;btn.textContent=editId?'수정 완료':'등록';}return;}
+  var res=editId
+    ?await getSB().from('timetables').update(payload).eq('id',editId)
+    :await getSB().from('timetables').insert(payload);
+  if(res.error){
+    toast('오류: '+res.error.message+' (Supabase에서 timetables.sql을 실행했는지 확인해주세요)');
+    if(btn){btn.disabled=false;btn.textContent=editId?'수정 완료':'등록';}
+    return;
+  }
+  toast(editId?'✅ 시간표 수정 완료!':'✅ '+targets.length+'명에게 시간표 등록!');
+  closeMod();loadTimetablesAdmin();
+}
+async function deleteTimetable(id){
+  if(!confirm('이 시간표를 삭제할까요? 학생 화면에서도 사라져요.'))return;
+  var res=await getSB().from('timetables').delete().eq('id',id);
+  if(res.error){toast('오류: '+res.error.message);return;}
+  toast('삭제됐어요');loadTimetablesAdmin();
+}
+
 // ===== 이화영어 규칙 =====
 async function loadRules(elId,isTeacher){
   var res=await getSB().from('rules').select('*').order('order_num');
@@ -4037,6 +4204,7 @@ function changeTasksDate(dir){
 }
 
 async function loadStudentTasks(){
+  loadStudentTimetable();
   var sid=window._currentStudentRowId;
   if(!sid){
     var sRes=await getSB().from('students').select('id').eq('profile_id',currentProfile.id).single();
