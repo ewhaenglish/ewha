@@ -1639,33 +1639,31 @@ async function findPrevClassDate(sid,beforeDateStr){
   return attDate||taskDate;
 }
 
-// 지난시간 카드의 한 줄: 상태 표시 + [완결] [과제] [할일] [삭제]
-//  완결 = 그 항목을 완료 처리 / 과제 = 오늘 과제로 내리기 / 할일 = 오늘 할일로 내리기 / 삭제 = 지난시간 목록에서 삭제
+// 지난시간 카드의 한 줄: 목록은 한 줄로 깔끔하게, 오른쪽에 작은 버튼
+//  완료 = 완료 처리 / ↓할일 = 오늘 할일로 내리기 / ↓과제 = 오늘 과제로 내리기 / 🗑 = 삭제 (완료된 줄은 취소·🗑만)
 function prevItemHtml(t){
   var done=(t.student_done||t.teacher_confirmed)&&!t.partial_done;
   var icon=t.partial_done?'△':(t.teacher_confirmed?'✓':(t.student_done?'⏳':''));
   var iconStyle=t.partial_done?'border-color:#B8860B;color:#B8860B':(t.teacher_confirmed?'background:#1B4D3E;border-color:#1B4D3E;color:#fff':(t.student_done?'border-color:#FFC107;color:#FFC107':''));
   var badges='';
-  if(t.partial_done)badges+='<span class="pill" style="margin-left:6px;background:#FFF4D6;color:#B8860B;font-weight:700">△ 부분 완료</span>';
+  if(t.partial_done)badges+='<span class="pill" style="margin-left:6px;background:#FFF4D6;color:#B8860B;font-weight:700">△ 부분</span>';
   else if(t.student_done&&!t.teacher_confirmed)badges+='<span class="pill" style="margin-left:6px;background:#FFF3CD;color:#856404">확인 대기</span>';
-  if(t.carried_over)badges+='<span class="pill" style="margin-left:6px;background:#E8F1FF;color:#1a56db">⬇ 오늘로 내림</span>';
-  var bs='flex:1;padding:7px 0;font-size:12px;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:700;';
+  if(t.carried_over)badges+='<span class="pill" style="margin-left:6px;background:#E8F1FF;color:#1a56db">내림</span>';
+  var bs='padding:3px 5px;font-size:11px;line-height:1.4;border-radius:6px;cursor:pointer;font-family:inherit;white-space:nowrap;background:#fff;';
   var btns;
   if(done){
-    btns='<button style="'+bs+'background:#fff;border:1px solid #1B4D3E;color:#1B4D3E" onclick="teacherUnmarkTask(\''+t.id+'\')">취소</button>'
-        +'<button style="'+bs+'background:#fff;border:1px solid #E74C3C;color:#E74C3C" onclick="deleteTask(\''+t.id+'\')">삭제</button>';
+    btns='<button style="'+bs+'border:1px solid #999;color:#666" onclick="teacherUnmarkTask(\''+t.id+'\')">취소</button>'
+        +'<button style="'+bs+'border:1px solid #E7B4AE;color:#E74C3C" onclick="deleteTask(\''+t.id+'\')">🗑</button>';
   } else {
-    btns='<button style="'+bs+'background:#1B4D3E;border:1px solid #1B4D3E;color:#fff" onclick="teacherMarkDone(\''+t.id+'\')">완결</button>'
-        +'<button style="'+bs+'background:#fff;border:1px solid #1a56db;color:#1a56db" onclick="prevSendToToday(\''+t.id+'\',\'hw\')">과제</button>'
-        +'<button style="'+bs+'background:#fff;border:1px solid #B8860B;color:#B8860B" onclick="prevSendToToday(\''+t.id+'\',\'todo\')">할일</button>'
-        +'<button style="'+bs+'background:#fff;border:1px solid #E74C3C;color:#E74C3C" onclick="deleteTask(\''+t.id+'\')">삭제</button>';
+    btns='<button style="'+bs+'border:1px solid #1B4D3E;background:#1B4D3E;color:#fff" onclick="teacherMarkDone(\''+t.id+'\')">완료</button>'
+        +'<button style="'+bs+'border:1px solid #B8860B;color:#B8860B" onclick="prevSendToToday(\''+t.id+'\',\'todo\')">↓할일</button>'
+        +'<button style="'+bs+'border:1px solid #1a56db;color:#1a56db" onclick="prevSendToToday(\''+t.id+'\',\'hw\')">↓과제</button>'
+        +'<button style="'+bs+'border:1px solid #E7B4AE;color:#E74C3C" onclick="deleteTask(\''+t.id+'\')">🗑</button>';
   }
-  return '<div style="padding:10px 16px;border-bottom:1px solid #F5F0E0">'
-    +'<div style="display:flex;align-items:flex-start;gap:10px">'
-    +'<div class="task-check" style="flex-shrink:0;'+iconStyle+'">'+icon+'</div>'
-    +'<div style="flex:1;font-size:14px;line-height:1.45;'+(done?'color:#aaa;text-decoration:line-through':'color:#222')+'">'+escapeHtml(t.title||'')+badges+'</div>'
-    +'</div>'
-    +'<div style="display:flex;gap:6px;margin-top:8px;padding-left:34px">'+btns+'</div>'
+  return '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;padding:8px 12px;border-bottom:1px solid #F5F0E0">'
+    +'<div class="task-check" style="flex-shrink:0;width:20px;height:20px;font-size:11px;'+iconStyle+'">'+icon+'</div>'
+    +'<div style="flex:1;min-width:100px;font-size:14px;line-height:1.4;'+(done?'color:#aaa;text-decoration:line-through':'color:#222')+'">'+escapeHtml(t.title||'')+badges+'</div>'
+    +'<div style="display:flex;gap:3px;flex-shrink:0;margin-left:auto">'+btns+'</div>'
     +'</div>';
 }
 async function loadPrevHwSection(sid,todayDateStr){
@@ -4916,27 +4914,46 @@ async function loadParentReport(){
 }
 
 // ===== 교사 과제 사진 확인 =====
+// 예전에는 '지금 보고 있는 날짜'에 올린 사진만 보여서, 학생이 집에서 다른 날 올린 사진은 안 보였음
+// → 지난 수업일부터 보고 있는 날짜까지 올라온 사진을 모두 보여줌 (지난 수업 기록이 없으면 최근 7일)
 async function loadTeacherHwPhotos(){
   if(!currentStudentId)return;
   var section=document.getElementById('t-hw-photos-section');
   var el=document.getElementById('t-hw-photos');
   if(!el||!section)return;
-  var res=await getSB().from('homework_photos').select('*').eq('student_id',currentStudentId).order('created_at',{ascending:false}).limit(30);
-  var all=res.data||[];
+  var sidAtCall=currentStudentId;
   var dateStr=getOffsetDate(taskDateOffset);
-  var items=all.filter(function(p){
-    if(p.photo_date)return p.photo_date===dateStr;
-    var cd=new Date(new Date(p.created_at).getTime()+9*60*60*1000);
-    var cds=cd.getUTCFullYear()+'-'+String(cd.getUTCMonth()+1).padStart(2,'0')+'-'+String(cd.getUTCDate()).padStart(2,'0');
-    return cds===dateStr;
-  });
-  if(!items.length){section.style.display='none';return;}
+  var from=null;
+  try{from=await findPrevClassDate(sidAtCall,dateStr);}catch(e){}
+  if(currentStudentId!==sidAtCall)return;
+  if(!from){
+    var d0=new Date(dateStr);d0.setDate(d0.getDate()-7);
+    from=d0.getFullYear()+'-'+String(d0.getMonth()+1).padStart(2,'0')+'-'+String(d0.getDate()).padStart(2,'0');
+  }
+  // 보고 있는 날짜 주변 기간으로 조회 → 예전 날짜로 넘겨도 그때 사진이 그대로 나옴 (최신 몇 장만 가져오던 제한 없앰)
+  var qFrom=new Date(from+'T00:00:00+09:00');qFrom.setDate(qFrom.getDate()-7);
+  var qTo=new Date(dateStr+'T00:00:00+09:00');qTo.setDate(qTo.getDate()+15);
+  var res=await getSB().from('homework_photos').select('*').eq('student_id',sidAtCall).gte('created_at',qFrom.toISOString()).lte('created_at',qTo.toISOString()).order('created_at',{ascending:false}).limit(200);
+  if(currentStudentId!==sidAtCall)return;
   section.style.display='block';
-  el.innerHTML=items.map(function(p){
+  if(res.error){
+    el.innerHTML='<div style="font-size:12px;color:#c0392b">사진을 불러오지 못했어요: '+escapeHtml(res.error.message||'')+'</div>';
+    return;
+  }
+  function photoDate(p){
+    if(p.photo_date)return p.photo_date;
+    var cd=new Date(new Date(p.created_at).getTime()+9*60*60*1000);
+    return cd.getUTCFullYear()+'-'+String(cd.getUTCMonth()+1).padStart(2,'0')+'-'+String(cd.getUTCDate()).padStart(2,'0');
+  }
+  function md(ds){var x=new Date(ds);return (x.getMonth()+1)+'/'+x.getDate()+'('+['일','월','화','수','목','금','토'][x.getDay()]+')';}
+  var items=(res.data||[]).filter(function(p){var pd=photoDate(p);return pd>=from&&pd<=dateStr;});
+  var rangeNote='<div style="width:100%;font-size:11px;color:#999;margin-bottom:2px">'+md(from)+' ~ '+md(dateStr)+' 제출분</div>';
+  if(!items.length){el.innerHTML=rangeNote+'<div style="font-size:12px;color:#aaa">제출된 과제 사진이 없어요</div>';return;}
+  el.innerHTML=rangeNote+items.map(function(p){
     var t=formatKSTTime(p.created_at);
     return '<div style="text-align:center">'
       +'<img src="'+p.photo_url+'" style="width:74px;height:74px;object-fit:cover;border-radius:10px;cursor:pointer;border:1.5px solid #E8E8E8" onclick="viewHwPhoto(this.dataset.url)" data-url="'+p.photo_url+'">'
-      +'<div style="font-size:10px;color:#888;margin-top:3px">🕐 '+t+'</div>'
+      +'<div style="font-size:10px;color:#888;margin-top:3px">'+md(photoDate(p))+' '+t+'</div>'
       +'</div>';
   }).join('');
 }
