@@ -1328,6 +1328,7 @@ async function loadStudents(){
       +'<div style="flex:1">'
       +'<div style="font-size:14px;font-weight:700">'+s.name+'</div>'
       +'<div style="font-size:11px;color:#aaa;margin-top:2px">'+(s.school||'')+(s.grade?' · '+s.grade:'')+'</div>'
+      +classDayChipsHtml(s)
       +'<div style="font-size:11px;margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">'
       +'<span style="background:#E8F2EF;color:#1B4D3E;padding:2px 8px;border-radius:10px">학생: '+(s.student_code||'-')+'</span>'
       +'<span style="background:#FFF3CD;color:#856404;padding:2px 8px;border-radius:10px">학부모: '+(s.parent_code||'-')+'</span>'
@@ -1342,6 +1343,45 @@ async function loadStudents(){
       +'</div></div>';
   }).join('');
 }
+// ===== 학생별 수업 요일 =====
+// students.class_days = 수업하는 요일 번호 배열 (0=일 ~ 6=토). 수업 전날 과제 알림 등에서 '내일이 수업인지' 판단하는 데 씀.
+// (반복 할일 기능과는 별개 — 할일을 자동으로 만들지 않고 요일 정보만 저장)
+var CLASS_DAY_ORDER=[1,2,3,4,5,6,0];
+var CLASS_DAY_NAMES=['일','월','화','수','목','금','토'];
+function getClassDays(s){
+  var v=s&&s.class_days;
+  if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v=[];}}
+  return Array.isArray(v)?v.map(Number):[];
+}
+function classDayChipsHtml(s){
+  var days=getClassDays(s);
+  return '<div style="display:flex;align-items:center;gap:3px;margin-top:6px;flex-wrap:wrap" id="cd-'+s.id+'">'
+    +'<span style="font-size:11px;color:#888;margin-right:2px;white-space:nowrap">수업</span>'
+    +CLASS_DAY_ORDER.map(function(d){
+      var on=days.indexOf(d)>=0;
+      return '<button type="button" data-sid="'+s.id+'" data-day="'+d+'" onclick="toggleClassDay(this.dataset.sid,+this.dataset.day);event.stopPropagation()" '
+        +'style="width:22px;height:22px;border-radius:50%;font-size:10px;font-weight:700;flex-shrink:0;cursor:pointer;font-family:inherit;padding:0;'
+        +(on?'background:#1B4D3E;border:1.5px solid #1B4D3E;color:#fff':'background:#fff;border:1.5px solid #ddd;color:#bbb')+'">'+CLASS_DAY_NAMES[d]+'</button>';
+    }).join('')
+    +'</div>';
+}
+async function toggleClassDay(sid,day){
+  var s=allStudents.find(function(x){return x.id===sid;});
+  if(!s)return;
+  var days=getClassDays(s);
+  var i=days.indexOf(day);
+  if(i>=0)days.splice(i,1);else days.push(day);
+  days.sort(function(a,b){return a-b;});
+  var res=await getSB().from('students').update({class_days:days}).eq('id',sid);
+  if(res.error){
+    toast('오류: '+res.error.message+(/class_days/.test(res.error.message||'')?' (Supabase에서 class_days.sql을 먼저 실행해주세요)':''));
+    return;
+  }
+  s.class_days=days;
+  var box=document.getElementById('cd-'+sid);
+  if(box)box.outerHTML=classDayChipsHtml(s);
+}
+
 function openAddStudent(){
   openMod('학생 등록',
     '<div class="form-section-title" style="border-top:none;padding-top:16px">기본 정보</div>'+
@@ -1630,7 +1670,7 @@ async function findPrevClassDate(sid,beforeDateStr){
   for(var i=0;i<rows.length;i++){
     var t=rows[i], title=t.title||'';
     if(absentSet[t.date])continue;
-    var isAuto=!!recurSet[t.type+'_'+title]||/^단어 Day \d+-\d+ TEST$/.test(title)||title.indexOf('[지난 과제 확인]')===0||title.indexOf('[이어서]')===0;
+    var isAuto=!!recurSet[t.type+'_'+title]||isVocabTestTitle(title)||title.indexOf('[지난 과제 확인]')===0||title.indexOf('[이어서]')===0;
     // 자동 생성 항목은 '선생님이 확인 완료한 할일'일 때만 수업 기록으로 인정 (수업 없는 날 로그인만 한 경우 방지)
     if(isAuto&&!(t.type==='todo'&&t.teacher_confirmed))continue;
     taskDate=t.date;break;
@@ -1660,9 +1700,9 @@ function prevItemHtml(t){
         +'<button style="'+bs+'border:1px solid #1a56db;color:#1a56db" onclick="prevSendToToday(\''+t.id+'\',\'hw\')">↓과제</button>'
         +'<button style="'+bs+'border:1px solid #E7B4AE;color:#E74C3C" onclick="deleteTask(\''+t.id+'\')">🗑</button>';
   }
-  return '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px;padding:8px 12px;border-bottom:1px solid #F5F0E0">'
-    +'<div class="task-check" style="flex-shrink:0;width:20px;height:20px;font-size:11px;'+iconStyle+'">'+icon+'</div>'
-    +'<div style="flex:1;min-width:100px;font-size:14px;line-height:1.4;'+(done?'color:#aaa;text-decoration:line-through':'color:#222')+'">'+escapeHtml(t.title||'')+badges+'</div>'
+  return '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px 8px;padding:11px 12px 11px 16px;border-bottom:1px solid #F5F0E0;background:#fff">'
+    +'<div class="task-check" style="flex-shrink:0;'+iconStyle+'">'+icon+'</div>'
+    +'<div style="flex:1;min-width:100px;font-size:16px;line-height:1.4;'+(done?'color:#aaa;text-decoration:line-through':'')+'">'+escapeHtml(t.title||'')+badges+'</div>'
     +'<div style="display:flex;gap:3px;flex-shrink:0;margin-left:auto">'+btns+'</div>'
     +'</div>';
 }
@@ -1757,27 +1797,47 @@ async function pushPrevUnfinishedToToday(){
 
 // ===== 단어 TEST 자동 생성 =====
 // 전날 과제 중 "Day 15-16 암기"처럼 숫자범위+암기 패턴이 있으면
-// 오늘 할일 맨 위에 "단어 Day 15-16 TEST"를 자동으로 만들어둠
+// 자동 생성된 단어 TEST 할일 제목인지 (예전 형식 "단어 Day 15-16 TEST", 새 형식 "DAY 15-16 TEST -> 오답 단어 암기 후 검사" 모두)
+function isVocabTestTitle(title){
+  return /^(단어 Day|DAY) \d+(-\d+)? TEST( -> .*)?$/.test(title||'');
+}
+// 지난 수업 과제에 "Day 15-16 … 암기"가 있으면 → 이번 수업 할일에 "DAY 15-16 TEST -> 오답 단어 암기 후 검사"를 한 번만 자동으로 넣음
+//  · 한 번 만든 과제에는 표시(vocab_test_made)를 남겨서, 선생님이 TEST 할일을 지워도 다시 생기지 않음
+//  · 수업 요일이 정해진 학생은 수업 요일에만 만듦 (수업 없는 날짜를 열어봐도 생기지 않음)
 async function autoGenerateVocabTestTodo(sid,todayDateStr){
   try{
+    var st=allStudents.find(function(x){return x.id===sid;});
+    var cdays=(typeof getClassDays==='function')?getClassDays(st):[];
+    if(cdays.length&&cdays.indexOf(new Date(todayDateStr).getDay())<0)return;
     var prevDate=await findPrevClassDate(sid,todayDateStr);
     if(!prevDate)return;
-    var hwRes=await getSB().from('tasks').select('title').eq('student_id',sid).eq('type','hw').eq('date',prevDate);
+    var hasFlag=true;
+    var hwRes=await getSB().from('tasks').select('id,title,vocab_test_made').eq('student_id',sid).eq('type','hw').eq('date',prevDate);
+    if(hwRes.error){
+      // 표시용 칸이 아직 없으면 예전 방식(제목이 있으면 안 만듦)으로 동작
+      hasFlag=false;
+      hwRes=await getSB().from('tasks').select('id,title').eq('student_id',sid).eq('type','hw').eq('date',prevDate);
+    }
     var hwItems=hwRes.data||[];
-    var re=/day\s*(\d+)\s*[-~]\s*(\d+)/i;
-    var testTitles=[];
+    var re=/day\s*(\d+)(?:\s*[-~]\s*(\d+))?/i;
+    var jobs=[];
     for(var i=0;i<hwItems.length;i++){
-      var hwTitle=hwItems[i].title||'';
+      var hw=hwItems[i],hwTitle=hw.title||'';
       if(!/암기|외우/.test(hwTitle))continue;
       var m=hwTitle.match(re);
       if(!m)continue;
-      testTitles.push('단어 Day '+m[1]+'-'+m[2]+' TEST');
+      if(hasFlag&&hw.vocab_test_made)continue; // 이미 한 번 만들어 준 과제 → 지웠어도 다시 만들지 않음
+      var label=m[1]+(m[2]?'-'+m[2]:'');
+      jobs.push({hwId:hw.id,newTitle:'DAY '+label+' TEST -> 오답 단어 암기 후 검사',oldTitle:'단어 Day '+label+' TEST'});
     }
-    await Promise.all(testTitles.map(async function(testTitle){
-      var existRes=await getSB().from('tasks').select('id').eq('student_id',sid).eq('type','todo').eq('date',todayDateStr).eq('title',testTitle).limit(1);
+    await Promise.all(jobs.map(async function(j){
+      var existRes=await getSB().from('tasks').select('id').eq('student_id',sid).eq('type','todo').eq('date',todayDateStr).in('title',[j.newTitle,j.oldTitle]).limit(1);
       if(existRes.error)return;
-      if(existRes.data&&existRes.data.length)return;
-      await getSB().from('tasks').insert({student_id:sid,type:'todo',title:testTitle,date:todayDateStr,is_done:false,student_done:false,teacher_confirmed:false,needs_check:false});
+      if(!(existRes.data&&existRes.data.length)){
+        var ins=await getSB().from('tasks').insert({student_id:sid,type:'todo',title:j.newTitle,date:todayDateStr,is_done:false,student_done:false,teacher_confirmed:false,needs_check:false});
+        if(ins.error)return;
+      }
+      if(hasFlag)await getSB().from('tasks').update({vocab_test_made:true}).eq('id',j.hwId);
     }));
   }catch(e){/* 자동 생성 실패해도 기존 화면엔 영향 없게 조용히 무시 */}
 }
@@ -1807,7 +1867,7 @@ async function autoCarryPartialTodos(sid,dateStr){
     var recur={};(base[2].data||[]).forEach(function(r){recur[r.type+'_'+r.title]=true;});
     var manual=dayTasks.some(function(t){
       var ti=t.title||'';
-      return !recur[t.type+'_'+ti]&&!/^단어 Day \d+-\d+ TEST$/.test(ti)&&ti.indexOf('[지난 과제 확인]')!==0&&ti.indexOf('[이어서]')!==0;
+      return !recur[t.type+'_'+ti]&&!isVocabTestTitle(ti)&&ti.indexOf('[지난 과제 확인]')!==0&&ti.indexOf('[이어서]')!==0;
     });
     if(!(att&&att.check_in)&&!manual)return 0;
     var d0=new Date(dateStr);d0.setDate(d0.getDate()-14);
@@ -2056,7 +2116,7 @@ async function teacherUnmarkTask(taskId){
 // 받는 쪽에 같은 종류·같은 내용이 이미 있으면 건너뛰고, 순서는 원래 순서 그대로 받는 학생 목록 맨 뒤에 붙음.
 var _copySrc=[];
 function _isAutoTaskTitle(title){
-  return /^단어 Day \d+-\d+ TEST$/.test(title||'')||(title||'').indexOf('[지난 과제 확인]')===0||(title||'').indexOf('[이어서]')===0;
+  return isVocabTestTitle(title)||(title||'').indexOf('[지난 과제 확인]')===0||(title||'').indexOf('[이어서]')===0;
 }
 async function openCopyDayModal(){
   if(!currentStudentId){toast('먼저 학생을 선택해주세요');return;}
